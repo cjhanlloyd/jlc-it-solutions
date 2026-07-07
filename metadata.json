@@ -1,0 +1,6 @@
+{
+  "name": "JLC IT Solutions",
+  "description": "Professional IT services website with full inquiry system and robust admin panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

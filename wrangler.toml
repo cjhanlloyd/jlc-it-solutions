@@ -1,0 +1,11 @@
+name = "jlc-it-solutions"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "dist"
+
+[vars]
+NODE_ENV = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jlc_database"
+database_id = "6cfc7983-58e7-424f-a9ec-ab6338df0cf1"
