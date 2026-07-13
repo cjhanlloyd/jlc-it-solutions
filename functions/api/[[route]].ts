@@ -499,7 +499,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       } : null;
 
       return new Response(JSON.stringify({
-        branding: branding || { companyName: "JLC IT Solutions", logoType: "icon", logoIcon: "Activity", themeColor: "deepblue", tagline: "Your Tech Companion" },
+        branding: branding || { companyName: "JLC Solutions", logoType: "icon", logoIcon: "Activity", themeColor: "deepblue", tagline: "Your Tech Companion" },
         content: parsedContent || { heroTitle: "Enterprise IT Services & Custom Software", heroSubtitle: "Trusted technology partner", whyChooseUsText: "We align standard TIA/EIA specifications.", whyChooseUsPoints: [] },
         services: parsedServices,
         faqs: faqsResult.results || [],
@@ -775,7 +775,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             try {
               await sendSmtpEmail(env.DB, smtp, {
                 to: admin.email,
-                subject: "Password Reset Request - JLC IT Solutions",
+                subject: "Password Reset Request - JLC Solutions",
                 body: emailBody
               }, request);
             } catch (e: any) {
@@ -871,7 +871,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       return new Response(JSON.stringify({
         db: {
-          branding: branding || { companyName: "JLC IT Solutions", logoType: "icon", logoIcon: "Activity", themeColor: "deepblue", tagline: "Your Tech Companion" },
+          branding: branding || { companyName: "JLC Solutions", logoType: "icon", logoIcon: "Activity", themeColor: "deepblue", tagline: "Your Tech Companion" },
           content: parsedContent || { heroTitle: "Enterprise IT Services", heroSubtitle: "Trusted technology partner", whyChooseUsText: "", whyChooseUsPoints: [] },
           services: parsedServices,
           inquiries: inquiries.results || [],
@@ -881,7 +881,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           projectGallery: projectGalleryResult.results || [],
           processSteps: processStepsResult.results || [],
           roadmapSteps: roadmapStepsResult.results || [],
-          emailTemplate: emailTemplate || { subject: "Thank You for contacting JLC IT Solutions!", body: "Hi {fullName}" },
+          emailTemplate: emailTemplate || { subject: "Thank You for contacting JLC Solutions!", body: "Hi {fullName}" },
           smtpSettings: smtpSettings || { host: "localhost", port: 587, enabled: 0 }
         },
         systemLogs: (auditLogs.results || []).map((l: any) => ({
@@ -1044,13 +1044,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         if (smtp && smtp.enabled) {
           const origin = new URL(request.url).origin;
           const inviteLink = `${origin}/?inviteToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
-          const emailBody = `Dear ${admin.fullName},\n\nYou have been invited to join the Administration Panel of JLC IT Solutions as: ${admin.role}.\n\nClick the link below to verify your email and set your password:\n${inviteLink}\n\nThis invitation is valid for 24 hours.`;
+          const emailBody = `Dear ${admin.fullName},\n\nYou have been invited to join the Administration Panel of JLC Solutions as: ${admin.role}.\n\nClick the link below to verify your email and set your password:\n${inviteLink}\n\nThis invitation is valid for 24 hours.`;
           
           const sendInviteEmailPromise = (async () => {
             try {
               await sendSmtpEmail(env.DB, smtp, {
                 to: cleanEmail,
-                subject: "Invitation to Administration Panel - JLC IT Solutions",
+                subject: "Invitation to Administration Panel - JLC Solutions",
                 body: emailBody
               }, request);
 
@@ -1316,12 +1316,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: 'Inquiry not found.' }), { headers, status: 404 });
       }
 
+      const branding = await env.DB.prepare("SELECT companyName FROM branding WHERE id = 'default'").first<any>();
+      const coName = branding ? branding.companyName : "JLC Solutions";
+
       // Intelligent Rule-Based Simulator for local development / missing API keys
-      let draft = `Dear ${inquiry.fullName || 'Client'},\n\nThank you for your interest in our ${inquiry.serviceRequired || 'services'} at JLC IT Solutions! We reviewed your project description.`;
+      let draft = `Dear ${inquiry.fullName || 'Client'},\n\nThank you for your interest in our ${inquiry.serviceRequired || 'services'} at ${coName}! We reviewed your project description.`;
 
       const instrLower = (instructions || '').toLowerCase();
       if (instrLower.includes('decline') || instrLower.includes('busy') || instrLower.includes('cannot handle') || instrLower.includes('reject')) {
-        draft = `Dear ${inquiry.fullName || 'Client'},\n\nThank you for your interest in JLC IT Solutions! We reviewed your project description regarding "${inquiry.serviceRequired || 'services'}".\n\nUnfortunately, our engineering team is currently at full capacity for the next few weeks and we are unable to take on new projects at this time. We apologize for the inconvenience and wish you the best of luck with your launch.\n\nBest regards,\nJLC IT Solutions Technical Consulting Team`;
+        draft = `Dear ${inquiry.fullName || 'Client'},\n\nThank you for your interest in ${coName}! We reviewed your project description regarding "${inquiry.serviceRequired || 'services'}".\n\nUnfortunately, our engineering team is currently at full capacity for the next few weeks and we are unable to take on new projects at this time. We apologize for the inconvenience and wish you the best of luck with your launch.\n\nBest regards,\n${coName} Technical Consulting Team`;
       } else {
         let actionItem = 'Are you available this Wednesday or Thursday afternoon for a brief Microsoft Teams or Zoom consultation?';
         
@@ -1338,7 +1341,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           customInsight = `\nFor database solutions, we specialize in high-performance PostgreSQL architectures and serverless database integrations.\n`;
         }
 
-        draft = `Dear ${inquiry.fullName || 'Client'},\n\nThank you for your interest in our ${inquiry.serviceRequired || 'services'} at JLC IT Solutions! We reviewed your project description regarding:\n"${(inquiry.projectDescription || '').substring(0, 100)}..."\n${customInsight}\nWe would love to schedule a quick consultation to discuss your objectives in detail.\n\n${actionItem}\n\nBest regards,\nJLC IT Solutions Technical Consulting Team`;
+        draft = `Dear ${inquiry.fullName || 'Client'},\n\nThank you for your interest in our ${inquiry.serviceRequired || 'services'} at ${coName}! We reviewed your project description regarding:\n"${(inquiry.projectDescription || '').substring(0, 100)}..."\n${customInsight}\nWe would love to schedule a quick consultation to discuss your objectives in detail.\n\n${actionItem}\n\nBest regards,\n${coName} Technical Consulting Team`;
       }
 
       if (env.GEMINI_API_KEY) {
