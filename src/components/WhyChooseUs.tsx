@@ -63,7 +63,7 @@ export default function WhyChooseUs({ content, branding, onInquireClick }: WhyCh
             Core Values
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-display">
-            Why Choose JLC IT Solutions
+            Why Choose JLC Solutions
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-sans leading-relaxed max-w-2xl mx-auto">
             {content.whyChooseUsText}

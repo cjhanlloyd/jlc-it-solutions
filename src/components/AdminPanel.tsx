@@ -256,7 +256,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
       if (!response.ok) throw new Error(data.error || 'Failed to generate draft.');
       
       setAiDraftedReplyText(data.draftText);
-      setReplySubject(`Re: JLC IT Solutions inquiry - ${inq.serviceRequired}`);
+      setReplySubject(`Re: JLC Solutions inquiry - ${inq.serviceRequired}`);
     } catch (err: any) {
       setApiError(err.message || 'Gemini Generation failed.');
     } finally {
@@ -3254,7 +3254,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                         disabled={!smtpForm.enabled}
                         value={smtpForm.senderName || ''}
                         onChange={(e) => setSmtpForm({ ...smtpForm, senderName: e.target.value })}
-                        placeholder="JLC IT Solutions Support"
+                        placeholder="JLC Solutions Support"
                         className="w-full border border-gray-200 p-2.5 rounded-lg text-xs disabled:bg-slate-50 disabled:text-slate-400"
                       />
                     </div>

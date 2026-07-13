@@ -61,7 +61,7 @@ export default function ContactSection({ content, branding, onInquireClick }: Co
             Get In Touch
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 font-display">
-            {content.contactHeader || 'Connect With JLC IT Solutions'}
+            {content.contactHeader || 'Connect With JLC Solutions'}
           </h2>
           <p className="mt-4 text-sm sm:text-base text-slate-500 font-sans leading-relaxed">
             {content.contactSubtitle || 'Have questions about our technology capabilities, security controls, or pricing models? Let us know. We respond to all inquiries within 1 business day.'}
@@ -146,7 +146,7 @@ export default function ContactSection({ content, branding, onInquireClick }: Co
             <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm h-96 relative">
               {content.contactMapEmbedUrl ? (
                 <iframe
-                  title="JLC IT Solutions Head Office Location Map"
+                  title="JLC Solutions Head Office Location Map"
                   src={content.contactMapEmbedUrl}
                   width="100%"
                   height="100%"

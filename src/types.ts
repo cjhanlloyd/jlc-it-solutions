@@ -300,10 +300,10 @@ export const DEFAULT_WHY_POINTS: WhyChooseUsPoint[] = [
 ];
 
 export const DEFAULT_BRANDING: BrandingSettings = {
-  companyName: 'JLC IT Solutions',
+  companyName: 'JLC Solutions',
   tagline: 'Empowering Businesses with Reliable, Innovative Technology Services',
   logoType: 'icon',
-  logoText: 'JLC IT',
+  logoText: 'JLC',
   logoIcon: 'Activity',
   themeColor: 'deepblue'
 };
@@ -349,11 +349,11 @@ export const DEFAULT_WHY_PROMISES = [
 
 export const DEFAULT_CONTENT: ContentSettings = {
   heroTitle: 'Innovative IT Solutions Crafted for Business Growth',
-  heroSubtitle: 'At JLC IT Solutions, we deliver premium software, cloud migration, and secure network infrastructure. Reliable, client-focused engineering to build a stable foundation for your company.',
+  heroSubtitle: 'At JLC Solutions, we deliver premium software, cloud migration, and secure network infrastructure. Reliable, client-focused engineering to build a stable foundation for your company.',
   heroBadge: 'Ready for Inquiries',
   aboutHeader: 'Your Strategic Technical Partner',
   aboutSubheader: 'Establishing a Strong, Trustworthy Foundation for Future Tech Growth',
-  aboutText: 'JLC IT Solutions was founded on the principle that small and medium businesses deserve the same high-caliber technology expertise as multi-million dollar corporations. We act as your strategic technology partner, ensuring your systems are fast, reliable, and secure, so you can focus entirely on your core business.',
+  aboutText: 'JLC Solutions was founded on the principle that small and medium businesses deserve the same high-caliber technology expertise as multi-million dollar corporations. We act as your strategic technology partner, ensuring your systems are fast, reliable, and secure, so you can focus entirely on your core business.',
   aboutText2: 'We understand that choosing an IT support and custom development partner is an exercise in trust. That\'s why we focus on absolute transparency: we do not inflate our stats, utilize fake client testimonials, or oversell. Instead, we deliver world-class engineering, bulletproof security protocols, and meticulous documentation, ensuring your technology investments support long-term stability and organic growth.',
   aboutMission: 'To build exceptional, stable, and secure technology foundations for growing businesses through high-quality custom development, cloud engineering, and honest IT guidance.',
   aboutVision: 'To be the most trusted, reliable, and client-centric boutique IT consulting and software development provider in the industry, powering future-ready business ecosystems.',
@@ -374,7 +374,7 @@ export const DEFAULT_CONTENT: ContentSettings = {
   processSubtitle: 'How we consult, design, implement, and proactively support your startup\'s technology ecosystem with absolute clarity.',
   faqHeader: 'Frequently Asked Questions',
   faqSubtitle: 'Have questions about our custom IT strategy compliance, pricing, or remote patch monitoring? Here are quick answers to common queries.',
-  contactHeader: 'Connect With JLC IT Solutions',
+  contactHeader: 'Connect With JLC Solutions',
   contactSubtitle: 'Have questions about our technology capabilities, security controls, or pricing models? Let us know. We respond to all inquiries within 1 business day.',
   contactAddress: '123 Tech Avenue, Innovation District, Manila, Philippines',
   contactPhone: '+63 917 123 4567',
@@ -382,16 +382,16 @@ export const DEFAULT_CONTENT: ContentSettings = {
   contactWorkingHours: 'Monday - Friday: 9:00 AM - 6:00 PM (PHT)',
   contactMapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15444.29871147774!2d121.02237076939947!3d14.599512165038162!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c9ed8c715f91%3A0x63cd2e0e93bdf48!2sManila%2C%20Metro%20Manila!5e0!3m2!1sen!2sph!4v1688123456789!5m2!1sen!2sph',
   bannerImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200&auto=format&fit=crop',
-  facebookUrl: 'https://facebook.com/jlcitsolutions',
+  facebookUrl: 'https://facebook.com/jlcsolutions',
   whatsappUrl: 'https://wa.me/639171234567',
   viberUrl: 'viber://chat?number=639171234567'
 };
 
 export const DEFAULT_EMAIL_TEMPLATE: EmailTemplate = {
-  subject: 'Thank You for contacting JLC IT Solutions!',
+  subject: 'Thank You for contacting JLC Solutions!',
   body: `Dear {{name}},
 
-Thank you for reaching out to JLC IT Solutions! We have received your inquiry regarding our {{service}} service.
+Thank you for reaching out to JLC Solutions! We have received your inquiry regarding our {{service}} service.
 
 Our team is currently reviewing your project description:
 "{{projectDescription}}"
@@ -399,14 +399,14 @@ Our team is currently reviewing your project description:
 We will get back to you shortly via your preferred contact method ({{preferredContact}}). If you need immediate assistance, please feel free to call us at {{companyPhone}}.
 
 Best regards,
-The JLC IT Solutions Team
+The JLC Solutions Team
 Email: {{companyEmail}}
 Phone: {{companyPhone}}`
 };
 
 export const DEFAULT_ADMINS: AdminAccount[] = [
   {
-    email: 'admin@jlcitsolutions.com',
+    email: 'admin@jlcsolutions.com',
     fullName: 'John Lloyd Cahilig',
     role: 'Super Admin',
     status: 'Active',
@@ -420,9 +420,9 @@ export const DEFAULT_SMTP_SETTINGS: SmtpSettings = {
   port: 2525,
   username: '',
   password: '',
-  senderName: 'JLC IT Solutions',
+  senderName: 'JLC Solutions',
   senderEmail: 'contact@jlcsolutions.com',
-  signature: 'Best regards,\nJLC IT Solutions Support Team',
+  signature: 'Best regards,\nJLC Solutions Support Team',
   enabled: false
 };
 
@@ -440,7 +440,7 @@ export const DEFAULT_FAQS: FaqItem[] = [
   {
     id: 'faq-3',
     question: 'How do you handle data privacy and security?',
-    answer: 'Security is at the heart of JLC IT Solutions. We implement strict multi-factor authentication, endpoint firewalls, automated encrypted backups, and custom Access Control systems configured for high data compliance.'
+    answer: 'Security is at the heart of JLC Solutions. We implement strict multi-factor authentication, endpoint firewalls, automated encrypted backups, and custom Access Control systems configured for high data compliance.'
   },
   {
     id: 'faq-4',

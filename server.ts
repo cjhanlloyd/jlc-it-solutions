@@ -777,7 +777,7 @@ app.post('/api/admin/forgot-password', async (req, res) => {
   const resetLink = `${origin}/?resetToken=${resetToken}&email=${encodeURIComponent(cleanEmail)}`;
   const emailBody = `Dear ${matchedAdmin.fullName},\n\nWe received a request to reset your password for the ${db.branding.companyName} Administration Panel.\n\nPlease click the link below to set a new password:\n${resetLink}\n\nThis link is valid for 1 hour. If you did not request this, you can ignore this email.`;
 
-  sendSystemEmail(cleanEmail, 'Reset Your Password - JLC IT Solutions', emailBody, req).catch(err => {
+  sendSystemEmail(cleanEmail, 'Reset Your Password - ' + db.branding.companyName, emailBody, req).catch(err => {
     console.error("Failed to send password reset email in background:", err);
   });
 
@@ -1055,7 +1055,7 @@ app.post('/api/admin/accounts', requireAuth, async (req, res) => {
       const inviteLink = `${origin}/?inviteToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
       const emailBody = `Dear ${admin.fullName},\n\nYou have been invited by the Super Administrator to access the ${db.branding.companyName} Administration Panel as role: ${admin.role}.\n\nPlease click the link below to verify your email and set your password:\n${inviteLink}\n\nThis invitation link is valid for 24 hours.`;
 
-      sendSystemEmail(cleanEmail, 'Invitation to Admin Panel - JLC IT Solutions', emailBody, req).catch(err => {
+      sendSystemEmail(cleanEmail, 'Invitation to Admin Panel - ' + db.branding.companyName, emailBody, req).catch(err => {
         console.error("Failed to send admin invitation email in background:", err);
       });
 
@@ -1256,10 +1256,11 @@ app.post('/api/admin/generate-tagline', requireAuth, async (req, res) => {
   }
 
   try {
+    const db = readDb();
     if (ai) {
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
-        contents: `Generate 3 professional and modern business slogans or tagline options for JLC IT Solutions (an IT & Custom Software Development startup) based on the user request: "${prompt}". Return as a clean text list. Do not use markdown blocks, just return a simple, clean bulleted list.`,
+        contents: `Generate 3 professional and modern business slogans or tagline options for ${db.branding.companyName} (an IT & Custom Software Development startup) based on the user request: "${prompt}". Return as a clean text list. Do not use markdown blocks, just return a simple, clean bulleted list.`,
         config: {
           systemInstruction: 'You are a professional branding consultant specializing in technology agencies.',
           temperature: 0.7
@@ -1298,7 +1299,7 @@ app.post('/api/admin/generate-reply-draft', requireAuth, async (req, res) => {
     if (ai) {
       const systemInstruction = `You are an expert IT solutions sales engineer drafting a professional email response. Be client-oriented, warm, professional, and highlight high quality of work, trust, and clear communication. Keep it clean and scannable.`;
       
-      const prompt = `Compose a response email to ${inquiry.fullName || 'Client'} who submitted an inquiry for JLC IT Solutions.
+      const prompt = `Compose a response email to ${inquiry.fullName || 'Client'} who submitted an inquiry for ${db.branding.companyName}.
 Client Details:
 - Name: ${inquiry.fullName || 'Client'}
 - Company: ${inquiry.companyName || 'N/A'}
@@ -1309,7 +1310,7 @@ Additional instructions from the Admin: "${instructions || 'Briefly acknowledge,
 
 Compose the email. It should start with Dear ${inquiry.fullName || 'Client'}, include a professional response offering technical insight, and end with a modern signature:
 Best regards,
-JLC IT Solutions Technical Consulting Team`;
+${db.branding.companyName} Technical Consulting Team`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -1325,18 +1326,18 @@ JLC IT Solutions Technical Consulting Team`;
       // Intelligent Rule-Based Simulator for local development / missing API keys
       let simulatedReply = `Dear ${inquiry.fullName || 'Client'},
 
-Thank you for your interest in our ${inquiry.serviceRequired || 'services'} at JLC IT Solutions! We reviewed your project description.`;
+Thank you for your interest in our ${inquiry.serviceRequired || 'services'} at ${db.branding.companyName}! We reviewed your project description.`;
 
       const instrLower = (instructions || '').toLowerCase();
       if (instrLower.includes('decline') || instrLower.includes('busy') || instrLower.includes('cannot handle') || instrLower.includes('reject')) {
         simulatedReply = `Dear ${inquiry.fullName || 'Client'},
 
-Thank you for your interest in JLC IT Solutions! We reviewed your project description regarding "${inquiry.serviceRequired || 'services'}". 
+Thank you for your interest in ${db.branding.companyName}! We reviewed your project description regarding "${inquiry.serviceRequired || 'services'}". 
 
 Unfortunately, our engineering team is currently at full capacity for the next few weeks and we are unable to take on new projects at this time. We apologize for the inconvenience and wish you the best of luck with your launch.
 
 Best regards,
-JLC IT Solutions Technical Consulting Team`;
+${db.branding.companyName} Technical Consulting Team`;
       } else {
         let actionItem = 'Are you available this Wednesday or Thursday afternoon for a brief Microsoft Teams or Zoom consultation?';
         
@@ -1355,7 +1356,7 @@ JLC IT Solutions Technical Consulting Team`;
 
         simulatedReply = `Dear ${inquiry.fullName || 'Client'},
 
-Thank you for your interest in our ${inquiry.serviceRequired || 'services'} at JLC IT Solutions! We reviewed your project description regarding:
+Thank you for your interest in our ${inquiry.serviceRequired || 'services'} at ${db.branding.companyName}! We reviewed your project description regarding:
 "${(inquiry.projectDescription || '').substring(0, 100)}..."
 ${customInsight}
 We would love to schedule a quick consultation to discuss your objectives in detail. 
@@ -1363,7 +1364,7 @@ We would love to schedule a quick consultation to discuss your objectives in det
 ${actionItem}
 
 Best regards,
-JLC IT Solutions Technical Consulting Team`;
+${db.branding.companyName} Technical Consulting Team`;
       }
 
       res.json({ success: true, draftText: simulatedReply, simulated: true });
@@ -1374,6 +1375,61 @@ JLC IT Solutions Technical Consulting Team`;
   }
 });
 
+
+// ==========================================
+// DYNAMIC FAVICON ENDPOINTS
+// ==========================================
+app.get('/favicon.ico', (req, res) => {
+  const db = readDb();
+  const branding = db.branding || DEFAULT_BRANDING;
+  if (branding.logoType === 'image' && branding.logoImageBase64) {
+    try {
+      const matches = branding.logoImageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const contentType = matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(buffer);
+      }
+    } catch (err) {
+      console.error("Failed to parse base64 logo for favicon.ico:", err);
+    }
+  }
+  const fallbackPath = path.join(process.cwd(), 'public', 'favicon.svg');
+  if (fs.existsSync(fallbackPath)) {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.sendFile(fallbackPath);
+  }
+  res.status(404).end();
+});
+
+app.get('/favicon.svg', (req, res) => {
+  const db = readDb();
+  const branding = db.branding || DEFAULT_BRANDING;
+  if (branding.logoType === 'image' && branding.logoImageBase64) {
+    try {
+      const matches = branding.logoImageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const contentType = matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(buffer);
+      }
+    } catch (err) {
+      console.error("Failed to parse base64 logo for favicon.svg:", err);
+    }
+  }
+  const fallbackPath = path.join(process.cwd(), 'public', 'favicon.svg');
+  if (fs.existsSync(fallbackPath)) {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.sendFile(fallbackPath);
+  }
+  res.status(404).end();
+});
 
 // ==========================================
 // VITE DEV SERVER & STATIC ASSETS HANDLER
@@ -1395,7 +1451,8 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[JLC IT Solutions Backend] Server running on http://0.0.0.0:${PORT}`);
+    const db = readDb();
+    console.log(`[${db.branding.companyName} Backend] Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

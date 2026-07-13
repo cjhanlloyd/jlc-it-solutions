@@ -134,7 +134,7 @@ export default function Footer({ branding, content, services, setActiveTab }: Fo
             <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-lg h-36">
               {content.contactMapEmbedUrl ? (
                 <iframe
-                  title="JLC IT Solutions Location Map"
+                  title="JLC Solutions Location Map"
                   src={content.contactMapEmbedUrl}
                   width="100%"
                   height="100%"

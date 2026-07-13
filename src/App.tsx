@@ -194,16 +194,20 @@ export default function App() {
 
   // Update layout theme details and favicon dynamically based on settings
   React.useEffect(() => {
-    document.title = branding.companyName ? `${branding.companyName} | Premium IT Solutions` : "JLC IT Solutions";
+    document.title = branding.companyName ? `${branding.companyName} | Premium IT Solutions` : "JLC Solutions";
     
-    if (branding.logoImageBase64) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-      link.href = branding.logoImageBase64;
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.getElementsByTagName('head')[0].appendChild(link);
+    }
+    
+    if (branding.logoType === 'image' && branding.logoImageBase64) {
+      // Use the public server route for favicon instead of base64 data URI to comply with search engines
+      link.href = `/favicon.ico?v=${branding.logoImageBase64.length}`;
+    } else {
+      link.href = '/favicon.svg';
     }
   }, [branding]);
 
@@ -414,7 +418,7 @@ export default function App() {
               <Icons.UserCheck className="h-6 w-6" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 font-display">Verify Email & Set Password</h2>
-            <p className="text-xs text-slate-500 font-sans leading-relaxed font-medium">Complete your JLC IT Solutions administration profile for: <span className="font-bold text-slate-800">{tokenEmail}</span></p>
+            <p className="text-xs text-slate-500 font-sans leading-relaxed font-medium">Complete your JLC Solutions administration profile for: <span className="font-bold text-slate-800">{tokenEmail}</span></p>
           </div>
 
           {setupError && (
