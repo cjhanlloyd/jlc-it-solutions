@@ -34,6 +34,7 @@ import WhyChooseUs from './components/WhyChooseUs.tsx';
 import ContactSection from './components/ContactSection.tsx';
 import InquiryForm from './components/InquiryForm.tsx';
 import AdminPanel from './components/AdminPanel.tsx';
+import PricingSection from './components/PricingSection.tsx';
 import ProcessTimeline from './components/ProcessTimeline.tsx';
 import FaqAccordion from './components/FaqAccordion.tsx';
 import ProjectGallery from './components/ProjectGallery.tsx';
@@ -43,7 +44,7 @@ export default function App() {
     const hash = window.location.hash;
     if (hash.startsWith('#/')) {
       const route = hash.split('?')[0].substring(2);
-      if (['home', 'about', 'services', 'why', 'contact', 'inquiry', 'admin'].includes(route)) {
+      if (['home', 'about', 'services', 'pricing', 'why', 'contact', 'inquiry', 'admin'].includes(route)) {
         return route;
       }
     }
@@ -120,7 +121,7 @@ export default function App() {
       } else {
         setShowLoginModal(false);
         setShowForgotPassword(false);
-        if (['home', 'about', 'services', 'why', 'contact', 'inquiry', 'admin'].includes(route)) {
+        if (['home', 'about', 'services', 'pricing', 'why', 'contact', 'inquiry', 'admin'].includes(route)) {
           setActiveTabState(route);
         } else {
           setActiveTabState('home');
@@ -671,6 +672,15 @@ export default function App() {
             branding={branding}
             content={content}
             onInquireService={handlePreselectServiceInquiry}
+          />
+        )}
+
+        {/* PRICING TAB */}
+        {activeTab === 'pricing' && (
+          <PricingSection
+            branding={branding}
+            onInquire={(srvName) => handlePreselectServiceInquiry(srvName)}
+            onContactClick={() => setActiveTab('contact')}
           />
         )}
 

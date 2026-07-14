@@ -45,6 +45,7 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
     { id: 'home', label: 'Home' },
     { id: 'about', label: 'About Us' },
     { id: 'services', label: 'Services' },
+    { id: 'pricing', label: 'Pricing' },
     { id: 'why', label: 'Why Choose Us' },
     { id: 'contact', label: 'Contact Us' },
   ];
