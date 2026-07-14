@@ -77,68 +77,100 @@ export default function HomeHero({ branding, content, onExploreServices, onGetQu
     }
   };
 
+  const getGlowingOrbBg = (index: number) => {
+    const isPrimary = index === 0;
+    switch (branding.themeColor) {
+      case 'emerald': return isPrimary ? 'bg-emerald-400/20' : 'bg-teal-400/15';
+      case 'slate': return isPrimary ? 'bg-slate-400/20' : 'bg-zinc-400/15';
+      case 'indigo': return isPrimary ? 'bg-indigo-400/20' : 'bg-purple-400/15';
+      case 'violet': return isPrimary ? 'bg-violet-400/20' : 'bg-fuchsia-400/15';
+      case 'deepblue':
+      default:
+        return isPrimary ? 'bg-blue-400/20' : 'bg-cyan-400/15';
+    }
+  };
+
   return (
     <div className="relative overflow-hidden bg-slate-50 py-24 sm:py-32" id="home-hero-section">
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes floatOrb1 {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.95); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes floatOrb2 {
+          0% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(-40px, 40px) scale(1.05); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes pulseGrid {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.28; }
+        }
+        .animate-orb1 { animation: floatOrb1 20s infinite ease-in-out; }
+        .animate-orb2 { animation: floatOrb2 25s infinite ease-in-out; }
+        .animate-tech-grid { animation: pulseGrid 8s infinite ease-in-out; }
+      `}} />
+
       {/* Dynamic Animated Tech Background Elements */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
-        {/* Large Concentric Tech Radar Circle (Slow Rotation) */}
-        <svg className="absolute -top-16 -right-16 w-[450px] h-[450px] opacity-15 md:opacity-20 text-blue-500" viewBox="0 0 100 100" fill="none">
-          <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="0.4" strokeDasharray="3 6">
-            <animateTransform attributeName="transform" type="rotate" from="0 50 55" to="360 50 55" dur="80s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="0.3" strokeDasharray="8 4">
-            <animateTransform attributeName="transform" type="rotate" from="360 50 55" to="0 50 55" dur="50s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="50" cy="50" r="25" stroke="currentColor" strokeWidth="0.2" />
-          <path d="M50 5 L50 95 M5 50 L95 50" stroke="currentColor" strokeWidth="0.15" strokeDasharray="1 3" />
+        {/* Aurora Glow Orbs */}
+        <div className={`absolute top-10 left-10 w-[350px] h-[350px] rounded-full blur-3xl transition-colors duration-500 animate-orb1 ${getGlowingOrbBg(0)}`}></div>
+        <div className={`absolute bottom-10 right-10 w-[400px] h-[400px] rounded-full blur-3xl transition-colors duration-500 animate-orb2 ${getGlowingOrbBg(1)}`}></div>
+
+        {/* Digital Grid pattern */}
+        <svg className="absolute inset-0 w-full h-full text-slate-300/35 animate-tech-grid" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="dotGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+              <circle cx="15" cy="15" r="1" fill="currentColor" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#dotGrid)" />
         </svg>
 
-        {/* Connected Circuit Data Constellation with glowing path pulses */}
-        <svg className="absolute bottom-10 left-8 w-96 h-96 opacity-20 text-blue-600" viewBox="0 0 100 100" fill="none">
-          {/* Constellation Nodes */}
-          <circle cx="15" cy="20" r="1.5" fill="currentColor" />
-          <circle cx="45" cy="15" r="1.2" fill="currentColor" />
-          <circle cx="75" cy="35" r="2.0" fill="currentColor" />
-          <circle cx="35" cy="65" r="1.5" fill="currentColor" />
-          <circle cx="65" cy="75" r="1.2" fill="currentColor" />
+        {/* Animated Cyber Circuits */}
+        <svg className="absolute inset-0 w-full h-full opacity-30 text-blue-500" viewBox="0 0 1200 800" fill="none">
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
           
-          {/* Paths */}
-          <path d="M15 20 L45 15 M45 15 L75 35 M15 20 L35 65 M35 65 L65 75 M75 35 L65 75" stroke="currentColor" strokeWidth="0.2" />
-          <path d="M45 15 L35 65" stroke="currentColor" strokeWidth="0.15" strokeDasharray="2 2" />
-
-          {/* Flowing data pulses */}
-          <circle cx="0" cy="0" r="0.8" fill="#60a5fa">
-            <animateMotion path="M15 20 L45 15" dur="3s" repeatCount="indefinite" />
+          <path d="M-50,200 L300,200 L400,300 L700,300 L800,200 L1300,200" stroke="url(#grad1)" strokeWidth="1.5" strokeDasharray="8 4" />
+          <path d="M150,-50 L150,150 L250,250 L250,550 L350,650 L350,850" stroke="url(#grad1)" strokeWidth="1" />
+          <path d="M950,850 L950,600 L800,450 L500,450 L400,550 L-50,550" stroke="url(#grad1)" strokeWidth="1.2" strokeDasharray="5 5" />
+          
+          <circle cx="0" cy="0" r="3" fill="#60a5fa" className="shadow-lg">
+            <animateMotion path="M-50,200 L300,200 L400,300 L700,300 L800,200 L1300,200" dur="12s" repeatCount="indefinite" />
           </circle>
-          <circle cx="0" cy="0" r="0.8" fill="#3b82f6">
-            <animateMotion path="M35 65 L65 75" dur="4.5s" repeatCount="indefinite" />
+          <circle cx="0" cy="0" r="2.5" fill="#3b82f6">
+            <animateMotion path="M150,-50 L150,150 L250,250 L250,550 L350,650 L350,850" dur="9s" repeatCount="indefinite" />
           </circle>
-          <circle cx="0" cy="0" r="0.8" fill="#1d4ed8">
-            <animateMotion path="M75 35 L65 75" dur="3.5s" repeatCount="indefinite" />
+          <circle cx="0" cy="0" r="3" fill="#10b981">
+            <animateMotion path="M950,850 L950,600 L800,450 L500,450 L400,550 L-50,550" dur="15s" repeatCount="indefinite" />
           </circle>
         </svg>
 
-        {/* Floating Hexagons Grid */}
-        <svg className="absolute top-1/4 left-10 w-44 h-44 opacity-10 text-emerald-500" viewBox="0 0 100 100" fill="none">
-          <polygon points="50,15 90,38 90,82 50,95 10,82 10,38" stroke="currentColor" strokeWidth="0.4">
-            <animateTransform attributeName="transform" type="rotate" from="0 50 55" to="360 50 55" dur="60s" repeatCount="indefinite" />
-          </polygon>
-          <polygon points="50,25 80,42 80,78 50,88 20,78 20,42" stroke="currentColor" strokeWidth="0.2">
-            <animateTransform attributeName="transform" type="rotate" from="360 50 55" to="0 50 55" dur="35s" repeatCount="indefinite" />
-          </polygon>
+        {/* Dynamic Glowing Rings / Radial Sweep */}
+        <svg className="absolute -top-20 -right-20 w-[600px] h-[600px] opacity-20 text-blue-600" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.3" strokeDasharray="6 3">
+            <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="90s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="100" cy="100" r="75" stroke="currentColor" strokeWidth="0.2" strokeDasharray="15 5">
+            <animateTransform attributeName="transform" type="rotate" from="360 100 100" to="0 100 100" dur="60s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.15" />
+          <path d="M100 10 L100 190 M10 100 L190 100" stroke="currentColor" strokeWidth="0.1" strokeDasharray="2 4" />
         </svg>
 
-        {/* Subtle Background Binary / Hex Data Blocks */}
-        <div className="absolute top-1/3 right-1/4 flex flex-col space-y-1 font-mono text-[9px] text-slate-400/15 tracking-widest select-none">
-          <div>01101001 01110100</div>
-          <div>01110011 01101111</div>
-          <div>01101100 01110101</div>
-          <div>01110100 01101001</div>
-        </div>
+        {/* Tech crosshairs */}
+        <svg className="absolute bottom-1/4 left-12 w-28 h-28 opacity-15 text-slate-400" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="0.5" strokeDasharray="4 20" />
+          <path d="M20 5 L20 15 M20 25 L20 35 M5 20 L15 20 M25 20 L35 20" stroke="currentColor" strokeWidth="0.3" />
+        </svg>
       </div>
-      
-      {/* Glowing Orb Overlay */}
-      <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl opacity-50 pointer-events-none transition-colors duration-500 ${getGlowingOrbClass()}`}></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="lg:grid lg:grid-cols-12 lg:gap-16 items-center">

@@ -118,8 +118,14 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
                 />
               ) : null}
               <div>
-                <span className="text-xl font-extrabold tracking-tight text-slate-900 block font-display">
-                  {branding.companyName.split(' ')[0]} <span className={getThemeTextClass()}>{branding.companyName.split(' ').slice(1).join(' ') || 'IT Solutions'}</span>
+                <span className="text-xl font-extrabold tracking-tight text-slate-900 flex items-center gap-1.5 font-display">
+                  <span>{branding.companyName.split(' ')[0]} <span className={getThemeTextClass()}>{branding.companyName.split(' ').slice(1).join(' ') || 'IT Solutions'}</span></span>
+                  <svg className="w-5.5 h-3.5 rounded-xs shadow-xs border border-slate-100/50 overflow-hidden shrink-0 inline-block align-middle transform transition-transform hover:scale-110" viewBox="0 0 900 600" title="Proudly Philippine-based IT Partner">
+                    <rect width="900" height="300" fill="#0038a8"/>
+                    <rect y="300" width="900" height="300" fill="#ce1126"/>
+                    <polygon points="0,0 0,600 519.6,300" fill="#ffffff"/>
+                    <circle cx="173.2" cy="300" r="50" fill="#fcd116"/>
+                  </svg>
                 </span>
                 <span className="text-[10px] uppercase tracking-widest text-slate-400 font-mono block leading-none mt-0.5">
                   {branding.tagline || 'Your Tech Companion'}
