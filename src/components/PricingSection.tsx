@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import React from 'react';
+import * as Icons from 'lucide-react';
 import { BrandingSettings, ContentSettings, DEFAULT_PRICING_CARDS, PricingCard } from '../types.js';
 
 interface PricingSectionProps {
