@@ -101,6 +101,11 @@ export default function Footer({ branding, content, services, setActiveTab }: Fo
                 </button>
               </li>
               <li>
+                <button onClick={() => handleLinkClick('pricing')} className="hover:text-white hover:translate-x-1 transition-all flex items-center cursor-pointer">
+                  <Icons.ChevronRight className="h-3 w-3 mr-1 text-slate-600" /> Pricing
+                </button>
+              </li>
+              <li>
                 <button onClick={() => handleLinkClick('why')} className="hover:text-white hover:translate-x-1 transition-all flex items-center cursor-pointer">
                   <Icons.ChevronRight className="h-3 w-3 mr-1 text-slate-600" /> Why Choose Us
                 </button>

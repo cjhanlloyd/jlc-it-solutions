@@ -78,13 +78,13 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
 
   const getBadgeClass = () => {
     switch (branding.themeColor) {
-      case 'emerald': return 'bg-emerald-50 text-emerald-800 border-emerald-100/60';
-      case 'slate': return 'bg-slate-100 text-slate-800 border-slate-200/60';
-      case 'indigo': return 'bg-indigo-50 text-indigo-800 border-indigo-100/60';
-      case 'violet': return 'bg-violet-50 text-violet-800 border-violet-100/60';
+      case 'emerald': return 'bg-emerald-600 text-white border-emerald-700/25 shadow-sm';
+      case 'slate': return 'bg-slate-800 text-white border-slate-950/25 shadow-sm';
+      case 'indigo': return 'bg-indigo-600 text-white border-indigo-700/25 shadow-sm';
+      case 'violet': return 'bg-violet-600 text-white border-violet-700/25 shadow-sm';
       case 'deepblue':
       default:
-        return 'bg-blue-50 text-blue-800 border-blue-100/60';
+        return 'bg-blue-600 text-white border-blue-700/25 shadow-sm';
     }
   };
 
@@ -147,28 +147,28 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24">
           
           {/* Card 1: Free IT Consultation (Visual Highlight for Lead Gen) */}
-          <div className="bg-gradient-to-br from-blue-50/90 to-indigo-50/70 backdrop-blur-md border-2 border-blue-500/30 rounded-3xl p-8 shadow-xl shadow-blue-500/5 transition-all duration-300 hover:translate-y-[-8px] hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col justify-between group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-xl pointer-events-none"></div>
+          <div className="bg-slate-900 border-2 border-amber-500/30 rounded-3xl p-8 shadow-xl shadow-amber-500/5 transition-all duration-300 hover:translate-y-[-8px] hover:shadow-2xl hover:shadow-amber-500/10 flex flex-col justify-between group relative overflow-hidden text-white">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-xl pointer-events-none"></div>
             <div>
               <div className="flex justify-between items-center mb-6">
-                <div className="p-3 rounded-2xl bg-blue-500 text-white shadow-md shadow-blue-500/20">
+                <div className="p-3 rounded-2xl bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20">
                   <Icons.MessageSquareCode className="h-6 w-6" />
                 </div>
-                <span className="bg-blue-100 text-blue-800 text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border border-blue-200/50">
-                  Lead Offer
+                <span className="bg-amber-500/10 text-amber-300 text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border border-amber-500/20">
+                  Free Session
                 </span>
               </div>
-              <h3 className="text-lg font-bold text-slate-950 font-display">Free IT Consultation</h3>
-              <p className="text-xs text-slate-600 font-sans leading-relaxed mt-2">
+              <h3 className="text-lg font-bold text-white font-display">Free IT Consultation</h3>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed mt-2">
                 Start with a conversation. We'll help identify the right technology solution for your business.
               </p>
               
               <div className="my-6">
-                <span className="text-3xl font-black text-slate-950 font-display">₱0</span>
-                <span className="text-xs text-slate-500 font-sans ml-1">/ Session</span>
+                <span className="text-3xl font-black text-white font-display">₱0</span>
+                <span className="text-xs text-slate-400 font-sans ml-1">/ Session</span>
               </div>
               
-              <ul className="space-y-3.5 border-t border-blue-200/40 pt-6 mb-8">
+              <ul className="space-y-3.5 border-t border-slate-800 pt-6 mb-8">
                 {[
                   'Business IT assessment',
                   'Technology recommendations',
@@ -176,8 +176,8 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
                   'Project planning',
                   'Solution roadmap'
                 ].map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-xs text-slate-700 font-sans leading-tight">
-                    <Icons.CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mr-2 mt-0.5" />
+                  <li key={idx} className="flex items-start text-xs text-slate-300 font-sans leading-tight">
+                    <Icons.CheckCircle2 className="h-4 w-4 text-amber-500 shrink-0 mr-2 mt-0.5" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -186,7 +186,7 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
             
             <button
               onClick={() => onInquire('Free IT Consultation')}
-              className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-lg shadow-blue-600/20 transition-all hover:scale-102"
+              className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-slate-950 bg-amber-500 hover:bg-amber-400 focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-lg shadow-amber-500/20 transition-all hover:scale-102"
             >
               Book Free Consultation
               <Icons.ArrowRight className="ml-2 h-4 w-4" />
