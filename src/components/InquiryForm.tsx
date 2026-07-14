@@ -35,7 +35,13 @@ export default function InquiryForm({ services, branding, content, preselectedSe
       const [routePart, queryPart] = hash.split('?');
       if (routePart === '#/inquiry') {
         const searchParams = new URLSearchParams(queryPart || '');
-        const step = parseInt(searchParams.get('step') || '1', 10);
+        const stepParam = searchParams.get('step');
+        if (!stepParam && preselectedService) {
+          // Skip Step 1 and go straight to Step 2 if we have a preselected service
+          window.location.replace('#/inquiry?step=2');
+          return;
+        }
+        const step = parseInt(stepParam || '1', 10);
         if (step >= 1 && step <= 3 && step !== formStep) {
           setFormStep(step);
         }
@@ -48,7 +54,7 @@ export default function InquiryForm({ services, branding, content, preselectedSe
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [formStep]);
+  }, [formStep, preselectedService]);
 
   // Smooth scroll container into view on step transition (excluding initial render)
   const isFirstRender = React.useRef(true);
@@ -483,6 +489,13 @@ Phone: ${content.contactPhone}`
                   <p className="text-xs text-slate-500 leading-normal">Describe your technical targets and specify budget guidelines.</p>
                 </div>
 
+                {serviceRequired && (
+                  <div className="p-3 bg-blue-50/50 border border-blue-200/50 rounded-2xl flex items-center space-x-2 text-xs text-blue-800 animate-fade-in shadow-xs">
+                    <span className="font-semibold uppercase tracking-wider text-[9px] font-mono bg-blue-600 text-white px-2 py-0.5 rounded">Selected service</span>
+                    <span className="font-semibold">{serviceRequired}</span>
+                  </div>
+                )}
+
                 {/* Project Description textarea */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display flex items-center">
@@ -593,9 +606,16 @@ Phone: ${content.contactPhone}`
             {formStep === 3 && (
               <div className="space-y-6 relative z-10">
                 <div className="space-y-1">
-                  <h3 className="text-base font-bold text-slate-900 font-display">Contact Details &amp; Verification</h3>
+                  <h3 className="text-base font-bold text-slate-950 font-display">Contact Details &amp; Verification</h3>
                   <p className="text-xs text-slate-500 leading-normal">Provide your operational contact parameters to submit securely.</p>
                 </div>
+
+                {serviceRequired && (
+                  <div className="p-3 bg-blue-50/50 border border-blue-200/50 rounded-2xl flex items-center space-x-2 text-xs text-blue-800 shadow-xs">
+                    <span className="font-semibold uppercase tracking-wider text-[9px] font-mono bg-blue-600 text-white px-2 py-0.5 rounded">Selected service</span>
+                    <span className="font-semibold">{serviceRequired}</span>
+                  </div>
+                )}
 
                 {/* Input Fields Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
