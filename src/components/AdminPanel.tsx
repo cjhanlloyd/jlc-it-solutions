@@ -1744,6 +1744,15 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                 </button>
                 <button
                   type="button"
+                  onClick={() => { setActiveContentSection('pricing'); setApiError(''); }}
+                  className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                    activeContentSection === 'pricing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Pricing Page
+                </button>
+                <button
+                  type="button"
                   onClick={() => { setActiveContentSection('why'); setApiError(''); }}
                   className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
                     activeContentSection === 'why' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -1759,15 +1768,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                   }`}
                 >
                   Contact Us Page
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setActiveContentSection('pricing'); setApiError(''); }}
-                  className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                    activeContentSection === 'pricing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Pricing Page
                 </button>
               </div>
 
