@@ -78,7 +78,14 @@ CREATE TABLE content (
   bannerImageUrl TEXT,
   facebookUrl TEXT,
   whatsappUrl TEXT,
-  viberUrl TEXT
+  viberUrl TEXT,
+  pricingHeader TEXT,
+  pricingSubtitle TEXT,
+  pricingEnterpriseTitle TEXT,
+  pricingEnterpriseDesc TEXT,
+  pricingEnterpriseHighlights TEXT,
+  pricingCtaTitle TEXT,
+  pricingCtaDesc TEXT
 );
 
 DROP TABLE IF EXISTS admins;

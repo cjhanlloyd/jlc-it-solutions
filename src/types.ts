@@ -90,6 +90,13 @@ export interface ContentSettings {
   facebookUrl?: string;
   whatsappUrl?: string;
   viberUrl?: string;
+  pricingHeader?: string;
+  pricingSubtitle?: string;
+  pricingEnterpriseTitle?: string;
+  pricingEnterpriseDesc?: string;
+  pricingEnterpriseHighlights?: string;
+  pricingCtaTitle?: string;
+  pricingCtaDesc?: string;
 }
 
 export interface EmailTemplate {
@@ -384,7 +391,14 @@ export const DEFAULT_CONTENT: ContentSettings = {
   bannerImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1200&auto=format&fit=crop',
   facebookUrl: 'https://facebook.com/jlcsolutions',
   whatsappUrl: 'https://wa.me/639171234567',
-  viberUrl: 'viber://chat?number=639171234567'
+  viberUrl: 'viber://chat?number=639171234567',
+  pricingHeader: 'Technology Solutions Designed To Grow Your Business',
+  pricingSubtitle: 'From IT support to digital transformation, JLC provides reliable technology solutions that help businesses operate smarter.',
+  pricingEnterpriseTitle: 'Enterprise & Hospitality Technology',
+  pricingEnterpriseDesc: 'Specialized technology solutions for organizations that require reliability, scalability, and professional IT management.',
+  pricingEnterpriseHighlights: 'Hotel & Resort Technology, Enterprise WiFi Deployment, IoT Smart Room Solutions, PMS / System Integration, Infrastructure Design, Digital Transformation',
+  pricingCtaTitle: 'Need a custom solution?',
+  pricingCtaDesc: 'Every business has unique technology requirements. Contact JLC Solutions and let\'s build the right solution for you.'
 };
 
 export const DEFAULT_EMAIL_TEMPLATE: EmailTemplate = {

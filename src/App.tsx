@@ -679,6 +679,7 @@ export default function App() {
         {activeTab === 'pricing' && (
           <PricingSection
             branding={branding}
+            content={content}
             onInquire={(srvName) => handlePreselectServiceInquiry(srvName)}
             onContactClick={() => setActiveTab('contact')}
           />

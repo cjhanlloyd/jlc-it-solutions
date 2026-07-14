@@ -104,7 +104,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
 
   // Local state for Page Content
   const [contentForm, setContentForm] = React.useState<Partial<ContentSettings>>({});
-  const [activeContentSection, setActiveContentSection] = React.useState<'home' | 'about' | 'services' | 'why' | 'contact'>('home');
+  const [activeContentSection, setActiveContentSection] = React.useState<'home' | 'about' | 'services' | 'pricing' | 'why' | 'contact'>('home');
 
   // Local state for Email Templates
   const [emailTemplateForm, setEmailTemplateForm] = React.useState<Partial<EmailTemplate>>({});
@@ -1705,6 +1705,15 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                 >
                   Contact Us Page
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveContentSection('pricing'); setApiError(''); }}
+                  className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                    activeContentSection === 'pricing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Pricing Page
+                </button>
               </div>
 
               {/* 1. HOME PAGE SUB-TAB */}
@@ -3158,6 +3167,129 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                     <div className="flex justify-end pt-4 border-t border-gray-100">
                       <button type="submit" disabled={isSaving} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer">
                         {isSaving ? 'Saving Changes...' : 'Save Contact Page Layout Overrides'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* 6. PRICING PAGE SUB-TAB */}
+              {activeContentSection === 'pricing' && (
+                <div className="space-y-8 animate-fade-in">
+                  <form onSubmit={handleSaveContent} className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Pricing Header</h3>
+                      <p className="text-xs text-gray-400 font-sans mt-0.5">Customize the pricing page title and subtitle.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Pricing Header Headline</label>
+                        <input
+                          type="text"
+                          required
+                          value={contentForm.pricingHeader || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingHeader: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="Technology Solutions Designed To Grow Your Business"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Pricing Header Subtitle</label>
+                        <textarea
+                          required
+                          value={contentForm.pricingSubtitle || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingSubtitle: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="From IT support to digital transformation, JLC provides reliable technology solutions that help businesses operate smarter."
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Enterprise & Hospitality Highlights</h3>
+                      <p className="text-xs text-gray-400 font-sans mt-0.5">Customize the enterprise technology spotlight section.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Spotlight Section Title</label>
+                        <input
+                          type="text"
+                          required
+                          value={contentForm.pricingEnterpriseTitle || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingEnterpriseTitle: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="Enterprise & Hospitality Technology"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Spotlight Section Description</label>
+                        <textarea
+                          required
+                          value={contentForm.pricingEnterpriseDesc || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingEnterpriseDesc: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="Specialized technology solutions for organizations that require reliability, scalability, and professional IT management."
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Spotlight Bullet Highlights (Comma-separated)</label>
+                        <input
+                          type="text"
+                          required
+                          value={contentForm.pricingEnterpriseHighlights || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingEnterpriseHighlights: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="Hotel & Resort Technology, Enterprise WiFi Deployment, IoT Smart Room Solutions, PMS / System Integration, Infrastructure Design, Digital Transformation"
+                        />
+                        <span className="text-[10px] text-gray-400 block mt-0.5">Separate highlights with commas (e.g. Highlight 1, Highlight 2)</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Need a Custom Solution CTA Block</h3>
+                      <p className="text-xs text-gray-400 font-sans mt-0.5">Customize the bottom CTA banner detail on the pricing section.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">CTA Banner Title</label>
+                        <input
+                          type="text"
+                          required
+                          value={contentForm.pricingCtaTitle || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingCtaTitle: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="Need a custom solution?"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">CTA Banner Description</label>
+                        <textarea
+                          required
+                          value={contentForm.pricingCtaDesc || ''}
+                          onChange={(e) => setContentForm({ ...contentForm, pricingCtaDesc: e.target.value })}
+                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                          placeholder="Every business has unique technology requirements. Contact JLC Solutions and let's build the right solution for you."
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-gray-100">
+                      <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                      >
+                        {isSaving ? 'Saving Changes...' : 'Save Pricing Page Layout Overrides'}
                       </button>
                     </div>
                   </form>

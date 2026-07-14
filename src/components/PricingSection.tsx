@@ -5,15 +5,16 @@
 
 import React from 'react';
 import * as Icons from 'lucide-react';
-import { BrandingSettings } from '../types.js';
+import { BrandingSettings, ContentSettings } from '../types.js';
 
 interface PricingSectionProps {
   branding: BrandingSettings;
+  content: ContentSettings;
   onInquire: (serviceName: string) => void;
   onContactClick: () => void;
 }
 
-export default function PricingSection({ branding, onInquire, onContactClick }: PricingSectionProps) {
+export default function PricingSection({ branding, content, onInquire, onContactClick }: PricingSectionProps) {
   
   // Theme Color Class Helpers
   const getThemeTextClass = () => {
@@ -51,6 +52,23 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
         return 'border-blue-500/30';
     }
   };
+
+  const pricingHeader = content?.pricingHeader || 'Technology Solutions Designed To Grow Your Business';
+  const pricingSubtitle = content?.pricingSubtitle || 'From IT support to digital transformation, JLC provides reliable technology solutions that help businesses operate smarter.';
+  const pricingEnterpriseTitle = content?.pricingEnterpriseTitle || 'Enterprise & Hospitality Technology';
+  const pricingEnterpriseDesc = content?.pricingEnterpriseDesc || 'Specialized technology solutions for organizations that require reliability, scalability, and professional IT management. We help resorts, hotels, and corporate environments modernize operations securely.';
+  const pricingEnterpriseHighlights = content?.pricingEnterpriseHighlights
+    ? content.pricingEnterpriseHighlights.split(',').map(s => s.trim()).filter(Boolean)
+    : [
+        'Hotel & Resort Technology',
+        'Enterprise WiFi Deployment',
+        'IoT Smart Room Solutions',
+        'PMS / System Integration',
+        'Infrastructure Design',
+        'Digital Transformation'
+      ];
+  const pricingCtaTitle = content?.pricingCtaTitle || 'Need a custom solution?';
+  const pricingCtaDesc = content?.pricingCtaDesc || 'Every business has unique technology requirements. Contact JLC Solutions and let\'s build the right solution for you.';
 
   const getThemeGlowClass = () => {
     switch (branding.themeColor) {
@@ -136,10 +154,10 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
             Pricing Plans
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-slate-950 leading-tight font-display">
-            Technology Solutions Designed To Grow Your Business
+            {pricingHeader}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-sans leading-relaxed max-w-2xl mx-auto">
-            From IT support to digital transformation, JLC provides reliable technology solutions that help businesses operate smarter.
+            {pricingSubtitle}
           </p>
         </div>
 
@@ -355,23 +373,16 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
                 Enterprise Suite
               </div>
               <h3 className="text-2xl sm:text-3xl font-black tracking-tight font-display">
-                Enterprise & Hospitality Technology
+                {pricingEnterpriseTitle}
               </h3>
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans max-w-2xl">
-                Specialized technology solutions for organizations that require reliability, scalability, and professional IT management. We help resorts, hotels, and corporate environments modernize operations securely.
+                {pricingEnterpriseDesc}
               </p>
             </div>
 
             {/* Right Highlights Grid */}
             <div className="lg:col-span-5 grid grid-cols-2 gap-4">
-              {[
-                'Hotel & Resort Technology',
-                'Enterprise WiFi Deployment',
-                'IoT Smart Room Solutions',
-                'PMS / System Integration',
-                'Infrastructure Design',
-                'Digital Transformation'
-              ].map((highlight, idx) => (
+              {pricingEnterpriseHighlights.map((highlight, idx) => (
                 <div key={idx} className="flex items-center space-x-2.5 p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
                   <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
                   <span className="text-[11px] font-bold tracking-wide text-slate-200 font-sans">{highlight}</span>
@@ -384,9 +395,9 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
         {/* CTA section at the bottom */}
         <div className="bg-white border border-slate-200/60 rounded-3xl p-8 md:p-12 text-center space-y-6 max-w-4xl mx-auto shadow-xs relative overflow-hidden">
           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-slate-100 rounded-full blur-3xl pointer-events-none"></div>
-          <h3 className="text-xl sm:text-2xl font-black text-slate-950 font-display">Need a custom solution?</h3>
+          <h3 className="text-xl sm:text-2xl font-black text-slate-950 font-display">{pricingCtaTitle}</h3>
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-sans max-w-2xl mx-auto">
-            Every business has unique technology requirements. Contact JLC Solutions and let's build the right solution for you.
+            {pricingCtaDesc}
           </p>
           <div className="pt-2">
             <button
