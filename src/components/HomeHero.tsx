@@ -111,10 +111,30 @@ export default function HomeHero({ branding, content, onExploreServices, onGetQu
         .animate-orb1 { animation: floatOrb1 20s infinite ease-in-out; }
         .animate-orb2 { animation: floatOrb2 25s infinite ease-in-out; }
         .animate-tech-grid { animation: pulseGrid 8s infinite ease-in-out; }
+        @keyframes flagDrift {
+          0% { transform: translate(0px, 0px) rotate(-1deg); }
+          50% { transform: translate(25px, -30px) rotate(1.5deg); }
+          100% { transform: translate(0px, 0px) rotate(-1deg); }
+        }
+        .animate-flag-drift { animation: flagDrift 22s infinite ease-in-out; }
       `}} />
 
       {/* Dynamic Animated Tech Background Elements */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        {/* Stylized Floating Philippines Flag Background Element */}
+        <div className="absolute top-[18%] left-[7%] w-52 h-32 opacity-[0.035] select-none pointer-events-none animate-flag-drift" style={{ filter: 'blur(0.5px)' }}>
+          <svg className="w-full h-full" viewBox="0 0 900 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="900" height="300" fill="#0038a8" />
+            <rect y="300" width="900" height="300" fill="#ce1126" />
+            <polygon points="0,0 0,600 519.6,300" fill="#ffffff" />
+            <circle cx="173.2" cy="300" r="50" fill="#fcd116" />
+            {/* Stars */}
+            <path d="M40,50 L45,65 L60,65 L48,75 L52,90 L40,80 L28,90 L32,75 L20,65 L35,65 Z" fill="#fcd116" />
+            <path d="M40,550 L45,565 L60,565 L48,575 L52,590 L40,580 L28,590 L32,575 L20,565 L35,565 Z" fill="#fcd116" />
+            <path d="M460,300 L465,315 L480,315 L468,325 L472,340 L460,330 L448,340 L452,325 L440,315 L455,315 Z" fill="#fcd116" />
+          </svg>
+        </div>
+
         {/* Aurora Glow Orbs */}
         <div className={`absolute top-10 left-10 w-[350px] h-[350px] rounded-full blur-3xl transition-colors duration-500 animate-orb1 ${getGlowingOrbBg(0)}`}></div>
         <div className={`absolute bottom-10 right-10 w-[400px] h-[400px] rounded-full blur-3xl transition-colors duration-500 animate-orb2 ${getGlowingOrbBg(1)}`}></div>

@@ -197,16 +197,16 @@ export default function App() {
   // Update layout theme details and favicon dynamically based on settings
   React.useEffect(() => {
     if (!hasTransitionedTitle) {
-      document.title = "🇵🇭 JLC Solutions";
+      document.title = "JLC Solutions";
       const timer = setTimeout(() => {
         const coName = branding.companyName || "JLC Solutions";
-        document.title = `🇵🇭 ${coName} | Premium IT Solutions`;
+        document.title = `${coName} | Premium IT Solutions`;
         setHasTransitionedTitle(true);
       }, 1500);
       return () => clearTimeout(timer);
     } else {
       const coName = branding.companyName || "JLC Solutions";
-      document.title = `🇵🇭 ${coName} | Premium IT Solutions`;
+      document.title = `${coName} | Premium IT Solutions`;
     }
   }, [branding.companyName, hasTransitionedTitle]);
 
