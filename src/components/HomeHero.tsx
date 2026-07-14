@@ -131,6 +131,18 @@ export default function HomeHero({ branding, content, onExploreServices, onGetQu
                 </feTurbulence>
                 <feDisplacementMap in="SourceGraphic" in2="noise" scale="22" xChannelSelector="R" yChannelSelector="G" />
               </filter>
+              
+              {/* Dynamic Wave Shading for 3D Folds */}
+              <linearGradient id="waveShading" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.22" />
+                <stop offset="20%" stopColor="#000000" stopOpacity="0.26" />
+                <stop offset="40%" stopColor="#ffffff" stopOpacity="0.18" />
+                <stop offset="60%" stopColor="#000000" stopOpacity="0.26" />
+                <stop offset="80%" stopColor="#ffffff" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0.26" />
+                <animate attributeName="x1" values="0%; -50%; 0%" dur="6s" repeatCount="indefinite" />
+                <animate attributeName="x2" values="100%; 50%; 100%" dur="6s" repeatCount="indefinite" />
+              </linearGradient>
             </defs>
             <g filter="url(#flagWavingFilter)">
               <rect width="900" height="300" fill="#0038a8" />
@@ -141,6 +153,9 @@ export default function HomeHero({ branding, content, onExploreServices, onGetQu
               <path d="M40,50 L45,65 L60,65 L48,75 L52,90 L40,80 L28,90 L32,75 L20,65 L35,65 Z" fill="#fcd116" />
               <path d="M40,550 L45,565 L60,565 L48,575 L52,590 L40,580 L28,590 L32,575 L20,565 L35,565 Z" fill="#fcd116" />
               <path d="M460,300 L465,315 L480,315 L468,325 L472,340 L460,330 L448,340 L452,325 L440,315 L455,315 Z" fill="#fcd116" />
+              
+              {/* 3D Shading Overlay */}
+              <rect width="900" height="600" fill="url(#waveShading)" style={{ mixBlendMode: 'overlay' }} />
             </g>
           </svg>
         </div>
