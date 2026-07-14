@@ -495,7 +495,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         ...content,
         whyChooseUsPoints: parseJsonSafe((content as any).whyChooseUsPoints, []),
         aboutCommitments: parseJsonSafe((content as any).aboutCommitments, []),
-        whyChooseUsPromises: parseJsonSafe((content as any).whyChooseUsPromises, [])
+        whyChooseUsPromises: parseJsonSafe((content as any).whyChooseUsPromises, []),
+        pricingCards: parseJsonSafe((content as any).pricingCards, [])
       } : null;
 
       return new Response(JSON.stringify({
@@ -866,7 +867,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         ...content,
         whyChooseUsPoints: parseJsonSafe((content as any).whyChooseUsPoints, []),
         aboutCommitments: parseJsonSafe((content as any).aboutCommitments, []),
-        whyChooseUsPromises: parseJsonSafe((content as any).whyChooseUsPromises, [])
+        whyChooseUsPromises: parseJsonSafe((content as any).whyChooseUsPromises, []),
+        pricingCards: parseJsonSafe((content as any).pricingCards, [])
       } : null;
 
       return new Response(JSON.stringify({
@@ -918,7 +920,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (method === 'POST' && path === '/api/admin/settings/content') {
       const body: any = await request.json();
       await env.DB.prepare(
-        "UPDATE content SET heroTitle = ?, heroSubtitle = ?, heroBadge = ?, aboutHeader = ?, aboutSubheader = ?, aboutText = ?, aboutText2 = ?, aboutMission = ?, aboutVision = ?, aboutCommitments = ?, aboutImageBase64 = ?, whyChooseUsText = ?, whyChooseUsPoints = ?, whyChooseUsPromiseTitle = ?, whyChooseUsPromiseDesc = ?, whyChooseUsPromises = ?, whyChooseUsCtaTitle = ?, whyChooseUsCtaDesc = ?, servicesHeader = ?, servicesSubtitle = ?, portfolioHeader = ?, portfolioSubtitle = ?, processHeader = ?, processSubtitle = ?, faqHeader = ?, faqSubtitle = ?, contactHeader = ?, contactSubtitle = ?, contactAddress = ?, contactPhone = ?, contactEmail = ?, contactWorkingHours = ?, contactMapEmbedUrl = ?, bannerImageUrl = ?, facebookUrl = ?, whatsappUrl = ?, viberUrl = ?, pricingHeader = ?, pricingSubtitle = ?, pricingEnterpriseTitle = ?, pricingEnterpriseDesc = ?, pricingEnterpriseHighlights = ?, pricingCtaTitle = ?, pricingCtaDesc = ? WHERE id = 'default'"
+        "UPDATE content SET heroTitle = ?, heroSubtitle = ?, heroBadge = ?, aboutHeader = ?, aboutSubheader = ?, aboutText = ?, aboutText2 = ?, aboutMission = ?, aboutVision = ?, aboutCommitments = ?, aboutImageBase64 = ?, whyChooseUsText = ?, whyChooseUsPoints = ?, whyChooseUsPromiseTitle = ?, whyChooseUsPromiseDesc = ?, whyChooseUsPromises = ?, whyChooseUsCtaTitle = ?, whyChooseUsCtaDesc = ?, servicesHeader = ?, servicesSubtitle = ?, portfolioHeader = ?, portfolioSubtitle = ?, processHeader = ?, processSubtitle = ?, faqHeader = ?, faqSubtitle = ?, contactHeader = ?, contactSubtitle = ?, contactAddress = ?, contactPhone = ?, contactEmail = ?, contactWorkingHours = ?, contactMapEmbedUrl = ?, bannerImageUrl = ?, facebookUrl = ?, whatsappUrl = ?, viberUrl = ?, pricingHeader = ?, pricingSubtitle = ?, pricingEnterpriseTitle = ?, pricingEnterpriseDesc = ?, pricingEnterpriseHighlights = ?, pricingCtaTitle = ?, pricingCtaDesc = ?, pricingCards = ? WHERE id = 'default'"
       ).bind(
         body.heroTitle,
         body.heroSubtitle,
@@ -963,7 +965,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         body.pricingEnterpriseDesc || '',
         body.pricingEnterpriseHighlights || '',
         body.pricingCtaTitle || '',
-        body.pricingCtaDesc || ''
+        body.pricingCtaDesc || '',
+        JSON.stringify(body.pricingCards || [])
       ).run();
 
       const content = await env.DB.prepare("SELECT * FROM content WHERE id = 'default'").first();
@@ -971,7 +974,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         ...content,
         whyChooseUsPoints: parseJsonSafe((content as any).whyChooseUsPoints, []),
         aboutCommitments: parseJsonSafe((content as any).aboutCommitments, []),
-        whyChooseUsPromises: parseJsonSafe((content as any).whyChooseUsPromises, [])
+        whyChooseUsPromises: parseJsonSafe((content as any).whyChooseUsPromises, []),
+        pricingCards: parseJsonSafe((content as any).pricingCards, [])
       } : null;
 
       return new Response(JSON.stringify({ success: true, content: parsedContent }), { headers });

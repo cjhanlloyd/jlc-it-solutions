@@ -97,6 +97,17 @@ export interface ContentSettings {
   pricingEnterpriseHighlights?: string;
   pricingCtaTitle?: string;
   pricingCtaDesc?: string;
+  pricingCards?: PricingCard[];
+}
+
+export interface PricingCard {
+  id: string;
+  title: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  buttonText: string;
 }
 
 export interface EmailTemplate {
@@ -306,6 +317,71 @@ export const DEFAULT_WHY_POINTS: WhyChooseUsPoint[] = [
   }
 ];
 
+export const DEFAULT_PRICING_CARDS: PricingCard[] = [
+  {
+    id: "pc1",
+    title: "Free IT Consultation",
+    price: "₱0",
+    period: "/ Session",
+    description: "Start with a conversation. We'll help identify the right technology solution for your business.",
+    features: [
+      "Business IT assessment",
+      "Technology recommendations",
+      "Infrastructure discussion",
+      "Project planning",
+      "Solution roadmap"
+    ],
+    buttonText: "Book Free Consultation"
+  },
+  {
+    id: "pc2",
+    title: "Onsite IT Support",
+    price: "Starting at ₱2,500",
+    period: "/ Visit",
+    description: "Professional onsite troubleshooting, network setup, and hardware maintenance.",
+    features: [
+      "Workstation & server setup",
+      "Network & firewall installation",
+      "Emergency troubleshooting",
+      "Hardware diagnostics & repairs",
+      "₱1,000 / hour after initial visit"
+    ],
+    buttonText: "Request Onsite Support"
+  },
+  {
+    id: "pc3",
+    title: "Managed IT Services",
+    price: "Starting at ₱10,000",
+    period: "/ Month",
+    description: "Complete proactive IT management, remote monitoring, security, and regular backups.",
+    features: [
+      "24/7 server & network monitoring",
+      "Helpdesk support (remote & chat)",
+      "Data backups & disaster recovery",
+      "Security updates & patch monitoring",
+      "Dedicated IT consultant"
+    ],
+    buttonText: "Start Managed Support"
+  },
+  {
+    id: "pc4",
+    title: "Business Tech Solutions",
+    price: "Custom Quote",
+    period: "Based on project scope",
+    description: "Scalable technology solutions designed around your business.",
+    features: [
+      "Network Infrastructure",
+      "Cloud Solutions",
+      "Cybersecurity",
+      "Website Development",
+      "Business Automation",
+      "System Integration",
+      "Smart Technology Solutions"
+    ],
+    buttonText: "Discuss Your Project"
+  }
+];
+
 export const DEFAULT_BRANDING: BrandingSettings = {
   companyName: 'JLC Solutions',
   tagline: 'Empowering Businesses with Reliable, Innovative Technology Services',
@@ -398,7 +474,8 @@ export const DEFAULT_CONTENT: ContentSettings = {
   pricingEnterpriseDesc: 'Specialized technology solutions for organizations that require reliability, scalability, and professional IT management.',
   pricingEnterpriseHighlights: 'Hotel & Resort Technology, Enterprise WiFi Deployment, IoT Smart Room Solutions, PMS / System Integration, Infrastructure Design, Digital Transformation',
   pricingCtaTitle: 'Need a custom solution?',
-  pricingCtaDesc: 'Every business has unique technology requirements. Contact JLC Solutions and let\'s build the right solution for you.'
+  pricingCtaDesc: 'Every business has unique technology requirements. Contact JLC Solutions and let\'s build the right solution for you.',
+  pricingCards: DEFAULT_PRICING_CARDS
 };
 
 export const DEFAULT_EMAIL_TEMPLATE: EmailTemplate = {

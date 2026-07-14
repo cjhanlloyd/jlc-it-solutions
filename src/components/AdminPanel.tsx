@@ -18,7 +18,9 @@ import {
   AdminRole,
   SmtpSettings,
   DEFAULT_ABOUT_COMMITMENTS,
-  DEFAULT_WHY_PROMISES
+  DEFAULT_WHY_PROMISES,
+  PricingCard,
+  DEFAULT_PRICING_CARDS
 } from '../types.js';
 // Client-side image optimization helper using canvas to compress/resize for web performance
 function optimizeImage(file: File, maxWidth: number = 1200, maxHeight: number = 800, quality: number = 0.8): Promise<string> {
@@ -105,6 +107,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   // Local state for Page Content
   const [contentForm, setContentForm] = React.useState<Partial<ContentSettings>>({});
   const [activeContentSection, setActiveContentSection] = React.useState<'home' | 'about' | 'services' | 'pricing' | 'why' | 'contact'>('home');
+  const [draggedServiceIndex, setDraggedServiceIndex] = React.useState<number | null>(null);
 
   // Local state for Email Templates
   const [emailTemplateForm, setEmailTemplateForm] = React.useState<Partial<EmailTemplate>>({});
@@ -337,6 +340,58 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
       showFlashMsg(`Service ${action === 'add' ? 'created' : 'updated'} successfully!`);
     } catch (err: any) {
       setApiError(err.message || 'Error saving service.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleServiceDragStart = (e: React.DragEvent, index: number) => {
+    if (isSaving) {
+      e.preventDefault();
+      return;
+    }
+    setDraggedServiceIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleServiceDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleServiceDrop = async (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedServiceIndex === null || draggedServiceIndex === targetIndex || !db || !db.services) {
+      return;
+    }
+
+    const servicesCopy = [...db.services];
+    const [draggedItem] = servicesCopy.splice(draggedServiceIndex, 1);
+    servicesCopy.splice(targetIndex, 0, draggedItem);
+
+    setDraggedServiceIndex(null);
+    setIsSaving(true);
+    setApiError('');
+    try {
+      const order = servicesCopy.map(s => s.id);
+      const response = await fetch('/api/admin/services', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'reorder',
+          order
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to reorder services.');
+      setDb(prev => prev ? { ...prev, services: data.services } : prev);
+      onDataChange?.();
+      showFlashMsg('Services reordered successfully!');
+    } catch (err: any) {
+      setApiError(err.message || 'Error reordering services.');
     } finally {
       setIsSaving(false);
     }
@@ -2751,14 +2806,27 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                           const SrvIcon = (Icons as any)[srv.iconName] || Icons.Cpu;
                           const isFirst = index === 0;
                           const isLast = index === activeServices.length - 1;
+                          const isDragged = draggedServiceIndex === index;
                           
                           return (
-                            <div key={srv.id} className="border border-gray-200/80 p-4 rounded-xl flex items-center justify-between bg-white shadow-xs hover:border-gray-300 transition-colors">
+                            <div
+                              key={srv.id}
+                              draggable={!isSaving}
+                              onDragStart={(e) => handleServiceDragStart(e, index)}
+                              onDragOver={handleServiceDragOver}
+                              onDragEnd={() => setDraggedServiceIndex(null)}
+                              onDrop={(e) => handleServiceDrop(e, index)}
+                              className={`border p-4 rounded-xl flex items-center justify-between bg-white shadow-xs transition-all duration-205 ${
+                                isDragged 
+                                  ? 'opacity-40 border-blue-500 scale-[0.98] border-dashed bg-slate-50' 
+                                  : 'border-gray-200/80 hover:border-gray-300'
+                              }`}
+                            >
                               
                               {/* Left Side: Grip Handle & Service Metadata */}
-                              <div className="flex items-center space-x-4 flex-1 min-w-0">
+                              <div className="flex items-center space-x-4 flex-1 min-w-0 pr-4">
                                 {/* Grip Handle */}
-                                <div className="text-gray-300 shrink-0 cursor-grab active:cursor-grabbing hover:text-gray-505 transition-colors p-1" title="Use arrows to reorder">
+                                <div className="text-gray-300 shrink-0 cursor-grab active:cursor-grabbing hover:text-blue-500 transition-colors p-1" title="Use drag and drop or arrows to reorder">
                                   <Icons.GripVertical className="h-4.5 w-4.5" />
                                 </div>
                                 
@@ -3281,6 +3349,117 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
                           rows={2}
                         />
                       </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Service pricing Cards</h3>
+                      <p className="text-xs text-gray-400 font-sans mt-0.5">Manage and configure the content and price of the 4 call-to-action cards (Free Consultation, Onsite Support, Managed Services, and Business Tech Solutions).</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      {(contentForm.pricingCards || DEFAULT_PRICING_CARDS).map((card: PricingCard, index: number) => (
+                        <div key={card.id || index} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                            <span className="text-xs font-bold uppercase tracking-wider text-blue-700 font-mono">Card {index + 1}: {card.title}</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Card Title</label>
+                              <input
+                                type="text"
+                                required
+                                value={card.title || ''}
+                                onChange={(e) => {
+                                  const newCards = [...(contentForm.pricingCards || DEFAULT_PRICING_CARDS)];
+                                  newCards[index] = { ...newCards[index], title: e.target.value };
+                                  setContentForm({ ...contentForm, pricingCards: newCards });
+                                }}
+                                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900 font-sans"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Pricing Label / Amount</label>
+                              <input
+                                type="text"
+                                required
+                                value={card.price || ''}
+                                onChange={(e) => {
+                                  const newCards = [...(contentForm.pricingCards || DEFAULT_PRICING_CARDS)];
+                                  newCards[index] = { ...newCards[index], price: e.target.value };
+                                  setContentForm({ ...contentForm, pricingCards: newCards });
+                                }}
+                                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900 font-sans"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Period / Sub-price</label>
+                              <input
+                                type="text"
+                                required
+                                value={card.period || ''}
+                                onChange={(e) => {
+                                  const newCards = [...(contentForm.pricingCards || DEFAULT_PRICING_CARDS)];
+                                  newCards[index] = { ...newCards[index], period: e.target.value };
+                                  setContentForm({ ...contentForm, pricingCards: newCards });
+                                }}
+                                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900 font-sans"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Button Text</label>
+                              <input
+                                type="text"
+                                required
+                                value={card.buttonText || ''}
+                                onChange={(e) => {
+                                  const newCards = [...(contentForm.pricingCards || DEFAULT_PRICING_CARDS)];
+                                  newCards[index] = { ...newCards[index], buttonText: e.target.value };
+                                  setContentForm({ ...contentForm, pricingCards: newCards });
+                                }}
+                                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900 font-sans"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Description</label>
+                            <textarea
+                              required
+                              value={card.description || ''}
+                              onChange={(e) => {
+                                const newCards = [...(contentForm.pricingCards || DEFAULT_PRICING_CARDS)];
+                                newCards[index] = { ...newCards[index], description: e.target.value };
+                                setContentForm({ ...contentForm, pricingCards: newCards });
+                              }}
+                              className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900 font-sans"
+                              rows={2}
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Features / Bullets (Comma-separated)</label>
+                            <input
+                              type="text"
+                              required
+                              value={card.features ? card.features.join(', ') : ''}
+                              onChange={(e) => {
+                                const newCards = [...(contentForm.pricingCards || DEFAULT_PRICING_CARDS)];
+                                newCards[index] = { 
+                                  ...newCards[index], 
+                                  features: e.target.value.split(',').map(s => s.trim()).filter(Boolean) 
+                                };
+                                setContentForm({ ...contentForm, pricingCards: newCards });
+                              }}
+                              className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900 font-sans"
+                            />
+                            <span className="text-[10px] text-gray-400 block">Separate bullets with commas (e.g. Bullet 1, Bullet 2)</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="flex justify-end pt-4 border-t border-gray-100">

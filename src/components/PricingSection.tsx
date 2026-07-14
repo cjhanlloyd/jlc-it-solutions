@@ -3,9 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import * as Icons from 'lucide-react';
-import { BrandingSettings, ContentSettings } from '../types.js';
+import { BrandingSettings, ContentSettings, DEFAULT_PRICING_CARDS, PricingCard } from '../types.js';
 
 interface PricingSectionProps {
   branding: BrandingSettings;
@@ -69,6 +67,7 @@ export default function PricingSection({ branding, content, onInquire, onContact
       ];
   const pricingCtaTitle = content?.pricingCtaTitle || 'Need a custom solution?';
   const pricingCtaDesc = content?.pricingCtaDesc || 'Every business has unique technology requirements. Contact JLC Solutions and let\'s build the right solution for you.';
+  const pricingCardsList = content?.pricingCards || DEFAULT_PRICING_CARDS;
 
   const getThemeGlowClass = () => {
     switch (branding.themeColor) {
@@ -163,195 +162,133 @@ export default function PricingSection({ branding, content, onInquire, onContact
 
         {/* Pricing Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24">
-          
-          {/* Card 1: Free IT Consultation (Visual Highlight for Lead Gen) */}
-          <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-8 shadow-xs transition-all duration-300 hover:translate-y-[-8px] hover:shadow-xl flex flex-col justify-between group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none z-0"></div>
-            <div className="relative z-10 flex flex-col justify-between h-full flex-grow">
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700">
-                    <Icons.MessageSquareCode className="h-6 w-6" />
-                  </div>
-                  <span className="bg-slate-900 text-white text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md">
-                    Lead Offer
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-950 font-display">Free IT Consultation</h3>
-                <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
-                  Start with a conversation. We'll help identify the right technology solution for your business.
-                </p>
-                
-                <div className="my-6">
-                  <span className="text-3xl font-black text-slate-950 font-display">₱0</span>
-                  <span className="text-xs text-slate-500 font-sans ml-1">/ Session</span>
-                </div>
-                
-                <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
-                  {[
-                    'Business IT assessment',
-                    'Technology recommendations',
-                    'Infrastructure discussion',
-                    'Project planning',
-                    'Solution roadmap'
-                  ].map((feature, idx) => (
-                    <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
-                      <Icons.Check className="h-4 w-4 text-emerald-500 shrink-0 mr-2 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              <button
-                onClick={() => onInquire('Free IT Consultation')}
-                className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`}
-              >
-                Book Free Consultation
-                <Icons.ArrowRight className="ml-2 h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: Onsite IT Support */}
-          <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-8 shadow-xs transition-all duration-300 hover:translate-y-[-8px] hover:shadow-xl flex flex-col justify-between group">
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700">
-                  <Icons.Wrench className="h-6 w-6" />
-                </div>
-              </div>
-              <h3 className="text-lg font-bold text-slate-950 font-display">Onsite IT Support</h3>
-              <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
-                Professional hands-on support when your business needs it.
-              </p>
-              
-              <div className="my-6">
-                <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Starting at</span>
-                <span className="text-2xl font-black text-slate-950 font-display">₱2,500</span>
-                <span className="text-xs text-slate-500 font-sans ml-1">/ Visit</span>
-                <span className="text-[10px] text-slate-500 block font-sans font-medium mt-1">₱1,000/hour after initial visit</span>
-              </div>
-              
-              <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
-                {[
-                  'Hardware troubleshooting',
-                  'Network troubleshooting',
-                  'Software installation',
-                  'Workstation setup',
-                  'Printer and peripheral support',
-                  'System optimization'
-                ].map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
-                    <Icons.Check className="h-4 w-4 text-emerald-500 shrink-0 mr-2 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {pricingCardsList.map((card, idx) => {
+            const isFreeConsultation = card.id === 'pc1';
+            const isRecommended = card.id === 'pc3';
             
-            <button
-              onClick={() => onInquire('Onsite IT Support')}
-              className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display border cursor-pointer transition-all ${getButtonOutlineClass()}`}
-            >
-              Request Onsite Support
-            </button>
-          </div>
+            const renderCardIcon = () => {
+              switch (card.id) {
+                case 'pc1':
+                  return <Icons.MessageSquareCode className="h-6 w-6" />;
+                case 'pc2':
+                  return <Icons.Wrench className="h-6 w-6" />;
+                case 'pc3':
+                  return <Icons.Activity className="h-6 w-6" />;
+                case 'pc4':
+                default:
+                  return <Icons.Cpu className="h-6 w-6" />;
+              }
+            };
 
-          {/* Card 3: Managed IT Services (Recommended Card) */}
-          <div className={`bg-white/95 backdrop-blur-md border-2 rounded-3xl p-8 flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:translate-y-[-8px] hover:shadow-2xl ${getThemeBorderClass()} ${getThemeGlowClass()}`}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none z-0"></div>
-            <div className="relative z-10 flex flex-col justify-between h-full flex-grow">
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <div className="p-3 rounded-2xl bg-slate-900 text-white">
-                    <Icons.Activity className="h-6 w-6" />
+            if (isRecommended) {
+              return (
+                <div key={card.id} className={`bg-white/95 backdrop-blur-md border-2 rounded-3xl p-8 flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:translate-y-[-8px] hover:shadow-2xl ${getThemeBorderClass()} ${getThemeGlowClass()}`}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none z-0"></div>
+                  <div className="relative z-10 flex flex-col justify-between h-full flex-grow">
+                    <div>
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="p-3 rounded-2xl bg-slate-900 text-white">
+                          {renderCardIcon()}
+                        </div>
+                        <span className={`text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border ${getBadgeClass()}`}>
+                          Recommended
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-950 font-display">{card.title}</h3>
+                      <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
+                        {card.description}
+                      </p>
+                      
+                      <div className="my-6">
+                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Starting at</span>
+                        <span className="text-2xl font-black text-slate-950 font-display">{card.price}</span>
+                        <span className="text-xs text-slate-500 font-sans ml-1">{card.period}</span>
+                      </div>
+                      
+                      <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
+                        {card.features.map((feature, fIdx) => (
+                          <li key={fIdx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
+                            <Icons.Check className={`h-4 w-4 shrink-0 mr-2 mt-0.5 ${getThemeTextClass()}`} />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <button
+                      onClick={() => onInquire(card.title)}
+                      className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`}
+                    >
+                      {card.buttonText}
+                    </button>
                   </div>
-                  <span className={`text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border ${getBadgeClass()}`}>
-                    Recommended
-                  </span>
                 </div>
-                <h3 className="text-lg font-bold text-slate-950 font-display">Managed IT Services</h3>
-                <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
-                  Complete IT support designed to keep your business secure and productive.
-                </p>
-                
-                <div className="my-6">
-                  <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Starting at</span>
-                  <span className="text-2xl font-black text-slate-950 font-display">₱10,000</span>
-                  <span className="text-xs text-slate-500 font-sans ml-1">/ Month</span>
-                </div>
-                
-                <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
-                  {[
-                    'Remote IT support',
-                    'System monitoring',
-                    'Preventive maintenance',
-                    'User support',
-                    'Backup monitoring',
-                    'Monthly IT health report'
-                  ].map((feature, idx) => (
-                    <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
-                      <Icons.Check className={`h-4 w-4 shrink-0 mr-2 mt-0.5 ${getThemeTextClass()}`} />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              <button
-                onClick={() => onInquire('Managed IT Services')}
-                className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`}
-              >
-                Start Managed Support
-              </button>
-            </div>
-          </div>
+              );
+            }
 
-          {/* Card 4: Business Technology Solutions */}
-          <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-8 shadow-xs transition-all duration-300 hover:translate-y-[-8px] hover:shadow-xl flex flex-col justify-between group">
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700">
-                  <Icons.Cpu className="h-6 w-6" />
+            return (
+              <div key={card.id} className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-8 shadow-xs transition-all duration-300 hover:translate-y-[-8px] hover:shadow-xl flex flex-col justify-between group relative overflow-hidden">
+                {isFreeConsultation && (
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none z-0"></div>
+                )}
+                <div className="relative z-10 flex flex-col justify-between h-full flex-grow">
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700">
+                        {renderCardIcon()}
+                      </div>
+                      {isFreeConsultation && (
+                        <span className="bg-slate-900 text-white text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md">
+                          Lead Offer
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-950 font-display">{card.title}</h3>
+                    <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
+                      {card.description}
+                    </p>
+                    
+                    <div className="my-6">
+                      {card.price.toLowerCase().includes('quote') ? (
+                        <>
+                          <span className="text-2xl font-black text-slate-950 font-display">{card.price}</span>
+                          <span className="text-xs text-slate-500 font-sans block mt-1">{card.period}</span>
+                        </>
+                      ) : (
+                        <>
+                          {card.title.toLowerCase().includes('onsite') && (
+                            <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Starting at</span>
+                          )}
+                          <span className="text-3xl font-black text-slate-950 font-display">{card.price}</span>
+                          <span className="text-xs text-slate-500 font-sans ml-1">{card.period}</span>
+                        </>
+                      )}
+                    </div>
+                    
+                    <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
+                      {card.features.map((feature, fIdx) => (
+                        <li key={fIdx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
+                          <Icons.Check className="h-4 w-4 text-emerald-500 shrink-0 mr-2 mt-0.5" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <button
+                    onClick={() => onInquire(card.title)}
+                    className={isFreeConsultation
+                      ? `w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`
+                      : `w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display border cursor-pointer transition-all ${getButtonOutlineClass()}`
+                    }
+                  >
+                    {card.buttonText}
+                    {isFreeConsultation && <Icons.ArrowRight className="ml-2 h-4 w-4" />}
+                  </button>
                 </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-950 font-display">Business Tech Solutions</h3>
-              <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
-                Scalable technology solutions designed around your business.
-              </p>
-              
-              <div className="my-6">
-                <span className="text-2xl font-black text-slate-950 font-display">Custom Quote</span>
-                <span className="text-xs text-slate-500 font-sans block mt-1">Based on project scope</span>
-              </div>
-              
-              <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
-                {[
-                  'Network Infrastructure',
-                  'Cloud Solutions',
-                  'Cybersecurity',
-                  'Website Development',
-                  'Business Automation',
-                  'System Integration',
-                  'Smart Technology Solutions'
-                ].map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
-                    <Icons.Check className="h-4 w-4 text-emerald-500 shrink-0 mr-2 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <button
-              onClick={() => onInquire('Business Technology Solutions')}
-              className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display border cursor-pointer transition-all ${getButtonOutlineClass()}`}
-            >
-              Discuss Your Project
-            </button>
-          </div>
-
+            );
+          })}
         </div>
 
         {/* Separate Premium Section below pricing: Enterprise & Hospitality Technology */}
