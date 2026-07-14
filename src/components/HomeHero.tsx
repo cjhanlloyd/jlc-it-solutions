@@ -79,8 +79,63 @@ export default function HomeHero({ branding, content, onExploreServices, onGetQu
 
   return (
     <div className="relative overflow-hidden bg-slate-50 py-24 sm:py-32" id="home-hero-section">
-      {/* Background Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25"></div>
+      {/* Dynamic Animated Tech Background Elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        {/* Large Concentric Tech Radar Circle (Slow Rotation) */}
+        <svg className="absolute -top-16 -right-16 w-[450px] h-[450px] opacity-15 md:opacity-20 text-blue-500" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="0.4" strokeDasharray="3 6">
+            <animateTransform attributeName="transform" type="rotate" from="0 50 55" to="360 50 55" dur="80s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="0.3" strokeDasharray="8 4">
+            <animateTransform attributeName="transform" type="rotate" from="360 50 55" to="0 50 55" dur="50s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="50" cy="50" r="25" stroke="currentColor" strokeWidth="0.2" />
+          <path d="M50 5 L50 95 M5 50 L95 50" stroke="currentColor" strokeWidth="0.15" strokeDasharray="1 3" />
+        </svg>
+
+        {/* Connected Circuit Data Constellation with glowing path pulses */}
+        <svg className="absolute bottom-10 left-8 w-96 h-96 opacity-20 text-blue-600" viewBox="0 0 100 100" fill="none">
+          {/* Constellation Nodes */}
+          <circle cx="15" cy="20" r="1.5" fill="currentColor" />
+          <circle cx="45" cy="15" r="1.2" fill="currentColor" />
+          <circle cx="75" cy="35" r="2.0" fill="currentColor" />
+          <circle cx="35" cy="65" r="1.5" fill="currentColor" />
+          <circle cx="65" cy="75" r="1.2" fill="currentColor" />
+          
+          {/* Paths */}
+          <path d="M15 20 L45 15 M45 15 L75 35 M15 20 L35 65 M35 65 L65 75 M75 35 L65 75" stroke="currentColor" strokeWidth="0.2" />
+          <path d="M45 15 L35 65" stroke="currentColor" strokeWidth="0.15" strokeDasharray="2 2" />
+
+          {/* Flowing data pulses */}
+          <circle cx="0" cy="0" r="0.8" fill="#60a5fa">
+            <animateMotion path="M15 20 L45 15" dur="3s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="0" cy="0" r="0.8" fill="#3b82f6">
+            <animateMotion path="M35 65 L65 75" dur="4.5s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="0" cy="0" r="0.8" fill="#1d4ed8">
+            <animateMotion path="M75 35 L65 75" dur="3.5s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+
+        {/* Floating Hexagons Grid */}
+        <svg className="absolute top-1/4 left-10 w-44 h-44 opacity-10 text-emerald-500" viewBox="0 0 100 100" fill="none">
+          <polygon points="50,15 90,38 90,82 50,95 10,82 10,38" stroke="currentColor" strokeWidth="0.4">
+            <animateTransform attributeName="transform" type="rotate" from="0 50 55" to="360 50 55" dur="60s" repeatCount="indefinite" />
+          </polygon>
+          <polygon points="50,25 80,42 80,78 50,88 20,78 20,42" stroke="currentColor" strokeWidth="0.2">
+            <animateTransform attributeName="transform" type="rotate" from="360 50 55" to="0 50 55" dur="35s" repeatCount="indefinite" />
+          </polygon>
+        </svg>
+
+        {/* Subtle Background Binary / Hex Data Blocks */}
+        <div className="absolute top-1/3 right-1/4 flex flex-col space-y-1 font-mono text-[9px] text-slate-400/15 tracking-widest select-none">
+          <div>01101001 01110100</div>
+          <div>01110011 01101111</div>
+          <div>01101100 01110101</div>
+          <div>01110100 01101001</div>
+        </div>
+      </div>
       
       {/* Glowing Orb Overlay */}
       <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl opacity-50 pointer-events-none transition-colors duration-500 ${getGlowingOrbClass()}`}></div>

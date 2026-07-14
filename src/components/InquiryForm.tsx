@@ -270,8 +270,22 @@ Phone: ${content.contactPhone}`
 
   return (
     <div className="bg-slate-50 border-t border-slate-200/60 py-20 sm:py-28 relative overflow-hidden font-sans" id="inquiry-system-page">
-      {/* Decorative mesh/grid background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
+      {/* Dynamic Animated Tech Background Elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        {/* Animated grid and connection nodes */}
+        <svg className="absolute top-10 left-10 w-[350px] h-[350px] opacity-10 text-blue-500" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="0.3" strokeDasharray="5 5">
+            <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="90s" repeatCount="indefinite" />
+          </circle>
+          <path d="M10 50 L90 50" stroke="currentColor" strokeWidth="0.2" strokeDasharray="3 3" />
+        </svg>
+        <svg className="absolute bottom-10 right-10 w-[300px] h-[300px] opacity-15 text-emerald-500" viewBox="0 0 100 100" fill="none">
+          <polygon points="50,15 90,38 90,82 50,95 10,82 10,38" stroke="currentColor" strokeWidth="0.3">
+            <animateTransform attributeName="transform" type="rotate" from="360 50 55" to="0 50 55" dur="45s" repeatCount="indefinite" />
+          </polygon>
+          <circle cx="50" cy="55" r="1.5" fill="currentColor" />
+        </svg>
+      </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
