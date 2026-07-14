@@ -147,50 +147,52 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24">
           
           {/* Card 1: Free IT Consultation (Visual Highlight for Lead Gen) */}
-          <div className="bg-slate-900 border-2 border-amber-500/30 rounded-3xl p-8 shadow-xl shadow-amber-500/5 transition-all duration-300 hover:translate-y-[-8px] hover:shadow-2xl hover:shadow-amber-500/10 flex flex-col justify-between group relative overflow-hidden text-white">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-xl pointer-events-none"></div>
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div className="p-3 rounded-2xl bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20">
-                  <Icons.MessageSquareCode className="h-6 w-6" />
+          <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-8 shadow-xs transition-all duration-300 hover:translate-y-[-8px] hover:shadow-xl flex flex-col justify-between group relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none z-0"></div>
+            <div className="relative z-10 flex flex-col justify-between h-full flex-grow">
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700">
+                    <Icons.MessageSquareCode className="h-6 w-6" />
+                  </div>
+                  <span className="bg-slate-900 text-white text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md">
+                    Lead Offer
+                  </span>
                 </div>
-                <span className="bg-amber-500/10 text-amber-300 text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border border-amber-500/20">
-                  Free Session
-                </span>
+                <h3 className="text-lg font-bold text-slate-950 font-display">Free IT Consultation</h3>
+                <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
+                  Start with a conversation. We'll help identify the right technology solution for your business.
+                </p>
+                
+                <div className="my-6">
+                  <span className="text-3xl font-black text-slate-950 font-display">₱0</span>
+                  <span className="text-xs text-slate-500 font-sans ml-1">/ Session</span>
+                </div>
+                
+                <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
+                  {[
+                    'Business IT assessment',
+                    'Technology recommendations',
+                    'Infrastructure discussion',
+                    'Project planning',
+                    'Solution roadmap'
+                  ].map((feature, idx) => (
+                    <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
+                      <Icons.Check className="h-4 w-4 text-emerald-500 shrink-0 mr-2 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <h3 className="text-lg font-bold text-white font-display">Free IT Consultation</h3>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed mt-2">
-                Start with a conversation. We'll help identify the right technology solution for your business.
-              </p>
               
-              <div className="my-6">
-                <span className="text-3xl font-black text-white font-display">₱0</span>
-                <span className="text-xs text-slate-400 font-sans ml-1">/ Session</span>
-              </div>
-              
-              <ul className="space-y-3.5 border-t border-slate-800 pt-6 mb-8">
-                {[
-                  'Business IT assessment',
-                  'Technology recommendations',
-                  'Infrastructure discussion',
-                  'Project planning',
-                  'Solution roadmap'
-                ].map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-xs text-slate-300 font-sans leading-tight">
-                    <Icons.CheckCircle2 className="h-4 w-4 text-amber-500 shrink-0 mr-2 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <button
+                onClick={() => onInquire('Free IT Consultation')}
+                className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`}
+              >
+                Book Free Consultation
+                <Icons.ArrowRight className="ml-2 h-4 w-4" />
+              </button>
             </div>
-            
-            <button
-              onClick={() => onInquire('Free IT Consultation')}
-              className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-slate-950 bg-amber-500 hover:bg-amber-400 focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-lg shadow-amber-500/20 transition-all hover:scale-102"
-            >
-              Book Free Consultation
-              <Icons.ArrowRight className="ml-2 h-4 w-4" />
-            </button>
           </div>
 
           {/* Card 2: Onsite IT Support */}
@@ -240,50 +242,52 @@ export default function PricingSection({ branding, onInquire, onContactClick }: 
 
           {/* Card 3: Managed IT Services (Recommended Card) */}
           <div className={`bg-white/95 backdrop-blur-md border-2 rounded-3xl p-8 flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:translate-y-[-8px] hover:shadow-2xl ${getThemeBorderClass()} ${getThemeGlowClass()}`}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none"></div>
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div className="p-3 rounded-2xl bg-slate-900 text-white">
-                  <Icons.Activity className="h-6 w-6" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-full blur-xl pointer-events-none z-0"></div>
+            <div className="relative z-10 flex flex-col justify-between h-full flex-grow">
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div className="p-3 rounded-2xl bg-slate-900 text-white">
+                    <Icons.Activity className="h-6 w-6" />
+                  </div>
+                  <span className={`text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border ${getBadgeClass()}`}>
+                    Recommended
+                  </span>
                 </div>
-                <span className={`text-[9px] font-extrabold uppercase font-mono tracking-widest px-2.5 py-1 rounded-md border ${getBadgeClass()}`}>
-                  Recommended
-                </span>
+                <h3 className="text-lg font-bold text-slate-950 font-display">Managed IT Services</h3>
+                <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
+                  Complete IT support designed to keep your business secure and productive.
+                </p>
+                
+                <div className="my-6">
+                  <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Starting at</span>
+                  <span className="text-2xl font-black text-slate-950 font-display">₱10,000</span>
+                  <span className="text-xs text-slate-500 font-sans ml-1">/ Month</span>
+                </div>
+                
+                <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
+                  {[
+                    'Remote IT support',
+                    'System monitoring',
+                    'Preventive maintenance',
+                    'User support',
+                    'Backup monitoring',
+                    'Monthly IT health report'
+                  ].map((feature, idx) => (
+                    <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
+                      <Icons.Check className={`h-4 w-4 shrink-0 mr-2 mt-0.5 ${getThemeTextClass()}`} />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <h3 className="text-lg font-bold text-slate-950 font-display">Managed IT Services</h3>
-              <p className="text-xs text-slate-500 font-sans leading-relaxed mt-2">
-                Complete IT support designed to keep your business secure and productive.
-              </p>
               
-              <div className="my-6">
-                <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider block">Starting at</span>
-                <span className="text-2xl font-black text-slate-950 font-display">₱10,000</span>
-                <span className="text-xs text-slate-500 font-sans ml-1">/ Month</span>
-              </div>
-              
-              <ul className="space-y-3.5 border-t border-slate-100 pt-6 mb-8">
-                {[
-                  'Remote IT support',
-                  'System monitoring',
-                  'Preventive maintenance',
-                  'User support',
-                  'Backup monitoring',
-                  'Monthly IT health report'
-                ].map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-xs text-slate-600 font-sans leading-tight">
-                    <Icons.Check className={`h-4 w-4 shrink-0 mr-2 mt-0.5 ${getThemeTextClass()}`} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <button
+                onClick={() => onInquire('Managed IT Services')}
+                className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`}
+              >
+                Start Managed Support
+              </button>
             </div>
-            
-            <button
-              onClick={() => onInquire('Managed IT Services')}
-              className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-md cursor-pointer transition-all hover:scale-102 ${getThemeBgClass()}`}
-            >
-              Start Managed Support
-            </button>
           </div>
 
           {/* Card 4: Business Technology Solutions */}
