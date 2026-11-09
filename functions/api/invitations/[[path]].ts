@@ -1,7 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 import { randomToken, sha256 } from '../../../server/crypto';
-import { EMAIL_RE, sendSmtpEmail } from '../../../server/email';
+import { EMAIL_RE } from '../../../server/email';
 import { decodeSegment, findGuestInvitation, todayUtc } from '../../../server/guest-invitation';
+import { emailAndRotateToken } from '../../../server/invitation-links';
 import { createCheckoutSession } from '../../../server/paymongo';
 import { LIMITS, lockedFieldsChanged, makeSlug, validateDetails, validateRsvp } from '../../../shared/invitation-fields';
 
@@ -286,8 +287,7 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
       // sendSmtpEmail silently skips when disabled; rotating then would lock the couple out
       if (!smtp?.enabled) return;
       for (const inv of results) {
-        const token = randomToken();
-        await sendSmtpEmail(env.DB, smtp, {
+        await emailAndRotateToken(env.DB, smtp, request, inv.id, (token) => ({
           to: email,
           subject: 'Your wedding invitation links',
           // "Key: value" lines: the HTML builder keeps every URL there (plain paragraphs keep only the first)
@@ -297,9 +297,7 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
             `Guest link: ${origin}/i/${inv.slug}`,
             `Manage link: ${origin}/manage#${token}`,
           ].join('\n'),
-        }, request);
-        // Only after the email went out (a throw above keeps the old link working)
-        await env.DB.prepare("UPDATE invitations SET manage_token_hash = ? WHERE id = ? AND status = 'live'").bind(await sha256(token), inv.id).run();
+        }));
       }
     } catch (e) {
       console.error('Resend links failed:', e instanceof Error ? e.message : e);

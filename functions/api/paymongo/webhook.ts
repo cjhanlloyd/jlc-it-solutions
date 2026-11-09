@@ -1,6 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import { randomToken, sha256 } from '../../../server/crypto';
-import { sendSmtpEmail } from '../../../server/email';
+import { emailAndRotateToken } from '../../../server/invitation-links';
 import { verifyPaymongoSignature } from '../../../server/paymongo';
 
 interface Env {
@@ -54,8 +53,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         // success-page token only once the email is sent; otherwise that token keeps working.
         const smtp: any = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
         if (!smtp?.enabled) return;
-        const token = randomToken();
-        await sendSmtpEmail(env.DB, smtp, {
+        await emailAndRotateToken(env.DB, smtp, request, order.invitation_id, (token) => ({
           to: order.customer_email,
           subject: 'Your wedding invitation is live',
           // "Key: value" blocks: the HTML builder renders them as tables and keeps every URL (plain paragraphs keep only the first)
@@ -70,8 +68,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             `Date: ${paidAt.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long' })}`,
             `Order ID: ${order.id}`,
           ].join('\n'),
-        }, request);
-        await env.DB.prepare("UPDATE invitations SET manage_token_hash = ? WHERE id = ? AND status = 'live'").bind(await sha256(token), order.invitation_id).run();
+        }));
       } catch (e) {
         console.error('Paid email failed:', e instanceof Error ? e.message : e);
       }
