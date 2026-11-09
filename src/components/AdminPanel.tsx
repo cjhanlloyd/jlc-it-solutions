@@ -31,9 +31,9 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   const [apiError, setApiError] = React.useState('');
   const [successMsg, setSuccessMsg] = React.useState('');
 
-  // Fetch admin data on load
-  const fetchAdminData = async () => {
-    setIsLoading(true);
+  // Fetch admin data. The full-page loader unmounts every tab, so later refreshes skip it to keep unsaved drafts.
+  const fetchAdminData = async (showLoader = true) => {
+    if (showLoader) setIsLoading(true);
     setApiError('');
     try {
       const data = await adminApi('/api/admin/data', adminToken, undefined, 'Failed to fetch administrator data.');
@@ -43,7 +43,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
     } catch (err: any) {
       setApiError(err.message || 'Server error loading data.');
     } finally {
-      setIsLoading(false);
+      if (showLoader) setIsLoading(false);
     }
   };
 
@@ -235,7 +235,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
           {/* TAB 6: ADMIN ACCOUNTS */}
           {tabProps && (
             <div hidden={activeSubTab !== 'accounts'}>
-              <AccountsTab {...tabProps} reload={fetchAdminData} />
+              <AccountsTab {...tabProps} reload={() => fetchAdminData(false)} />
             </div>
           )}
 
