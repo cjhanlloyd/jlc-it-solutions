@@ -95,12 +95,18 @@ export default function ProjectGallery({ projectGallery = [], branding, content 
               >
                 {/* Photo preview panel */}
                 <div className="relative aspect-video bg-slate-950 overflow-hidden shrink-0">
-                  <img 
-                    src={item.imageBase64} 
-                    alt={item.title} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
+                  {item.imageBase64 ? (
+                    <img
+                      src={item.imageBase64}
+                      alt={item.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-600" aria-label={`${item.title} (no photo yet)`}>
+                      <Icons.Image className="h-10 w-10" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-slate-950/0 group-hover:bg-slate-950/20 transition-all duration-300 flex items-center justify-center">
                     <div className="w-10 h-10 bg-white/90 backdrop-blur-xs text-slate-900 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md">
                       <Icons.Maximize2 className="h-4.5 w-4.5" />
@@ -163,12 +169,16 @@ export default function ProjectGallery({ projectGallery = [], branding, content 
 
             {/* Main high fidelity image display */}
             <div className="relative bg-slate-950 aspect-video w-full flex items-center justify-center">
-              <img 
-                src={activeLightboxItem.imageBase64} 
-                alt={activeLightboxItem.title} 
-                className="w-full h-full object-contain max-h-[70vh]"
-                referrerPolicy="no-referrer"
-              />
+              {activeLightboxItem.imageBase64 ? (
+                <img
+                  src={activeLightboxItem.imageBase64}
+                  alt={activeLightboxItem.title}
+                  className="w-full h-full object-contain max-h-[70vh]"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <Icons.Image className="h-16 w-16 text-slate-600" aria-label={`${activeLightboxItem.title} (no photo yet)`} />
+              )}
             </div>
 
             {/* Showcase detail panel */}

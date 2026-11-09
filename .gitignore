@@ -6,6 +6,5 @@ coverage/
 *.log
 .env*
 .dev.vars
-db.json
 !.dev.vars.example
 .wrangler/

@@ -283,8 +283,9 @@ async function sendSmtpEmail(db: D1Database, smtp: any, mail: { to: string; subj
   }
 
   // Retrieve branding and content configuration from D1
-  const branding = await db.prepare("SELECT * FROM branding WHERE id = 'default'").first<any>();
-  const content = await db.prepare("SELECT * FROM content WHERE id = 'default'").first<any>();
+  // Fall back to defaults so a missing settings row never blocks email
+  const branding = (await db.prepare("SELECT * FROM branding WHERE id = 'default'").first<any>()) ?? { companyName: 'JLC Solutions', logoType: 'icon', themeColor: 'deepblue' };
+  const content = (await db.prepare("SELECT * FROM content WHERE id = 'default'").first<any>()) ?? {};
 
   let fullBody = mail.body;
   if (smtp.signature) {
@@ -594,6 +595,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       // 2. Duplicate submission detection (same email and project description in last 5 minutes)
+      // shortcut: check-then-insert, so two simultaneous identical submits could both pass; each needs its own
+      // single-use Turnstile token, so this only happens with two solved widgets. Add a unique index if it ever matters.
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const duplicateCheck = await env.DB.prepare(
         "SELECT COUNT(*) as count FROM inquiries WHERE LOWER(email) = ? AND projectDescription = ? AND createdAt > ?"
