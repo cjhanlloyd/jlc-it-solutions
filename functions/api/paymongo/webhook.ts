@@ -39,21 +39,22 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     await env.DB.prepare('UPDATE payment_events SET order_id = ? WHERE paymongo_event_id = ?').bind(order.id, eventId).run();
     if (order.status !== 'pending') return json({ ok: true });
 
-    // The success-page token is replaced: the server keeps only hashes, so the email needs a fresh raw token
-    const token = randomToken();
     const paidAt = new Date();
     const [paid] = await env.DB.batch([
       env.DB.prepare("UPDATE orders SET status = 'paid', paid_at = ?, paymongo_payment_id = ? WHERE id = ? AND status = 'pending'")
         .bind(paidAt.toISOString(), session.attributes?.payments?.[0]?.id ?? null, order.id),
-      env.DB.prepare("UPDATE invitations SET status = 'live', manage_token_hash = ? WHERE id = ? AND status = 'pending'")
-        .bind(await sha256(token), order.invitation_id),
+      env.DB.prepare("UPDATE invitations SET status = 'live' WHERE id = ? AND status = 'pending'").bind(order.invitation_id),
     ]);
     if (!paid.meta.changes) return json({ ok: true });
 
     const origin = new URL(request.url).origin;
     context.waitUntil((async () => {
       try {
-        const smtp = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
+        // The server keeps only hashes, so the email needs a fresh raw token. It replaces the
+        // success-page token only once the email is sent; otherwise that token keeps working.
+        const smtp: any = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
+        if (!smtp?.enabled) return;
+        const token = randomToken();
         await sendSmtpEmail(env.DB, smtp, {
           to: order.customer_email,
           subject: 'Your wedding invitation is live',
@@ -70,6 +71,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             `Order ID: ${order.id}`,
           ].join('\n'),
         }, request);
+        await env.DB.prepare("UPDATE invitations SET manage_token_hash = ? WHERE id = ? AND status = 'live'").bind(await sha256(token), order.invitation_id).run();
       } catch (e) {
         console.error('Paid email failed:', e instanceof Error ? e.message : e);
       }

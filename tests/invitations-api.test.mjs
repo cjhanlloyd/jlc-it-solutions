@@ -27,10 +27,12 @@ before(async () => {
 const design = { id: 1, slug: 'classic-elegance', name: 'Classic Elegance', layout_key: 'classic', price_centavos: 99900,
   color_schemes: JSON.stringify([{ name: 'Blush', primary: '#b76e79', accent: '#d4af37', background: '#fff8f6', text: '#3b2a2e' }]),
   preview_images: '[]', sample_details: '{}', active: 1, sort_order: 0 };
-let db;
+let db, smtpEnabled = true;
 beforeEach(() => {
   db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
   globalThis.SMTP_SENT = [];
+  globalThis.SMTP_FAIL = false;
+  smtpEnabled = true;
   r2.clear();
   paymongoCalls.length = 0;
   paymongoFails = false;
@@ -73,12 +75,6 @@ function exec(sql, a) {
     Object.assign(o, { status: 'paid', paid_at: a[0], paymongo_payment_id: a[1] });
     return { meta: { changes: 1 } };
   }
-  if (/^UPDATE invitations SET status = 'live', manage_token_hash = \? WHERE id = \? AND status = 'pending'/.test(sql)) {
-    const i = row('invitations', a[1]);
-    if (!i || i.status !== 'pending') return { meta: { changes: 0 } };
-    Object.assign(i, { status: 'live', manage_token_hash: a[0] });
-    return { meta: { changes: 1 } };
-  }
   // --- Task 5: manage, RSVP, resend ---
   if (/FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = \? AND i.status = 'live'/.test(sql)) {
     const i = db.invitations.find(x => x.manage_token_hash === a[0] && x.status === 'live');
@@ -90,7 +86,18 @@ function exec(sql, a) {
     Object.assign(row('invitations', a[3]), { details: a[0], event_date: a[1], photos: a[2] });
     return { meta: { changes: 1 } };
   }
-  if (/^UPDATE invitations SET manage_token_hash = \? WHERE id = \?/.test(sql)) { row('invitations', a[1]).manage_token_hash = a[0]; return { meta: { changes: 1 } }; }
+  if (/^UPDATE invitations SET manage_token_hash = \? WHERE id = \? AND status = 'live'/.test(sql)) {
+    const i = row('invitations', a[1]);
+    if (!i || i.status !== 'live') return { meta: { changes: 0 } };
+    i.manage_token_hash = a[0];
+    return { meta: { changes: 1 } };
+  }
+  if (/^UPDATE invitations SET status = 'live' WHERE id = \? AND status = 'pending'/.test(sql)) {
+    const i = row('invitations', a[0]);
+    if (!i || i.status !== 'pending') return { meta: { changes: 0 } };
+    i.status = 'live';
+    return { meta: { changes: 1 } };
+  }
   if (/^SELECT id, details FROM invitations WHERE slug = \? AND status = 'live'/.test(sql)) return db.invitations.find(i => i.slug === a[0] && i.status === 'live') ?? null;
   if (/^INSERT INTO rsvps .* WHERE \(SELECT COUNT\(\*\) FROM rsvps WHERE invitation_id = \?\) < 300/.test(sql)) {
     if (db.rsvps.filter(r => r.invitation_id === a[0]).length >= 300) return { meta: { changes: 0 } };
@@ -109,7 +116,7 @@ function exec(sql, a) {
     return { results: db.orders.filter(o => o.customer_email === a[0] && o.status === 'paid')
       .map(o => row('invitations', o.product_id)).filter(i => i && i.status === 'live').map(i => ({ id: i.id, slug: i.slug })) };
   }
-  if (/smtp_settings/.test(sql)) return { enabled: 1, host: 'h', port: 587, senderName: 'JLC', senderEmail: 'co@x.com' };
+  if (/smtp_settings/.test(sql)) return { enabled: smtpEnabled ? 1 : 0, host: 'h', port: 587, senderName: 'JLC', senderEmail: 'co@x.com' };
   if (/FROM (branding|content)/.test(sql)) return null;
   throw new Error('Unexpected SQL: ' + sql);
 }
@@ -452,4 +459,35 @@ test('resend: bad Turnstile → 400; after 3 per hour it still says ok but sends
   }
   await settle();
   assert.equal(emails().length, 3);
+});
+
+test('resend with SMTP disabled → ok, and the old manage token still works', async () => {
+  await live();
+  smtpEnabled = false;
+  assert.deepEqual(await (await post('/api/invitations/resend', { email: 'bride@example.com', turnstileToken: 'good-token' })).json(), { ok: true });
+  await settle();
+  assert.equal(emails().length, 0);
+  assert.equal(db.invitations[0].manage_token_hash, hash(TOKEN));
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, TOKEN)).status, 200);
+});
+
+test('resend where the SMTP send throws → ok, and the old manage token still works', async () => {
+  await live();
+  globalThis.SMTP_FAIL = true;
+  assert.deepEqual(await (await post('/api/invitations/resend', { email: 'bride@example.com', turnstileToken: 'good-token' })).json(), { ok: true });
+  await settle();
+  assert.equal(db.invitations[0].manage_token_hash, hash(TOKEN));
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, TOKEN)).status, 200);
+});
+
+test('paid webhook with SMTP disabled → order paid, invitation live, success-page token still works', async () => {
+  await checkedOut();
+  const successToken = paymongoCalls[0].data.attributes.success_url.split('#1.')[1];
+  smtpEnabled = false;
+  assert.equal((await hook(paidEvent())).status, 200);
+  await settle();
+  assert.equal(db.orders[0].status, 'paid');
+  assert.equal(db.invitations[0].status, 'live');
+  assert.equal(emails().length, 0);
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, successToken)).status, 200);
 });

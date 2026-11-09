@@ -259,10 +259,11 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
         "SELECT i.id, i.slug FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.customer_email = ? AND o.status = 'paid' AND i.status = 'live'",
       ).bind(email).all<any>();
       if (!results?.length) return;
-      const smtp = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
+      const smtp: any = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
+      // sendSmtpEmail silently skips when disabled; rotating then would lock the couple out
+      if (!smtp?.enabled) return;
       for (const inv of results) {
         const token = randomToken();
-        await env.DB.prepare('UPDATE invitations SET manage_token_hash = ? WHERE id = ?').bind(await sha256(token), inv.id).run();
         await sendSmtpEmail(env.DB, smtp, {
           to: email,
           subject: 'Your wedding invitation links',
@@ -274,6 +275,8 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
             `Manage link: ${origin}/manage#${token}`,
           ].join('\n'),
         }, request);
+        // Only after the email went out (a throw above keeps the old link working)
+        await env.DB.prepare("UPDATE invitations SET manage_token_hash = ? WHERE id = ? AND status = 'live'").bind(await sha256(token), inv.id).run();
       }
     } catch (e) {
       console.error('Resend links failed:', e instanceof Error ? e.message : e);
