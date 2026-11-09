@@ -165,9 +165,10 @@ export default function Footer({ branding, content, services, setActiveTab }: Fo
         {/* Lower Footer */}
         <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 space-y-4 sm:space-y-0">
           <p>© {currentYear} {branding.companyName}. All rights reserved.</p>
-          <div className="flex space-x-6">
-            <a href="#" className="hover:text-gray-300">Privacy Policy</a>
-            <a href="#" className="hover:text-gray-300">Terms of Service</a>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <a href="/privacy" className="hover:text-gray-300">Privacy Policy</a>
+            <a href="/terms" className="hover:text-gray-300">Terms of Service</a>
+            <a href="/refund-policy" className="hover:text-gray-300">Refund Policy</a>
             <a href="#" className="hover:text-gray-300">Cookie Settings</a>
           </div>
         </div>

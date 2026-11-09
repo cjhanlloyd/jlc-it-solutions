@@ -2,10 +2,21 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { Link } from './kit';
+import { DRAFT_KEY } from './CustomiserPage';
 
-export default function SuccessPage({ btn }: { btn: string }) {
-  const [orderId = '', token = ''] = window.location.hash.slice(1).split('.');
-  const [status, setStatus] = React.useState<'checking' | 'paid' | 'failed' | 'timeout'>('checking');
+// Read once and drop the fragment (it holds the manage token) from the address bar and history, like ManagePage.
+let memoryHash: string | null = null;
+function takeHash(): string {
+  if (memoryHash === null) {
+    memoryHash = window.location.hash.slice(1);
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+  return memoryHash;
+}
+
+export default function SuccessPage({ btn, email }: { btn: string; email?: string }) {
+  const [orderId = '', token = ''] = takeHash().split('.');
+  const [status, setStatus] = React.useState<'checking' | 'paid' | 'failed' | 'expired' | 'timeout'>('checking');
   const slug = React.useMemo(() => { try { return sessionStorage.getItem('jlc_inv_slug') || ''; } catch { return ''; } }, []);
 
   React.useEffect(() => {
@@ -17,8 +28,12 @@ export default function SuccessPage({ btn }: { btn: string }) {
       try {
         const res = await fetch(`/api/invitations/order-status?order=${encodeURIComponent(orderId)}`);
         const s = res.ok ? (await res.json()).status : '';
-        if (s === 'paid') return setStatus('paid');
-        if (s === 'failed' || s === 'expired') return setStatus('failed');
+        if (s === 'paid') {
+          // The customiser's saved form is no longer needed
+          try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(DRAFT_KEY)) sessionStorage.removeItem(k); } catch { /* private mode */ }
+          return setStatus('paid');
+        }
+        if (s === 'failed' || s === 'expired') return setStatus(s);
       } catch { /* keep polling */ }
       if (tries >= 40) return setStatus('timeout'); // 40 × 3 s = 2 minutes
       setTimeout(poll, 3000);
@@ -68,6 +83,16 @@ export default function SuccessPage({ btn }: { btn: string }) {
           <div className="w-14 h-14 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto"><Icons.XCircle className="h-7 w-7" /></div>
           <h1 className="text-xl font-extrabold text-slate-900 font-display">The payment didn't go through</h1>
           <p className="text-sm text-slate-600">No payment was recorded for this order. You can start again from the designs page.</p>
+          <Link href="/invitations" className="text-sm font-bold underline">Back to designs</Link>
+        </>}
+
+        {status === 'expired' && <>
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto"><Icons.Clock className="h-7 w-7" /></div>
+          <h1 className="text-xl font-extrabold text-slate-900 font-display">This order expired</h1>
+          <p className="text-sm text-slate-600">
+            This order expired. If you were charged,{' '}
+            {email ? <>contact us at <a className="font-bold underline" href={`mailto:${email}`}>{email}</a></> : 'contact us'} and we'll refund you.
+          </p>
           <Link href="/invitations" className="text-sm font-bold underline">Back to designs</Link>
         </>}
       </div>

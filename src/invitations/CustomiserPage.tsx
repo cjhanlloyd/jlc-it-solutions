@@ -17,13 +17,19 @@ export async function fetchDesigns(): Promise<Design[]> {
   return (await res.json()).designs;
 }
 
+// PayMongo's cancel link returns here; the form is restored from this (photos are too large to keep).
+// The success page clears every key with this prefix once the payment is confirmed.
+export const DRAFT_KEY = 'jlc_inv_draft:';
+type Saved = { draft: Draft; scheme: string; email: string; hadPhotos: boolean };
+
 export default function CustomiserPage({ slug, btn }: { slug: string; btn: string }) {
   useInvitationFonts();
   const [design, setDesign] = React.useState<Design | null | 'missing' | 'offline'>(null);
-  const [draft, setDraft] = React.useState<Draft>(() => toDraft());
+  const [saved] = React.useState<Saved | null>(() => { try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY + slug) || 'null'); } catch { return null; } });
+  const [draft, setDraft] = React.useState<Draft>(() => toDraft(saved?.draft));
   const [scheme, setScheme] = React.useState('');
   const [photos, setPhotos] = React.useState<string[]>([]);
-  const [email, setEmail] = React.useState('');
+  const [email, setEmail] = React.useState(saved?.email ?? '');
   const [terms, setTerms] = React.useState(false);
   const [error, setError] = React.useState('');
   const [paying, setPaying] = React.useState(false);
@@ -35,7 +41,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       .then((all) => {
         const d = all.find((x) => x.slug === slug);
         setDesign(d ?? 'missing');
-        if (d) setScheme(d.colorSchemes[0]?.name ?? '');
+        if (d) setScheme(d.colorSchemes.some((s) => s.name === saved?.scheme) ? saved!.scheme : d.colorSchemes[0]?.name ?? '');
       })
       .catch(() => setDesign('offline'));
   }, [slug]);
@@ -60,6 +66,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     if (!turnstile.token) return setError('Please wait for the anti-spam check to finish, then try again.');
     setPaying(true);
     setError('');
+    try { sessionStorage.setItem(DRAFT_KEY + slug, JSON.stringify({ draft, scheme: chosen?.name ?? '', email, hadPhotos: photos.length > 0 } satisfies Saved)); } catch { /* private mode: nothing restored */ }
     try {
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
@@ -112,6 +119,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
           )}
 
           <DetailsForm draft={draft} onChange={setDraft} />
+          {saved?.hadPhotos && !photos.length && <Alert kind="info">Your details were restored. Please re-add your photos.</Alert>}
           <PhotoPicker photos={photos} onChange={setPhotos} />
 
           <fieldset className="space-y-4 border-t border-slate-200 pt-6">

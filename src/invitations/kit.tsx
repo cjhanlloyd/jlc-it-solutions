@@ -193,7 +193,7 @@ export function DetailsForm({ draft, onChange, lockNames = false }: { draft: Dra
       <Section title="When">
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Wedding date *">
-            <input className={inputCls} type="date" value={draft.eventDate} required onChange={(e) => set({ eventDate: e.target.value })} />
+            <input className={inputCls} type="date" value={draft.eventDate} required min={new Date().toISOString().slice(0, 10) /* UTC, like the server check */} onChange={(e) => set({ eventDate: e.target.value })} />
           </Field>
           <Field label="Start time">
             <input className={inputCls} type="time" value={draft.eventTime} onChange={(e) => set({ eventTime: e.target.value })} />

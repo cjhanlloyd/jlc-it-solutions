@@ -435,7 +435,7 @@ export default function App() {
   const policy = path.match(/^\/(terms|refund-policy|privacy)\/?$/)?.[1] as 'terms' | 'refund-policy' | 'privacy' | undefined;
   const page =
     /^\/invitations\/?$/.test(path) ? <CatalogPage btn={btn} />
-    : designSlug === 'success' ? <SuccessPage btn={btn} />
+    : designSlug === 'success' ? <SuccessPage btn={btn} email={content.contactEmail} />
     : designSlug ? <CustomiserPage slug={designSlug} btn={btn} />
     : /^\/manage\/?$/.test(path) ? <ManagePage btn={btn} />
     : policy ? <PolicyPage kind={policy} company={branding.companyName || 'JLC IT Solutions'} email={content.contactEmail} />
