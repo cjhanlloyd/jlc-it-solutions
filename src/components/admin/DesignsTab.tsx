@@ -34,20 +34,26 @@ export default function DesignsTab({ overview, reload, adminToken, adminUser, is
     schemes: d.color_schemes, images: d.preview_images.join('\n'), sample: JSON.stringify(d.sample_details, null, 2), active: d.active,
   });
 
-  const post = (body: object, msg: string) => run(async () => {
-    await adminApi('/api/admin/invitations/designs', adminToken, body, 'Failed to save design.');
-    await reload();
-  }, msg);
+  // run() swallows errors, so report success here for callers that reset state afterwards
+  const post = async (body: object, msg: string) => {
+    let ok = false;
+    await run(async () => {
+      await adminApi('/api/admin/invitations/designs', adminToken, body, 'Failed to save design.');
+      ok = true;
+      await reload();
+    }, msg);
+    return ok;
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if ('error' in parsed) return window.alert(parsed.error);
-    await post({
+    const saved = await post({
       action: form.id ? 'update' : 'add', id: form.id ?? undefined, slug: form.slug.trim(), name: form.name, layout_key: form.layout_key,
       price_centavos: Math.round(Number(form.pesos) * 100), color_schemes: form.schemes,
       preview_images: form.images.split('\n').map((s) => s.trim()).filter(Boolean), sample_details: JSON.parse(form.sample), active: form.active,
     }, form.id ? 'Design updated.' : 'Design added.');
-    setForm(blank());
+    if (saved) setForm(blank());
   };
 
   const inp = 'w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900';
