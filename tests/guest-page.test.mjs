@@ -2,7 +2,7 @@
 // Handlers are bundled with esbuild like tests/invitations-api.test.mjs; D1, R2 and ASSETS are in-memory fakes.
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -95,6 +95,24 @@ test('live slug: escaped names in og:title and <title>, absolute og:image of the
   assert.match(html, /<meta name="description" content="[^"]+">/);
 });
 
+test('live slug: the wedding date is in og:title and <title>', async () => {
+  const { html } = await view('live-one');
+  const title = 'A&lt;b&gt; &amp; Juan &quot;J&quot; — June 12, 2099';
+  assert.equal(og(html, 'title'), title);
+  assert.ok(html.includes(`<title>${title}</title>`));
+});
+
+test('guest page responses carry the same security headers as public/_headers', async () => {
+  // Pages does not apply _headers to Function responses
+  const expected = readFileSync(join(root, 'public/_headers'), 'utf8').split(/\r?\n/).slice(1).filter(Boolean)
+    .map((l) => l.trim().match(/^([^:]+):\s*(.*)$/).slice(1));
+  assert.equal(expected.length, 4);
+  for (const slug of ['live-one', 'nope']) {
+    const { res } = await view(slug);
+    for (const [name, value] of expected) assert.equal(res.headers.get(name), value, `${slug} ${name}`);
+  }
+});
+
 test('refunded slug → 404, no partner name in the HTML', async () => {
   const { res, html } = await view('refunded-one');
   assert.equal(res.status, 404);
@@ -181,6 +199,7 @@ test('photo of a live invitation → body, content type and a day of caching', a
   assert.equal(await res.text(), 'bytes-inv/1/0.png');
   assert.equal(res.headers.get('Content-Type'), 'image/png');
   assert.equal(res.headers.get('Cache-Control'), 'public, max-age=86400');
+  assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
 });
 
 test('photo of a refunded invitation → 404', async () => {

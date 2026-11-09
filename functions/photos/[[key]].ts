@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // Serves an invitation photo from R2, only while its invitation is live and lists the key.
 import { decodeSegment, isPastExpiry } from '../../server/guest-invitation';
+import { SECURITY_HEADERS } from '../../server/security-headers';
 
 interface Env { DB: D1Database; PHOTOS: R2Bucket }
 
@@ -17,6 +18,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const obj = await env.PHOTOS.get(key);
   if (!obj) return NOT_FOUND();
   return new Response(obj.body, { headers: {
+    ...SECURITY_HEADERS,
     'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream',
     'Cache-Control': 'public, max-age=86400',
   } });

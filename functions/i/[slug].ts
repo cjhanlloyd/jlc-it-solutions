@@ -2,6 +2,7 @@
 // Guest page: serves invitation.html with link-preview tags (<title>, og:*) for this invitation.
 import { escapeHtml } from '../../server/email';
 import { decodeSegment, findGuestInvitation } from '../../server/guest-invitation';
+import { SECURITY_HEADERS } from '../../server/security-headers';
 
 interface Env { DB: D1Database; ASSETS: Fetcher }
 
@@ -14,7 +15,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   let title = 'Invitation not available', description = 'This invitation is not available.', image = '';
   if (inv?.status === 'live') {
-    title = `${names} — Wedding invitation`;
+    // UTC so the date cannot shift a day; e.g. "June 12, 2027"
+    const when = new Date(`${d.eventDate}T00:00:00Z`);
+    title = `${names} — ${isNaN(when.getTime()) ? 'Wedding invitation' : when.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' })}`;
     description = `You're invited to the wedding of ${names}.`;
     const first = JSON.parse(inv.photos || '[]')[0];
     if (first) image = `${url.origin}/photos/${first}`;
@@ -38,5 +41,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const html = shell
     .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${escapeHtml(title)}</title>`)
     .replace('<!--og-tags-->', () => tags);
-  return new Response(html, { status: inv ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  return new Response(html, { status: inv ? 200 : 404, headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8' } });
 };
