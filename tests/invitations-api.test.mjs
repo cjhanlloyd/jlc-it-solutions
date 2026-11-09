@@ -262,7 +262,7 @@ const checkedOut = async () => { await post('/api/invitations/checkout', goodChe
 test('webhook with a bad signature → 401, nothing changes', async () => {
   await checkedOut();
   const body = paidEvent();
-  const res = await hook(body, sign(body).replace(/te=./, 'te=0'));
+  const res = await hook(body, sign(body).replace(/te=(.)/, (_, c) => `te=${c === '0' ? '1' : '0'}`));
   assert.equal(res.status, 401);
   await settle();
   assert.equal(db.events.length, 0);
