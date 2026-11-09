@@ -6,6 +6,7 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { BrandingSettings } from '../types.js';
+import { Link } from '../invitations/kit.tsx';
 
 interface NavbarProps {
   branding: BrandingSettings;
@@ -40,6 +41,7 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
 
   // Dynamic Icon retrieval from lucide-react
   const LogoIcon = (Icons as any)[branding.logoIcon] || Icons.Activity;
+  const onInvitations = window.location.pathname.startsWith('/invitations');
 
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -147,6 +149,15 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
                 </button>
               );
             })}
+            <Link
+              href="/invitations"
+              className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider font-display transition-all ${
+                onInvitations ? 'bg-slate-900 text-white font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              id="nav-item-invitations"
+            >
+              Invitations
+            </Link>
           </div>
 
           {/* Desktop CTA & Admin */}
@@ -221,6 +232,16 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
                 </button>
               );
             })}
+            <Link
+              href="/invitations"
+              onClick={() => setIsOpen(false)}
+              className={`w-full text-left block px-4 py-3 rounded-full text-sm font-bold uppercase tracking-wider font-display transition-all ${
+                onInvitations ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+              id="mobile-nav-invitations"
+            >
+              Invitations
+            </Link>
             <button
               onClick={() => handleNavClick('inquiry')}
               className={`w-full mt-4 inline-flex items-center justify-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-lg focus:outline-hidden ${getButtonBgClass()}`}

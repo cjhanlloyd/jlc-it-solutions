@@ -130,10 +130,11 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
 
   const token = randomToken();
   const suffix = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('');
+  const slug = makeSlug(details.partner1, details.partner2, suffix);
   // Rows first, so the R2 keys can use the real invitation id
   const inv = await env.DB.prepare(
     "INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?)",
-  ).bind(design.id, makeSlug(details.partner1, details.partner2, suffix), JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(token)).run();
+  ).bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(token)).run();
   const invitationId = inv.meta.last_row_id;
   const ord = await env.DB.prepare(
     "INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at) VALUES (?, ?, ?, 'pending', ?)",
@@ -155,7 +156,8 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
       metadata: { order_id: String(orderId) },
     });
     await env.DB.prepare('UPDATE orders SET paymongo_checkout_id = ? WHERE id = ?').bind(session.id, orderId).run();
-    return json({ checkoutUrl: session.checkoutUrl });
+    // slug lets the success page link the guest page; order-status can't return it (order ids are guessable)
+    return json({ checkoutUrl: session.checkoutUrl, slug });
   } catch (e) {
     console.error('checkout failed:', e instanceof Error ? e.message : e);
     if (keys.length) await env.PHOTOS.delete(keys);

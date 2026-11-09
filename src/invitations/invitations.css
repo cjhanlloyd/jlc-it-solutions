@@ -185,3 +185,6 @@ body { margin: 0; }
 .plain-loading { font-style: italic; animation: inv-pulse 1.6s ease-in-out infinite; }
 @keyframes inv-pulse { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .plain-loading { animation: none; } .inv .btn { transition: none; } }
+
+/* Keep the couple's line breaks in free-text fields (message, dress code, gifts note). */
+.cl-message, .gd-message, .md-lead, [aria-labelledby="cl-notes"] p, [aria-labelledby="gd-notes"] p, .md-row > p { white-space: pre-line; }

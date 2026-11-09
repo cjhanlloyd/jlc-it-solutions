@@ -38,6 +38,11 @@ import PricingSection from './components/PricingSection.tsx';
 import ProcessTimeline from './components/ProcessTimeline.tsx';
 import FaqAccordion from './components/FaqAccordion.tsx';
 import ProjectGallery from './components/ProjectGallery.tsx';
+import CatalogPage from './invitations/CatalogPage.tsx';
+import CustomiserPage from './invitations/CustomiserPage.tsx';
+import SuccessPage from './invitations/SuccessPage.tsx';
+import ManagePage from './invitations/ManagePage.tsx';
+import PolicyPage from './invitations/PolicyPage.tsx';
 
 export default function App() {
   const [activeTab, setActiveTabState] = React.useState<string>(() => {
@@ -51,8 +56,16 @@ export default function App() {
     return 'home';
   });
 
+  // Real-path pages (/invitations, /manage, policies) render instead of the hash-routed site.
+  const [path, setPath] = React.useState(window.location.pathname);
+
   const setActiveTab = (tabName: string) => {
-    window.location.hash = '#/' + tabName;
+    if (window.location.pathname !== '/') {
+      window.history.pushState(null, '', '/#/' + tabName);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      window.location.hash = '#/' + tabName;
+    }
   };
   const [services, setServices] = React.useState<Service[]>(DEFAULT_SERVICES);
   const [branding, setBranding] = React.useState<BrandingSettings>(() => {
@@ -129,18 +142,25 @@ export default function App() {
       }
     };
 
+    const handlePopState = () => {
+      setPath(window.location.pathname);
+      handleHashChange();
+    };
+
     window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
     handleHashChange(); // Sync initial state
 
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
   // Smooth scroll to top of viewport when tab switches
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeTab]);
+  }, [activeTab, path]);
 
   // Read invite/reset links
   React.useEffect(() => {
@@ -410,6 +430,17 @@ export default function App() {
     }
   };
 
+  const btn = getButtonBgClass();
+  const designSlug = path.match(/^\/invitations\/([^/]+)\/?$/)?.[1];
+  const policy = path.match(/^\/(terms|refund-policy|privacy)\/?$/)?.[1] as 'terms' | 'refund-policy' | 'privacy' | undefined;
+  const page =
+    /^\/invitations\/?$/.test(path) ? <CatalogPage btn={btn} />
+    : designSlug === 'success' ? <SuccessPage btn={btn} />
+    : designSlug ? <CustomiserPage slug={designSlug} btn={btn} />
+    : /^\/manage\/?$/.test(path) ? <ManagePage btn={btn} />
+    : policy ? <PolicyPage kind={policy} company={branding.companyName || 'JLC IT Solutions'} email={content.contactEmail} />
+    : null;
+
   if (isDataLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center font-sans">
@@ -532,7 +563,7 @@ export default function App() {
       {/* Sticky Navigation Bar */}
       <Navbar
         branding={branding}
-        activeTab={activeTab}
+        activeTab={page ? '' : activeTab}
         setActiveTab={setActiveTab}
         onAdminClick={handleAdminPortalClick}
         isAdminLoggedIn={!!adminToken}
@@ -540,6 +571,9 @@ export default function App() {
 
       {/* Main Content Areas */}
       <main className="flex-grow">
+
+        {page}
+        {!page && <>
 
         {/* HOMEPAGE VIEW */}
         {activeTab === 'home' && (
@@ -724,6 +758,7 @@ export default function App() {
             onDataChange={loadPublicData}
           />
         )}
+        </>}
 
       </main>
 

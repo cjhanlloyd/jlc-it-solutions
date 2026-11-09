@@ -210,8 +210,8 @@ test('checkout rejects non-image data URLs and unknown color schemes', async () 
 test('successful checkout creates pending rows and returns checkoutUrl', async () => {
   const res = await post('/api/invitations/checkout', goodCheckout());
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { checkoutUrl: 'https://checkout.paymongo.com/cs_1' });
   const [inv] = db.invitations, [order] = db.orders;
+  assert.deepEqual(await res.json(), { checkoutUrl: 'https://checkout.paymongo.com/cs_1', slug: inv.slug });
   assert.equal(inv.status, 'pending');
   assert.match(inv.slug, /^maria-and-juan-[a-z0-9]+$/);
   assert.deepEqual(JSON.parse(inv.color_scheme), JSON.parse(design.color_schemes)[0]);
