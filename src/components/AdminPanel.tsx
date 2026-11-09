@@ -23,6 +23,8 @@ import {
   DEFAULT_PRICING_CARDS
 } from '../types.js';
 import { optimizeImage } from './admin/images.js';
+import LogsTab from './admin/LogsTab.js';
+import InquiriesTab from './admin/InquiriesTab.js';
 
 
 interface AdminPanelProps {
@@ -88,13 +90,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   const [isGeneratingTagline, setIsGeneratingTagline] = React.useState(false);
 
   // Local state for Inquiry Active View & AI Reply Assistant
-  const [selectedInquiryId, setSelectedInquiryId] = React.useState<string | null>(null);
-  const [inquiryStatusSelect, setInquiryStatusSelect] = React.useState<InquiryStatus>('New');
-  const [inquiryNotesText, setInquiryNotesText] = React.useState('');
-  const [aiInstructionsText, setAiInstructionsText] = React.useState('');
-  const [isDraftingReply, setIsDraftingReply] = React.useState(false);
-  const [aiDraftedReplyText, setAiDraftedReplyText] = React.useState('');
-  const [replySubject, setReplySubject] = React.useState('');
 
   // Fetch admin data on load
   const fetchAdminData = async () => {
@@ -149,123 +144,9 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
     }
   };
 
-  // Inquiry Status & Notes save
-  const handleUpdateInquiryStatus = async (id: string) => {
-    setIsSaving(true);
-    setApiError('');
-    try {
-      const response = await fetch('/api/admin/inquiries/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({
-          id,
-          status: inquiryStatusSelect,
-          adminNotes: inquiryNotesText
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to update inquiry.');
-      
-      setDb(prev => prev ? { ...prev, inquiries: data.inquiries } : prev);
-      showFlashMsg('Inquiry updated successfully!');
-    } catch (err: any) {
-      setApiError(err.message || 'Error updating inquiry.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
-  const handleDeleteInquiry = async (id: string) => {
-    if (!window.confirm('Are you absolutely sure you want to delete this client inquiry permanently? This action cannot be undone.')) return;
-    setIsSaving(true);
-    setApiError('');
-    try {
-      const response = await fetch('/api/admin/inquiries/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({ id })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to delete client inquiry.');
-      setDb(prev => prev ? { ...prev, inquiries: data.inquiries } : prev);
-      setSelectedInquiryId(null);
-      showFlashMsg('Inquiry permanently deleted.');
-    } catch (err: any) {
-      setApiError(err.message || 'Error deleting inquiry.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
-  // Gemini-powered Inquiry Reply Drafter
-  const handleGenerateReplyDraft = async (inq: Inquiry) => {
-    setIsDraftingReply(true);
-    setApiError('');
-    setAiDraftedReplyText('');
-    try {
-      const response = await fetch('/api/admin/generate-reply-draft', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({
-          inquiryId: inq.id,
-          instructions: aiInstructionsText
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to generate draft.');
-      
-      setAiDraftedReplyText(data.draftText);
-      setReplySubject(`Re: JLC Solutions inquiry - ${inq.serviceRequired}`);
-    } catch (err: any) {
-      setApiError(err.message || 'Gemini Generation failed.');
-    } finally {
-      setIsDraftingReply(false);
-    }
-  };
 
-  // Simulated Manual Email Sender
-  const handleSendManualReply = async (inq: Inquiry) => {
-    setIsSaving(true);
-    setApiError('');
-    try {
-      const response = await fetch('/api/admin/inquiries/reply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({
-          inquiryId: inq.id,
-          to: inq.email,
-          subject: replySubject,
-          body: aiDraftedReplyText
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to dispatch manual reply.');
-      
-      setDb(prev => prev ? { ...prev, sentEmails: data.sentEmails, inquiries: data.inquiries } : prev);
-      setAiDraftedReplyText('');
-      setAiInstructionsText('');
-      showFlashMsg(`Reply simulation sent successfully to ${inq.email}!`);
-      
-      // Auto update status local state since server moved it to 'In Progress'
-      setInquiryStatusSelect('In Progress');
-    } catch (err: any) {
-      setApiError(err.message || 'Error sending reply.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // Services management CRUD
   const handleAddOrEditService = async (e: React.FormEvent) => {
@@ -1042,27 +923,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
     }
   };
 
-  // Service Required Trend calculation for Analytics
-  const getServiceTrendData = () => {
-    if (!db || !db.inquiries) return [];
-    const counts: Record<string, number> = {};
-    db.inquiries.forEach(inq => {
-      counts[inq.serviceRequired] = (counts[inq.serviceRequired] || 0) + 1;
-    });
-    return Object.keys(counts).map(key => ({ service: key, count: counts[key] }));
-  };
 
-  const getStatusBreakdown = () => {
-    if (!db || !db.inquiries) return { new: 0, progress: 0, completed: 0, closed: 0 };
-    let newInqs = 0, progress = 0, completed = 0, closed = 0;
-    db.inquiries.forEach(inq => {
-      if (inq.status === 'New') newInqs++;
-      else if (inq.status === 'In Progress') progress++;
-      else if (inq.status === 'Completed') completed++;
-      else if (inq.status === 'Closed') closed++;
-    });
-    return { new: newInqs, progress, completed, closed };
-  };
 
   // Main Loader
   if (isLoading) {
@@ -1078,6 +939,9 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   const activeServices = db?.services || [];
   const activeSentEmails = db?.sentEmails || [];
   const activeAdminsList = db?.admins || [];
+
+  // Every tab stays mounted (hidden when inactive) so unsaved edits survive switching tabs
+  const tabProps = db ? { db, setDb, adminToken, adminUser, isSaving, run, showFlashMsg, setApiError, onDataChange } : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="admin-dashboard-root">
@@ -1199,271 +1063,9 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
         <div className="lg:col-span-9 bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-xs">
           
           {/* TAB 1: CLIENT INQUIRIES & AI ASSISTANT */}
-          {activeSubTab === 'inquiries' && (
-            <div className="space-y-6" id="panel-inquiries">
-              <div className="border-b border-gray-100 pb-4 mb-4">
-                <h2 className="text-xl font-bold text-gray-900 font-sans">Manage Client Inquiries</h2>
-                <p className="text-xs text-gray-500 font-sans mt-1">Review operational metrics, update status workflows, and generate customized responses using Gemini AI.</p>
-              </div>
-
-              {/* Inquiry List */}
-              {activeInquiries.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 font-sans">
-                  <Icons.Inbox className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-                  No inquiries have been received yet.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {activeInquiries.map((inq) => {
-                    const isSelected = selectedInquiryId === inq.id;
-                    return (
-                      <div 
-                        key={inq.id}
-                        className={`border rounded-xl p-5 transition-all ${
-                          isSelected ? 'border-blue-500 bg-blue-50/10 shadow-xs' : 'border-gray-100 hover:border-gray-200 bg-white'
-                        }`}
-                        id={`inquiry-row-${inq.id}`}
-                      >
-                        {/* Summary Header */}
-                        <div 
-                          className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer focus:outline-hidden"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedInquiryId(null);
-                            } else {
-                              setSelectedInquiryId(inq.id);
-                              setInquiryStatusSelect(inq.status);
-                              setInquiryNotesText(inq.adminNotes || '');
-                              setAiDraftedReplyText('');
-                            }
-                          }}
-                        >
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-bold text-gray-900 font-sans">{inq.fullName}</span>
-                              {inq.companyName && (
-                                <span className="text-xs text-gray-400 font-semibold font-sans">({inq.companyName})</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500 font-sans mt-1 flex flex-wrap gap-x-4">
-                              <span>Service: <strong className="text-gray-700">{inq.serviceRequired}</strong></span>
-                              <span>Date: <strong className="text-gray-700">{new Date(inq.createdAt).toLocaleDateString()}</strong></span>
-                            </div>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="flex items-center space-x-2 shrink-0">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold font-sans ${
-                              inq.status === 'New' ? 'bg-red-50 text-red-700 border border-red-100' :
-                              inq.status === 'In Progress' ? 'bg-yellow-50 text-yellow-700 border border-yellow-100' :
-                              inq.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                              'bg-gray-100 text-gray-700 border border-gray-200'
-                            }`}>
-                              {inq.status}
-                            </span>
-                            <Icons.ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isSelected ? 'rotate-180' : ''}`} />
-                          </div>
-                        </div>
-
-                        {/* Detailed Sub Drawer */}
-                        {isSelected && (
-                          <div className="mt-5 border-t border-gray-100 pt-5 space-y-6" id={`inquiry-details-${inq.id}`}>
-                            
-                            {/* Contact Info and Description */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-gray-600 font-sans">
-                              <div className="space-y-2 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                                <h4 className="font-bold text-gray-900 uppercase tracking-wider font-mono">Contact & Budget Details</h4>
-                                <p>Email: <strong className="text-gray-900 select-all">{inq.email}</strong></p>
-                                <p>Phone: <strong className="text-gray-900 select-all">{inq.phone}</strong></p>
-                                <p>Preferred Method: <strong className="text-gray-900">{inq.preferredContactMethod}</strong></p>
-                                {inq.budget && <p>Estimated Budget: <strong className="text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded-sm">{inq.budget}</strong></p>}
-                                {inq.fileAttachment && (
-                                  <p>File Attachment: <a href={inq.fileAttachment.base64} download={inq.fileAttachment.name} className="text-blue-600 hover:underline font-bold inline-flex items-center space-x-1"><Icons.Paperclip className="h-3 w-3 inline mr-0.5" /><span>{inq.fileAttachment.name}</span></a></p>
-                                )}
-                              </div>
-                              <div className="space-y-2 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                                <h4 className="font-bold text-gray-900 uppercase tracking-wider font-mono">Project Overview</h4>
-                                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed italic">"{inq.projectDescription}"</p>
-                              </div>
-                            </div>
-
-                            {/* Status Workflow & Internal Admin Notes */}
-                            <div className="bg-gray-50 p-5 rounded-xl border border-gray-200/60 space-y-4">
-                              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider font-mono">Operational Controls</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                                <div className="space-y-1.5">
-                                  <label className="text-xs text-gray-500 font-sans font-semibold">Mark Status</label>
-                                  <select
-                                    value={inquiryStatusSelect}
-                                    onChange={(e) => setInquiryStatusSelect(e.target.value as InquiryStatus)}
-                                    className="w-full border border-gray-200 bg-white p-2 rounded-lg text-xs font-semibold"
-                                  >
-                                    <option value="New">New</option>
-                                    <option value="In Progress">In Progress</option>
-                                    <option value="Completed">Completed</option>
-                                    <option value="Closed">Closed</option>
-                                  </select>
-                                </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                  <label className="text-xs text-gray-500 font-sans font-semibold">Internal Consulting Notes</label>
-                                  <input
-                                    type="text"
-                                    value={inquiryNotesText}
-                                    onChange={(e) => setInquiryNotesText(e.target.value)}
-                                    placeholder="Enter pricing details, follow-up dates, or developer assignments..."
-                                    className="w-full border border-gray-200 bg-white p-2 rounded-lg text-xs"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex justify-end items-center gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteInquiry(inq.id)}
-                                  disabled={isSaving}
-                                  className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-55 hover:text-red-700 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center space-x-1.5"
-                                  title="Permanently delete client inquiry record"
-                                >
-                                  <Icons.Trash className="h-3.5 w-3.5" />
-                                  <span>Delete Inquiry</span>
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateInquiryStatus(inq.id)}
-                                  disabled={isSaving}
-                                  className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer"
-                                >
-                                  {isSaving ? 'Saving Changes...' : 'Save Operations Update'}
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Gemini AI reply assistant module */}
-                            <div className="border border-blue-100 rounded-xl overflow-hidden bg-blue-50/5 p-5 space-y-4">
-                              <div className="flex items-center space-x-2 text-blue-800">
-                                <Icons.Sparkles className="h-4 w-4 animate-pulse" />
-                                <h4 className="text-xs font-bold uppercase tracking-wider font-mono">Gemini Intelligent Sales Assistant</h4>
-                              </div>
-                              
-                              <p className="text-xs text-gray-600 font-sans">
-                                Feed prompt goals to Gemini. The model will read this inquiry's description, formulate technical insights, align on your brand voice, and write a high-fidelity email response!
-                              </p>
-
-                              {/* Client and Project Details Card */}
-                              <div className="bg-white rounded-xl p-4 border border-blue-100/60 shadow-xs space-y-3">
-                                <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 font-mono inline-flex items-center gap-1.5">
-                                    <Icons.Inbox className="h-3 w-3" />
-                                    Operational Context
-                                  </span>
-                                  <span className="text-[9px] text-gray-400 font-mono font-semibold bg-gray-50 border px-1.5 py-0.5 rounded-sm">ID: {inq.id || 'N/A'}</span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-gray-400 font-mono block">Client Name</span>
-                                    <strong className="text-gray-900">{inq.fullName || 'N/A'}</strong>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-gray-400 font-mono block">Company / Business</span>
-                                    <strong className="text-gray-900">{inq.companyName || 'N/A'}</strong>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-gray-400 font-mono block">Service Requested</span>
-                                    <strong className="text-gray-900">{inq.serviceRequired || 'N/A'}</strong>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-gray-400 font-mono block">Email Address</span>
-                                    <strong className="text-gray-900 select-all">{inq.email || 'N/A'}</strong>
-                                  </div>
-                                </div>
-                                <div className="pt-2.5 border-t border-gray-100 space-y-1">
-                                  <span className="text-[10px] uppercase font-bold text-gray-400 font-mono block">Project Requirement Description</span>
-                                  <p className="text-xs text-gray-700 bg-blue-50/10 p-2.5 rounded-lg border border-blue-50/20 whitespace-pre-wrap italic leading-relaxed font-sans">
-                                    {inq.projectDescription ? `"${inq.projectDescription}"` : 'No project description was provided.'}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <label className="text-[10px] uppercase font-bold text-gray-400 font-mono block">AI Response Goals</label>
-                                <textarea
-                                  value={aiInstructionsText}
-                                  onChange={(e) => setAiInstructionsText(e.target.value)}
-                                  placeholder="e.g. Schedule a 15 min Zoom call, decline gently if we cannot handle within 2 weeks, explain that custom react apps require robust backends..."
-                                  rows={2}
-                                  className="w-full p-2.5 border border-blue-100 bg-white rounded-lg text-xs focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900"
-                                />
-                              </div>
-
-                              <div className="flex justify-between items-center">
-                                <span className="text-[10px] text-gray-400 font-mono bg-white border px-2 py-1 rounded-md">Powered by Model: gemini-3.5-flash</span>
-                                <button
-                                  onClick={() => handleGenerateReplyDraft(inq)}
-                                  disabled={isDraftingReply}
-                                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold inline-flex items-center"
-                                >
-                                  {isDraftingReply ? (
-                                    <>
-                                      <Icons.Loader className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" />
-                                      AI drafting response...
-                                    </>
-                                  ) : (
-                                    <>
-                                      Draft Reply using Gemini
-                                      <Icons.Sparkles className="ml-1.5 h-3.5 w-3.5" />
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
-                              {/* Draft Display & Send simulated reply */}
-                              {aiDraftedReplyText && (
-                                <div className="border border-gray-200 rounded-xl overflow-hidden mt-4 shadow-xs bg-white space-y-4 p-5">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] uppercase font-mono font-bold text-emerald-600">Generated Email Draft</span>
-                                    <Icons.Mail className="h-4 w-4 text-emerald-500" />
-                                  </div>
-                                  
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="text-[10px] font-mono text-gray-400 block">Subject Line</label>
-                                      <input
-                                        type="text"
-                                        value={replySubject}
-                                        onChange={(e) => setReplySubject(e.target.value)}
-                                        className="w-full border-b border-gray-100 py-1 font-semibold text-gray-900 text-xs focus:outline-hidden"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-mono text-gray-400 block">Email Body</label>
-                                      <textarea
-                                        value={aiDraftedReplyText}
-                                        onChange={(e) => setAiDraftedReplyText(e.target.value)}
-                                        rows={10}
-                                        className="w-full p-3 border border-gray-100 rounded-lg text-xs leading-relaxed text-gray-700 focus:outline-hidden"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div className="flex justify-end pt-2">
-                                    <button
-                                      onClick={() => handleSendManualReply(inq)}
-                                      disabled={isSaving}
-                                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold inline-flex items-center"
-                                    >
-                                      {isSaving ? 'Sending...' : 'Send Simulated Response'}
-                                      <Icons.Send className="ml-2 h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {tabProps && (
+            <div hidden={activeSubTab !== 'inquiries'}>
+              <InquiriesTab {...tabProps} />
             </div>
           )}
 
@@ -3845,130 +3447,9 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
 
 
           {/* TAB 7: ANALYTICS & ACTIVITY LOGS */}
-          {activeSubTab === 'logs' && (
-            <div className="space-y-8" id="panel-logs">
-              <div className="border-b border-gray-100 pb-4 mb-4">
-                <h2 className="text-xl font-bold text-gray-900 font-sans">Analytics & System Activity</h2>
-                <p className="text-xs text-gray-500 font-sans mt-1">Monitor inquiry stats, review automated acknowledgment outputs, and audit real-time console server events.</p>
-              </div>
-
-              {/* Simple Metrics Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="border border-gray-100 p-4 rounded-xl bg-gray-50/50">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 font-mono">Total Inquiries</span>
-                  <span className="text-2xl font-black text-gray-900 block mt-1 font-sans">{activeInquiries.length}</span>
-                </div>
-                <div className="border border-gray-100 p-4 rounded-xl bg-gray-50/50">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 font-mono">Pending Inquiries</span>
-                  <span className="text-2xl font-black text-red-600 block mt-1 font-sans">{getStatusBreakdown().new}</span>
-                </div>
-                <div className="border border-gray-100 p-4 rounded-xl bg-gray-50/50">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 font-mono">Simulated Emails</span>
-                  <span className="text-2xl font-black text-emerald-600 block mt-1 font-sans">{activeSentEmails.length}</span>
-                </div>
-                <div className="border border-gray-100 p-4 rounded-xl bg-gray-50/50">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 font-mono">Dynamic Services</span>
-                  <span className="text-2xl font-black text-blue-600 block mt-1 font-sans">{activeServices.length}</span>
-                </div>
-              </div>
-
-              {/* Inquiry Status Chart breakdown (SVG-based, precise, robust) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* SVG Status Breakdown */}
-                <div className="border border-gray-100 p-5 rounded-2xl bg-white space-y-4">
-                  <h4 className="text-xs uppercase font-mono font-bold text-gray-400 tracking-wider">Inquiry Status Breakdown</h4>
-                  
-                  <div className="space-y-3 pt-2">
-                    {/* New */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-gray-700">
-                        <span>New (Unprocessed)</span>
-                        <span>{getStatusBreakdown().new}</span>
-                      </div>
-                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-red-500 rounded-full transition-all duration-500" 
-                          style={{ width: `${activeInquiries.length > 0 ? (getStatusBreakdown().new / activeInquiries.length) * 100 : 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* In Progress */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-gray-700">
-                        <span>In Progress (Responding)</span>
-                        <span>{getStatusBreakdown().progress}</span>
-                      </div>
-                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-yellow-500 rounded-full transition-all duration-500" 
-                          style={{ width: `${activeInquiries.length > 0 ? (getStatusBreakdown().progress / activeInquiries.length) * 100 : 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* Completed */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-gray-700">
-                        <span>Completed (Resolved)</span>
-                        <span>{getStatusBreakdown().completed}</span>
-                      </div>
-                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
-                          style={{ width: `${activeInquiries.length > 0 ? (getStatusBreakdown().completed / activeInquiries.length) * 100 : 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SVG Service Popularity */}
-                <div className="border border-gray-100 p-5 rounded-2xl bg-white space-y-4">
-                  <h4 className="text-xs uppercase font-mono font-bold text-gray-400 tracking-wider">Service Inquiry Distribution</h4>
-                  
-                  {getServiceTrendData().length === 0 ? (
-                    <div className="text-center py-6 text-xs text-gray-400 font-sans">No data trends to analyze yet.</div>
-                  ) : (
-                    <div className="space-y-3 pt-2">
-                      {getServiceTrendData().slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex justify-between text-xs font-semibold text-gray-700">
-                            <span className="truncate">{item.service}</span>
-                            <span>{item.count}</span>
-                          </div>
-                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-600 rounded-full" 
-                              style={{ width: `${(item.count / activeInquiries.length) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Audit Server logs (audit terminal simulation) */}
-              <div className="space-y-3">
-                <h4 className="text-xs uppercase font-mono font-bold text-gray-400 tracking-wider">Server Operational Audit Logs</h4>
-                <div className="bg-gray-900 rounded-xl p-4 font-mono text-[11px] text-gray-300 space-y-2 h-48 overflow-y-auto border border-gray-800 leading-relaxed shadow-inner">
-                  {systemLogs.map((log, idx) => (
-                    <div key={idx} className="flex space-x-3">
-                      <span className="text-gray-500 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                      <span className={`shrink-0 uppercase font-bold text-[9px] px-1.5 py-0.5 rounded-sm ${
-                        log.type === 'security' ? 'bg-red-950 text-red-300 border border-red-900/40' :
-                        log.type === 'system_error' ? 'bg-amber-950 text-amber-300 border border-amber-900/40' :
-                        log.type === 'inquiry' ? 'bg-blue-950 text-blue-300' :
-                        'bg-gray-800 text-gray-400'
-                      }`}>{log.type}</span>
-                      <span className="text-gray-200">{log.message}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {tabProps && (
+            <div hidden={activeSubTab !== 'logs'}>
+              <LogsTab {...tabProps} systemLogs={systemLogs} />
             </div>
           )}
 

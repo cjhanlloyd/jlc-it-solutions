@@ -10,5 +10,8 @@ export interface AdminTabProps {
   isSaving: boolean;
   /** Runs a save: sets the saving flag, shows successMsg on success or the error in the banner. */
   run: (task: () => Promise<void>, successMsg?: string) => Promise<void>;
+  /** The shell's banners, for messages that depend on handler locals and for non-save actions. */
+  showFlashMsg: (msg: string) => void;
+  setApiError: (msg: string) => void;
   onDataChange?: () => void;
 }
