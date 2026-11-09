@@ -76,10 +76,11 @@ function exec(sql, a) {
     db.designs.push({ id, slug: a[0], name: a[1], layout_key: a[2], price_centavos: a[3], color_schemes: a[4], preview_images: a[5], sample_details: a[6], active: a[7], sort_order: Math.max(...db.designs.map(d => d.sort_order)) + 1 });
     return { meta: { last_row_id: id, changes: 1 } };
   }
+  if (/^SELECT layout_key FROM products_designs WHERE id = \?/.test(sql)) return db.designs.find(d => d.id === a[0]) ?? null;
   if (/^UPDATE products_designs SET slug = \?/.test(sql)) {
-    const d = db.designs.find(x => x.id === a[8]);
+    const d = db.designs.find(x => x.id === a[7]);
     if (!d) return { meta: { changes: 0 } };
-    Object.assign(d, { slug: a[0], name: a[1], layout_key: a[2], price_centavos: a[3], color_schemes: a[4], preview_images: a[5], sample_details: a[6], active: a[7] });
+    Object.assign(d, { slug: a[0], name: a[1], price_centavos: a[2], color_schemes: a[3], preview_images: a[4], sample_details: a[5], active: a[6] });
     return { meta: { changes: 1 } };
   }
   if (/^UPDATE products_designs SET active = \? WHERE id = \?/.test(sql)) {
@@ -192,12 +193,21 @@ test('design add/update with a taken slug → 409', async () => {
 });
 
 test('design update changes the design only; keeps its own slug; unknown id → 404', async () => {
-  const res = await designs({ action: 'update', id: 1, ...goodDesign, slug: 'classic', name: 'Renamed', price_centavos: 120000 });
+  const res = await designs({ action: 'update', id: 1, ...goodDesign, layout_key: 'classic', slug: 'classic', name: 'Renamed', price_centavos: 120000 });
   assert.equal(res.status, 200);
   assert.equal(db.designs[0].name, 'Renamed');
   assert.equal(db.designs[0].price_centavos, 120000);
   assert.equal(db.invitations[0].color_scheme, '{}');
   assert.equal((await designs({ action: 'update', id: 99, ...goodDesign })).status, 404);
+});
+
+test('design update with a different layout_key → 409, stored layout unchanged; same layout_key succeeds', async () => {
+  const res = await designs({ action: 'update', id: 1, ...goodDesign, slug: 'classic', layout_key: 'garden' });
+  assert.equal(res.status, 409);
+  assert.equal(db.designs[0].layout_key, 'classic');
+  assert.equal(db.designs[0].name, 'Classic');
+  assert.equal((await designs({ action: 'update', id: 1, ...goodDesign, slug: 'classic', layout_key: 'classic' })).status, 200);
+  assert.equal(db.designs[0].layout_key, 'classic');
 });
 
 test('design toggle and reorder', async () => {

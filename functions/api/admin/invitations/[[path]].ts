@@ -125,10 +125,14 @@ async function designAction(env: Env, b: any): Promise<Response> {
       ).bind(...fields).run();
       return json({ ok: true });
     }
-    // Existing invitations keep their own scheme copy, so nothing else is touched
+    // Live invitations read layout_key from their design, so it is fixed for life; other edits do not reach them (they keep their own scheme copy)
+    const stored = await env.DB.prepare('SELECT layout_key FROM products_designs WHERE id = ?').bind(b.id).first<any>();
+    if (!stored) return json({ error: 'Design not found.' }, 404);
+    if (stored.layout_key !== d.layout_key) return json({ error: "A design's layout can't be changed; add a new design instead." }, 409);
+    const [slug, name, , price, schemes, imgs, sample, active] = fields;
     const r = await env.DB.prepare(
-      'UPDATE products_designs SET slug = ?, name = ?, layout_key = ?, price_centavos = ?, color_schemes = ?, preview_images = ?, sample_details = ?, active = ? WHERE id = ?',
-    ).bind(...fields, b.id).run();
+      'UPDATE products_designs SET slug = ?, name = ?, price_centavos = ?, color_schemes = ?, preview_images = ?, sample_details = ?, active = ? WHERE id = ?',
+    ).bind(slug, name, price, schemes, imgs, sample, active, b.id).run();
     return r.meta.changes ? json({ ok: true }) : json({ error: 'Design not found.' }, 404);
   } catch (e) {
     if (/UNIQUE/i.test(String(e))) return SLUG_TAKEN(); // lost a race with another admin
