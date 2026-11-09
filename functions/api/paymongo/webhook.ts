@@ -31,20 +31,33 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     if (type !== 'checkout_session.payment.paid') return json({ ok: true });
     const session = evt.data.attributes.data ?? {};
+    // LEFT JOIN: cleanup deletes an expired order's invitation, but a late payment must still be found
     const order = await env.DB.prepare(
-      'SELECT o.id, o.status, o.customer_email, o.amount_centavos, i.id AS invitation_id, i.slug, d.name AS design_name FROM orders o JOIN invitations i ON i.id = o.product_id JOIN products_designs d ON d.id = i.design_id WHERE o.paymongo_checkout_id = ?',
+      'SELECT o.id, o.status, o.customer_email, o.amount_centavos, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id WHERE o.paymongo_checkout_id = ?',
     ).bind(String(session.id ?? '')).first<any>();
     if (!order) return json({ ok: true });
     await env.DB.prepare('UPDATE payment_events SET order_id = ? WHERE paymongo_event_id = ?').bind(order.id, eventId).run();
+    if (order.status === 'expired' || order.status === 'failed') {
+      // 200 so PayMongo stops retrying; the money has to be refunded by hand
+      const message = `Payment arrived for ${order.status} order ${order.id} (${order.customer_email}); nothing was activated. Refund it in PayMongo.`;
+      console.error('PayMongo webhook:', message);
+      await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'security', ?)").bind(new Date().toISOString(), message).run();
+      return json({ ok: true });
+    }
     if (order.status !== 'pending') return json({ ok: true });
 
     const paidAt = new Date();
-    const [paid] = await env.DB.batch([
+    const [paid, live] = await env.DB.batch([
       env.DB.prepare("UPDATE orders SET status = 'paid', paid_at = ?, paymongo_payment_id = ? WHERE id = ? AND status = 'pending'")
         .bind(paidAt.toISOString(), session.attributes?.payments?.[0]?.id ?? null, order.id),
       env.DB.prepare("UPDATE invitations SET status = 'live' WHERE id = ? AND status = 'pending'").bind(order.invitation_id),
     ]);
     if (!paid.meta.changes) return json({ ok: true });
+    // Email the links only if the invitation really went live
+    if (!live.meta.changes) {
+      console.error(`PayMongo webhook: order ${order.id} is paid but its invitation was not pending; no email sent`);
+      return json({ ok: true });
+    }
 
     const origin = new URL(request.url).origin;
     context.waitUntil((async () => {

@@ -1,10 +1,12 @@
 /// <reference types="@cloudflare/workers-types" />
+import { runCleanup } from '../../../../server/cleanup';
 import { verifyAdminToken } from '../../../../server/crypto';
 import { emailAndRotateToken } from '../../../../server/invitation-links';
 import { LAYOUT_KEYS, validateDetails } from '../../../../shared/invitation-fields';
 
 interface Env {
   DB: D1Database;
+  PHOTOS: R2Bucket;
   JWT_SECRET?: string;
 }
 
@@ -41,10 +43,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 };
 
 async function overview(env: Env): Promise<Response> {
+  // shortcut: cleanup runs when an admin opens the overview, because Pages has no cron; upgrade to a Worker cron trigger if orders grow.
+  try {
+    await runCleanup(env.DB, env.PHOTOS, new Date());
+  } catch (e) {
+    console.error('cleanup failed:', e instanceof Error ? e.message : e);
+  }
   const [designs, orders, events, invitations, totals] = await Promise.all([
     env.DB.prepare('SELECT * FROM products_designs ORDER BY sort_order, id').all<any>(),
     env.DB.prepare(
-      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.paymongo_checkout_id, o.paymongo_payment_id, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o JOIN invitations i ON i.id = o.product_id JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
+      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.paymongo_checkout_id, o.paymongo_payment_id, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
     ).all<any>(),
     // Type and time only: the raw payload stays out of the response
     env.DB.prepare('SELECT order_id, type, received_at FROM payment_events WHERE order_id IS NOT NULL ORDER BY received_at, rowid').all<any>(),

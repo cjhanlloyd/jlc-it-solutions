@@ -60,7 +60,7 @@ export default function OrdersTab({ overview, reload, adminToken, adminUser, isS
                 )}
               </div>
               <div className="text-[11px] font-mono text-gray-500 space-y-0.5">
-                <div>{o.customer_email} · /i/{o.slug}</div>
+                <div>{o.customer_email}{o.slug ? ` · /i/${o.slug}` : ' · invitation deleted'}</div>
                 <div>Created {when(o.created_at)} · Paid {when(o.paid_at)}</div>
                 {o.paymongo_checkout_id && <div>Checkout: {o.paymongo_checkout_id}</div>}
                 {o.paymongo_payment_id && <div>Payment: {o.paymongo_payment_id}</div>}

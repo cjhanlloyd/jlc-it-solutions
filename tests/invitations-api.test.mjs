@@ -63,11 +63,11 @@ function exec(sql, a) {
   }
   if (/^DELETE FROM payment_events/.test(sql)) { db.events = db.events.filter(e => e.paymongo_event_id !== a[0]); return { meta: { changes: 1 } }; }
   if (/^UPDATE payment_events SET order_id = \?/.test(sql)) { db.events.find(e => e.paymongo_event_id === a[1]).order_id = a[0]; return { meta: { changes: 1 } }; }
-  if (/FROM orders o JOIN invitations i .* WHERE o.paymongo_checkout_id = \?/.test(sql)) {
+  if (/FROM orders o LEFT JOIN invitations i .* WHERE o.paymongo_checkout_id = \?/.test(sql)) {
     const o = db.orders.find(x => x.paymongo_checkout_id === a[0]);
     if (!o) return null;
     const i = row('invitations', o.product_id);
-    return { ...o, invitation_id: i.id, slug: i.slug, design_name: db.designs.find(d => d.id === i.design_id).name };
+    return { ...o, invitation_id: o.product_id, slug: i?.slug ?? null, design_name: i ? db.designs.find(d => d.id === i.design_id).name : null };
   }
   if (/^UPDATE orders SET status = 'paid'/.test(sql)) {
     const o = row('orders', a[2]);
@@ -115,6 +115,10 @@ function exec(sql, a) {
   if (/FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.customer_email = \? AND o.status = 'paid' AND i.status = 'live'/.test(sql)) {
     return { results: db.orders.filter(o => o.customer_email === a[0] && o.status === 'paid')
       .map(o => row('invitations', o.product_id)).filter(i => i && i.status === 'live').map(i => ({ id: i.id, slug: i.slug })) };
+  }
+  if (/^INSERT INTO audit_logs \(timestamp, log_type, message\) VALUES \(\?, 'security', \?\)/.test(sql)) {
+    db.audit.push({ timestamp: a[0], log_type: 'security', message: a[1] });
+    return { meta: { changes: 1 } };
   }
   if (/smtp_settings/.test(sql)) return { enabled: smtpEnabled ? 1 : 0, host: 'h', port: 587, senderName: 'JLC', senderEmail: 'co@x.com' };
   if (/FROM (branding|content)/.test(sql)) return null;
@@ -310,6 +314,45 @@ test('paid event for a refunded order → stays refunded, no email', async () =>
   assert.equal(db.invitations[0].status, 'refunded');
   assert.equal(emails().length, 0);
   assert.equal(db.events.length, 1);
+});
+
+for (const status of ['expired', 'failed']) {
+  test(`paid event for an order in status ${status} → 200, logged for a refund, nothing revived; duplicate ignored`, async () => {
+    await checkedOut();
+    db.orders[0].status = status;
+    if (status === 'expired') db.invitations = []; // cleanup deleted it
+    const errors = [];
+    const err = console.error; console.error = (...a) => errors.push(a.join(' '));
+    try {
+      const body = paidEvent();
+      assert.equal((await hook(body)).status, 200);
+      assert.equal((await hook(body)).status, 200);
+      await settle();
+    } finally { console.error = err; }
+    assert.equal(db.orders[0].status, status);
+    assert.ok(db.invitations.every(i => i.status !== 'live'));
+    assert.equal(emails().length, 0);
+    assert.equal(db.audit.length, 1, 'one audit row; the duplicate is ignored');
+    assert.equal(db.audit[0].log_type, 'security');
+    assert.match(db.audit[0].message, /order 1\b.*refund/i);
+    assert.match(db.audit[0].message, new RegExp(status));
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /order 1\b/);
+  });
+}
+
+test('paid event whose invitation is no longer pending → order paid but no email, token kept', async () => {
+  const oldHash = await checkedOut();
+  db.invitations[0].status = 'expired';
+  const err = console.error; console.error = () => {};
+  try {
+    assert.equal((await hook(paidEvent())).status, 200);
+    await settle();
+  } finally { console.error = err; }
+  assert.equal(db.orders[0].status, 'paid');
+  assert.equal(db.invitations[0].status, 'expired');
+  assert.equal(emails().length, 0);
+  assert.equal(db.invitations[0].manage_token_hash, oldHash);
 });
 
 test('other event types are stored and return 200', async () => {

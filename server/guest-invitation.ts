@@ -1,11 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 // Public (guest-facing) invitation lookup, shared by the guest API, the guest page and the photo route.
 
-export const todayUtc = () => new Date().toISOString().slice(0, 10);
+export const todayUtc = (now = new Date()) => now.toISOString().slice(0, 10);
 
 // Expired once event_date + 60 days is before today (UTC). An unparsable date never expires.
-export const isPastExpiry = (eventDate: string) =>
-  Date.parse(`${eventDate}T00:00:00Z`) + 60 * 86_400_000 < Date.parse(`${todayUtc()}T00:00:00Z`);
+export const isPastExpiry = (eventDate: string, now = new Date()) =>
+  Date.parse(`${eventDate}T00:00:00Z`) + 60 * 86_400_000 < Date.parse(`${todayUtc(now)}T00:00:00Z`);
 
 // Malformed %-escapes in a URL segment → null (callers answer 404, not 500).
 export const decodeSegment = (s: string): string | null => { try { return decodeURIComponent(s); } catch { return null; } };
