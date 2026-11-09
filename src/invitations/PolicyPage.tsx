@@ -60,7 +60,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>Who sees it</h2>
         <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the couple, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage), PayMongo (payments) and our email provider.</p>
         <h2>How long we keep it</h2>
-        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the wedding date. Order and payment records are kept as long as required for accounting and tax purposes.</p>
+        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the wedding date, including for refunded invitations. Only the couple's names are kept, for the short "this celebration has passed" page. Order and payment records are kept as long as required for accounting and tax purposes.</p>
         <h2>Your rights</h2>
         <p>Under the Data Privacy Act you may ask to access, correct, or delete your personal information, object to its processing, and file a complaint with the National Privacy Commission. Couples can correct most details themselves through the manage link. Guests who want their RSVP changed or removed can contact the couple or us.</p>
         <h2>Contact</h2>

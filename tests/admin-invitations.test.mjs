@@ -58,6 +58,10 @@ beforeEach(() => {
   globalThis.SMTP_FAIL = false;
 });
 
+const NAMES_SQL = "json_object('partner1', json_extract(details, '$.partner1'), 'partner2', json_extract(details, '$.partner2'))";
+const PURGE_SELECT = `SELECT id, event_date, photos FROM invitations WHERE status = 'live' OR (status IN ('expired', 'refunded') AND (photos != '[]' OR details != ${NAMES_SQL} OR id IN (SELECT invitation_id FROM rsvps)))`;
+const PURGE_UPDATE = `UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ${NAMES_SQL} WHERE id = ? AND status IN ('live', 'expired', 'refunded')`;
+const namesOnly = (details) => { const d = JSON.parse(details); return JSON.stringify({ partner1: d.partner1 ?? null, partner2: d.partner2 ?? null }); };
 function exec(sql, a) {
   if (/FROM admins WHERE email/.test(sql)) return a[0] in ADMINS ? { email: a[0], fullName: a[0], role: ADMINS[a[0]] } : null;
   if (/^SELECT \* FROM products_designs ORDER BY/.test(sql)) return { results: [...db.designs].sort((x, y) => x.sort_order - y.sort_order || x.id - y.id) };
@@ -138,12 +142,14 @@ function exec(sql, a) {
     db.invitations = db.invitations.filter(i => !(i.id === a[0] && i.status === 'pending'));
     return { meta: { changes: n - db.invitations.length } };
   }
-  if (/^SELECT id, event_date, photos FROM invitations WHERE status = 'live' OR \(status = 'expired' AND \(photos != '\[\]' OR id IN \(SELECT invitation_id FROM rsvps\)\)\)$/.test(sql)) {
-    return { results: db.invitations.filter(i => i.status === 'live' || (i.status === 'expired' && (i.photos !== '[]' || db.rsvps.some(r => r.invitation_id === i.id)))) };
+  // Purge: keeps only the names in details, like SQLite's json_object(json_extract(...)) (missing → null)
+  if (sql === PURGE_SELECT) {
+    return { results: db.invitations.filter(i => i.status === 'live' || (['expired', 'refunded'].includes(i.status)
+      && (i.photos !== '[]' || i.details !== namesOnly(i.details) || db.rsvps.some(r => r.invitation_id === i.id)))) };
   }
-  if (/^UPDATE invitations SET status = 'expired', photos = '\[\]' WHERE id = \? AND status IN \('live', 'expired'\)$/.test(sql)) {
-    const i = db.invitations.find(x => x.id === a[0] && ['live', 'expired'].includes(x.status));
-    if (i) Object.assign(i, { status: 'expired', photos: '[]' });
+  if (sql === PURGE_UPDATE) {
+    const i = db.invitations.find(x => x.id === a[0] && ['live', 'expired', 'refunded'].includes(x.status));
+    if (i) Object.assign(i, { status: i.status === 'refunded' ? 'refunded' : 'expired', photos: '[]', details: namesOnly(i.details) });
     return { meta: { changes: i ? 1 : 0 } };
   }
   if (/^DELETE FROM rsvps WHERE invitation_id = \?$/.test(sql)) { db.rsvps = db.rsvps.filter(r => r.invitation_id !== a[0]); return { meta: { changes: 1 } }; }
@@ -327,15 +333,16 @@ const pendingOrder = (id, age, now = NOW) => {
   db.orders.push({ id, product_id: id, customer_email: `p${id}@x.com`, amount_centavos: 99900, status: 'pending', created_at: sqlTime(age, now), paid_at: null });
 };
 // Live invitation <id> whose event was <days> before NOW, with one photo and one RSVP
-const liveInvitation = (id, days) => {
+const FULL_DETAILS = { partner1: 'Maria', partner2: 'Juan', eventDate: '2026-01-01', ceremony: { name: 'St. Joseph', address: '1 Main St' }, message: 'See you!', giftsNote: 'GCash 0917' };
+const liveInvitation = (id, days, status = 'live') => {
   const key = `inv/${id}/0.png`;
   r2.set(key, 'img');
-  db.invitations.push({ id, design_id: 1, slug: `l-${id}`, color_scheme: '{}', details: '{}', photos: JSON.stringify([key]), status: 'live', event_date: dateDaysAgo(days), manage_token_hash: sha('l' + id), created_at: 't' });
+  db.invitations.push({ id, design_id: 1, slug: `l-${id}`, color_scheme: '{}', details: JSON.stringify(FULL_DETAILS), photos: JSON.stringify([key]), status, event_date: dateDaysAgo(days), manage_token_hash: sha('l' + id), created_at: 't' });
   db.rsvps.push({ id: 100 + id, invitation_id: id, guest_name: 'G', attending: 1, party_size: 1, message: '', created_at: 't' });
 };
 
-test('cleanup: a pending order 25 h old → expired, its invitation and photos deleted; the order row stays', async () => {
-  pendingOrder(10, 25 * H);
+test('cleanup: a pending order 73 h old → expired, its invitation and photos deleted; the order row stays', async () => {
+  pendingOrder(10, 73 * H);
   assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 1, purgedInvitations: 0 });
   assert.equal(db.orders.find(o => o.id === 10).status, 'expired');
   assert.equal(db.invitations.find(i => i.id === 10), undefined);
@@ -343,8 +350,8 @@ test('cleanup: a pending order 25 h old → expired, its invitation and photos d
   assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 }, 'idempotent');
 });
 
-test('cleanup: a pending order 23 h old → untouched', async () => {
-  pendingOrder(10, 23 * H);
+test('cleanup: a pending order 71 h old → untouched', async () => {
+  pendingOrder(10, 71 * H);
   assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 });
   assert.equal(db.orders.find(o => o.id === 10).status, 'pending');
   assert.equal(db.invitations.find(i => i.id === 10).status, 'pending');
@@ -380,8 +387,35 @@ test('cleanup: purges an invitation the guest page already marked expired', asyn
   assert.equal(r2.has('inv/20/0.png'), false);
 });
 
+test('cleanup: an expired purge keeps only the two names in details', async () => {
+  liveInvitation(20, 61);
+  await runCleanup(DB, PHOTOS, NOW);
+  assert.deepEqual(JSON.parse(db.invitations.find(x => x.id === 20).details), { partner1: 'Maria', partner2: 'Juan' });
+});
+
+test('cleanup: a refunded invitation 61 days after the event → photos, RSVPs and details purged, stays refunded', async () => {
+  liveInvitation(20, 61, 'refunded');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1 });
+  const i = db.invitations.find(x => x.id === 20);
+  assert.equal(i.status, 'refunded');
+  assert.equal(i.photos, '[]');
+  assert.deepEqual(JSON.parse(i.details), { partner1: 'Maria', partner2: 'Juan' });
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 0);
+  assert.equal(r2.has('inv/20/0.png'), false);
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 }, 'idempotent');
+});
+
+test('cleanup: a refunded invitation 59 days after the event → untouched', async () => {
+  liveInvitation(20, 59, 'refunded');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 });
+  const i = db.invitations.find(x => x.id === 20);
+  assert.deepEqual(JSON.parse(i.details), FULL_DETAILS);
+  assert.equal(r2.has('inv/20/0.png'), true);
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 1);
+});
+
 test('cleanup: an R2 failure is logged and the row is retried on the next run', async () => {
-  pendingOrder(10, 25 * H);
+  pendingOrder(10, 73 * H);
   liveInvitation(20, 61);
   r2Fails = true;
   const err = console.error; console.error = () => {};
@@ -396,7 +430,7 @@ test('cleanup: an R2 failure is logged and the row is retried on the next run', 
 });
 
 test('overview runs cleanup first; an expired order still lists without its invitation', async () => {
-  pendingOrder(10, 3 * DAY, new Date()); // the overview uses the real clock
+  pendingOrder(10, 4 * DAY, new Date()); // the overview uses the real clock
   const data = await (await call('/api/admin/invitations/overview', { as: 'ed@x.com' })).json();
   const o = data.orders.find(x => x.id === 10);
   assert.equal(o.status, 'expired');
