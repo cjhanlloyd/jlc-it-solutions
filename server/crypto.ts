@@ -41,3 +41,8 @@ export async function verifyAdminToken(request: Request, db: D1Database, secret?
   return null;
 }
 
+// 32 random bytes, base64url (43 chars). Used for manage tokens; store only sha256(token).
+export function randomToken(): string {
+  const b = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}

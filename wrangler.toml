@@ -9,3 +9,7 @@ NODE_ENV = "production"
 binding = "DB"
 database_name = "jlc_database"
 database_id = "6cfc7983-58e7-424f-a9ec-ab6338df0cf1"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "jlc-invitation-photos"
