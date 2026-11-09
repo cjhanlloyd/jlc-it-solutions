@@ -11,6 +11,11 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        input: { main: path.resolve(__dirname, 'index.html'), invitation: path.resolve(__dirname, 'invitation.html') },
+      },
+    },
     server: {
       allowedHosts: ['jlcitsolutions.com', '.jlcitsolutions.com', '.trycloudflare.com'],
       // `npm run dev:ui` gives hot reload; API and dynamic favicons come from `npm run dev` (wrangler) on 8788

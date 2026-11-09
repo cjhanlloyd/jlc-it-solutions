@@ -30,7 +30,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     `<meta property="og:description" content="${escapeHtml(description)}">`,
     ...(image ? [`<meta property="og:image" content="${escapeHtml(image)}">`] : []),
   ].join('\n    ');
-  const shell = await (await env.ASSETS.fetch(new URL('/invitation.html', request.url))).text();
+  // Pages answers /invitation.html with a 308 to /invitation, so ask for the final path
+  const asset = await env.ASSETS.fetch(new URL('/invitation', request.url));
+  if (!asset.ok) return new Response('Bad gateway', { status: 502 });
+  const shell = await asset.text();
   // Function replacers, so a "$&" in a name is not read as a replacement pattern
   const html = shell
     .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${escapeHtml(title)}</title>`)

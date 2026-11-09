@@ -84,7 +84,7 @@ test('live slug: escaped names in og:title and <title>, absolute og:image of the
   const { res, html } = await view('live-one');
   assert.equal(res.status, 200);
   assert.match(res.headers.get('Content-Type'), /^text\/html/);
-  assert.equal(assetsFetched.at(-1), 'https://shop.test/invitation.html');
+  assert.equal(assetsFetched.at(-1), 'https://shop.test/invitation');
   assert.ok(og(html, 'title').includes('A&lt;b&gt; &amp; Juan &quot;J&quot;'), og(html, 'title'));
   assert.ok(!html.includes('A<b>'), 'raw name never appears');
   assert.match(html, /<title>[^<]*A&lt;b&gt;[^<]*<\/title>/);
@@ -117,6 +117,16 @@ test('unknown, pending and malformed slugs → 404', async () => {
     assert.equal(res.status, 404, slug);
     assert.equal(og(html, 'title'), 'Invitation not available');
   }
+});
+
+test('shell fetch fails → plain 502, not a rewritten 200', async () => {
+  const fetch = ASSETS.fetch;
+  ASSETS.fetch = async () => new Response('Not found', { status: 404 });
+  try {
+    const { res, html } = await view('live-one');
+    assert.equal(res.status, 502);
+    assert.ok(!html.includes('og:'));
+  } finally { ASSETS.fetch = fetch; }
 });
 
 // --- Public invitation API ---
