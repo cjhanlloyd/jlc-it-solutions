@@ -44,7 +44,7 @@ async function overview(env: Env): Promise<Response> {
   const [designs, orders, events, invitations, totals] = await Promise.all([
     env.DB.prepare('SELECT * FROM products_designs ORDER BY sort_order, id').all<any>(),
     env.DB.prepare(
-      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o JOIN invitations i ON i.id = o.product_id JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
+      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.paymongo_checkout_id, o.paymongo_payment_id, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o JOIN invitations i ON i.id = o.product_id JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
     ).all<any>(),
     // Type and time only: the raw payload stays out of the response
     env.DB.prepare('SELECT order_id, type, received_at FROM payment_events WHERE order_id IS NOT NULL ORDER BY received_at, rowid').all<any>(),

@@ -13,6 +13,10 @@ import EmailTab from './admin/EmailTab.js';
 import BrandingTab from './admin/BrandingTab.js';
 import LogsTab from './admin/LogsTab.js';
 import InquiriesTab from './admin/InquiriesTab.js';
+import DesignsTab from './admin/DesignsTab.js';
+import OrdersTab from './admin/OrdersTab.js';
+import InvitationsTab from './admin/InvitationsTab.js';
+import type { InvOverview } from './admin/InvitationsCommon.js';
 
 interface AdminPanelProps {
   adminToken: string;
@@ -23,7 +27,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ adminToken, adminUser, onLogout, branding, onDataChange }: AdminPanelProps) {
-  const [activeSubTab, setActiveSubTab] = React.useState<'inquiries' | 'services' | 'branding' | 'content' | 'email' | 'accounts' | 'logs'>('inquiries');
+  const [activeSubTab, setActiveSubTab] = React.useState<'inquiries' | 'services' | 'branding' | 'content' | 'email' | 'accounts' | 'logs' | 'designs' | 'orders' | 'invitations'>('inquiries');
   const [db, setDb] = React.useState<WebsiteData | null>(null);
   const [systemLogs, setSystemLogs] = React.useState<{ timestamp: string; type: string; message: string }[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -50,6 +54,20 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   React.useEffect(() => {
     fetchAdminData();
   }, [adminToken]);
+
+  // Invitation tabs share one overview, fetched the first time any of them is shown
+  const [invOverview, setInvOverview] = React.useState<InvOverview | null>(null);
+  const loadInvOverview = async () => {
+    try {
+      setInvOverview(await adminApi('/api/admin/invitations/overview', adminToken, undefined, 'Failed to load invitations data.'));
+    } catch (err: any) {
+      setApiError(err.message);
+    }
+  };
+  const isInvTab = ['designs', 'orders', 'invitations'].includes(activeSubTab);
+  React.useEffect(() => {
+    if (isInvTab && !invOverview) loadInvOverview();
+  }, [isInvTab]);
 
   // Flash messages helper
   const showFlashMsg = (msg: string) => {
@@ -190,6 +208,22 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             Admin Accounts
           </button>
 
+          {([['designs', 'Palette', 'Invitation Designs'], ['orders', 'Receipt', 'Orders'], ['invitations', 'Heart', 'Invitations']] as const).map(([key, icon, label]) => {
+            const Icon = Icons[icon];
+            return (
+              <button
+                key={key}
+                onClick={() => { setActiveSubTab(key); setApiError(''); }}
+                className={`w-full text-left flex items-center px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  activeSubTab === key ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="h-4 w-4 mr-3 shrink-0" />
+                {label}
+              </button>
+            );
+          })}
+
           <button
             onClick={() => { setActiveSubTab('logs'); setApiError(''); }}
             className={`w-full text-left flex items-center px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
@@ -237,6 +271,15 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             <div hidden={activeSubTab !== 'accounts'}>
               <AccountsTab {...tabProps} reload={() => fetchAdminData(false)} />
             </div>
+          )}
+
+          {/* INVITATION TABS: load their own data from /api/admin/invitations/overview */}
+          {tabProps && (
+            <>
+              <div hidden={activeSubTab !== 'designs'}><DesignsTab {...tabProps} overview={invOverview} reload={loadInvOverview} /></div>
+              <div hidden={activeSubTab !== 'orders'}><OrdersTab {...tabProps} overview={invOverview} reload={loadInvOverview} /></div>
+              <div hidden={activeSubTab !== 'invitations'}><InvitationsTab {...tabProps} overview={invOverview} reload={loadInvOverview} /></div>
+            </>
           )}
 
           {/* TAB 7: ANALYTICS & ACTIVITY LOGS */}
