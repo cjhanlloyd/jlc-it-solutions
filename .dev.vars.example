@@ -1,8 +1,12 @@
 # Copy to .dev.vars for local `npm run dev` (wrangler reads it). Never commit .dev.vars.
 # In production, set these as secrets: npx wrangler pages secret put <NAME> --project-name jlc-it-solutions
 
-# Required: signs admin login tokens and the contact-form CAPTCHA. Use a long random value.
+# Required: signs admin login tokens. Use a long random value.
 JWT_SECRET="change-me-to-a-long-random-value"
 
 # Optional: enables AI tagline and reply drafts in the admin panel.
 GEMINI_API_KEY=""
+
+# Cloudflare Turnstile secret, checked on every contact-form submission. Locally use the
+# always-pass test secret below; in production set the real one as a Pages secret.
+TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"

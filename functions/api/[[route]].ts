@@ -6,6 +6,7 @@ interface Env {
   DB: D1Database;
   GEMINI_API_KEY?: string;
   JWT_SECRET?: string;
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 async function sha256(message: string): Promise<string> {
@@ -559,21 +560,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     // ----------------------------------------------------
-    // GET /api/captcha (Stateless mathematical captcha)
-    // ----------------------------------------------------
-    if (method === 'GET' && path === '/api/captcha') {
-      const n1 = Math.floor(Math.random() * 9) + 2; // 2 to 10
-      const n2 = Math.floor(Math.random() * 9) + 2; // 2 to 10
-      const answer = n1 + n2;
-      const salt = env.JWT_SECRET || "jlc-captcha-security-salt-2026";
-      const signature = await sha256(`${answer}:${salt}`);
-      return new Response(JSON.stringify({
-        question: `What is ${n1} + ${n2}?`,
-        signature: signature
-      }), { headers });
-    }
-
-    // ----------------------------------------------------
     // POST /api/inquiry (Intake submission)
     // ----------------------------------------------------
     if (method === 'POST' && path === '/api/inquiry') {
@@ -587,20 +573,24 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
       body.email = clientEmail;
 
-      // 1. CAPTCHA validation
-      if (!body.captchaAnswer || !body.captchaSignature) {
-        return new Response(JSON.stringify({ error: "Security validation (CAPTCHA) is required." }), { headers, status: 400 });
+      // 1. Cloudflare Turnstile bot check (tokens are single-use and expire after 5 minutes)
+      if (!env.TURNSTILE_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Server misconfigured: TURNSTILE_SECRET_KEY is not set." }), { headers, status: 500 });
       }
-      const salt = env.JWT_SECRET || "jlc-captcha-security-salt-2026";
-      const expectedSignature = await sha256(`${body.captchaAnswer.trim()}:${salt}`);
-      if (expectedSignature !== body.captchaSignature) {
-        // Log suspicious spam bot activity
+      if (typeof body.turnstileToken !== 'string' || !body.turnstileToken) {
+        return new Response(JSON.stringify({ error: "Please complete the anti-spam check." }), { headers, status: 400 });
+      }
+      const verification: any = await (await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: body.turnstileToken, remoteip: clientIp }),
+      })).json();
+      if (!verification.success) {
         await env.DB.prepare(
           "INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'security', ?)"
         ).bind(
-          createdAt, `Blocked inquiry spam attempt from IP ${clientIp}: Invalid CAPTCHA answer '${body.captchaAnswer}'`
+          createdAt, `Blocked inquiry from IP ${clientIp}: Turnstile check failed (${(verification['error-codes'] || []).join(', ')})`
         ).run();
-        return new Response(JSON.stringify({ error: "Verification puzzle answer is incorrect. Please try again." }), { headers, status: 400 });
+        return new Response(JSON.stringify({ error: "The anti-spam check failed. Please try again." }), { headers, status: 400 });
       }
 
       // 2. Duplicate submission detection (same email and project description in last 5 minutes)

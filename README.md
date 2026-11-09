@@ -11,7 +11,7 @@ Company website with a contact/inquiry form and an admin panel for editing site 
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars      # then set JWT_SECRET
+cp .dev.vars.example .dev.vars      # then set JWT_SECRET (Turnstile test key already set)
 npm run db:reset:local              # create + seed the local D1 database (wipes local data)
 npm run dev                         # full site with API at http://localhost:8788
 ```
@@ -31,11 +31,15 @@ npm run lint    # type-check frontend and functions
 ## Deploy
 
 Cloudflare Pages project `jlc-it-solutions`, build command `npm run build`, output `dist`.
-Required secret (otherwise admin login is disabled):
+Required secrets:
 
 ```bash
-npx wrangler pages secret put JWT_SECRET --project-name jlc-it-solutions
+npx wrangler pages secret put JWT_SECRET --project-name jlc-it-solutions            # without it, admin login is disabled
+npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name jlc-it-solutions  # without it, the contact form rejects everything
 ```
+
+The contact form uses Cloudflare Turnstile. The public site key is in `src/components/InquiryForm.tsx`;
+on localhost it switches to Cloudflare's always-pass test key.
 
 Optional: `GEMINI_API_KEY` for AI tagline and reply drafts.
 Security headers for static pages live in `public/_headers`.

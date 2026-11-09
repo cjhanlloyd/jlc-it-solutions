@@ -7,6 +7,22 @@ import React from 'react';
 import * as Icons from 'lucide-react';
 import { Service, BrandingSettings, ContactMethod, ContentSettings } from '../types.js';
 
+// Cloudflare Turnstile. On localhost, use Cloudflare's always-pass test key so dev works without the real widget.
+const TURNSTILE_SITE_KEY = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? '1x00000000000000000000AA'
+  : '0x4AAAAAAF6Se95DZhEd5led';
+
+let turnstileScript: Promise<void> | null = null;
+function loadTurnstile(): Promise<void> {
+  return (turnstileScript ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.onload = () => resolve();
+    script.onerror = () => { turnstileScript = null; reject(new Error('Turnstile failed to load')); };
+    document.head.appendChild(script);
+  }));
+}
+
 interface InquiryFormProps {
   services: Service[];
   branding: BrandingSettings;
@@ -76,25 +92,36 @@ export default function InquiryForm({ services, branding, content, preselectedSe
   const [projectDescription, setProjectDescription] = React.useState('');
   const [preferredContactMethod, setPreferredContactMethod] = React.useState<ContactMethod>('Email');
 
-  // Stateless Server-Side Cryptographic CAPTCHA
-  const [captchaQuestion, setCaptchaQuestion] = React.useState('');
-  const [captchaSignature, setCaptchaSignature] = React.useState('');
-  const [captchaAnswer, setCaptchaAnswer] = React.useState('');
+  // Anti-spam: the Turnstile widget renders when its container mounts (step 3) and is removed when it unmounts
+  const [turnstileToken, setTurnstileToken] = React.useState('');
+  const [turnstileError, setTurnstileError] = React.useState('');
+  const turnstileWidgetId = React.useRef<string | null>(null);
 
-  const loadCaptcha = async () => {
-    try {
-      const response = await fetch('/api/captcha');
-      const data = await response.json();
-      setCaptchaQuestion(data.question);
-      setCaptchaSignature(data.signature);
-    } catch (err) {
-      console.error("Failed to fetch CAPTCHA from server: ", err);
-    }
-  };
-
-  React.useEffect(() => {
-    loadCaptcha();
+  const turnstileContainer = React.useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    let unmounted = false;
+    loadTurnstile().then(() => {
+      if (unmounted) return;
+      turnstileWidgetId.current = (window as any).turnstile.render(el, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token: string) => { setTurnstileToken(token); setTurnstileError(''); },
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback': () => setTurnstileToken(''),
+      });
+    }).catch(() => setTurnstileError('The anti-spam check could not load. Please disable content blockers for this site and reload.'));
+    return () => {
+      unmounted = true;
+      if (turnstileWidgetId.current) (window as any).turnstile?.remove(turnstileWidgetId.current);
+      turnstileWidgetId.current = null;
+      setTurnstileToken('');
+    };
   }, []);
+
+  // Tokens are single-use: get a fresh one after any failed submit
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    if (turnstileWidgetId.current) (window as any).turnstile?.reset(turnstileWidgetId.current);
+  };
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -146,8 +173,8 @@ export default function InquiryForm({ services, branding, content, preselectedSe
       return;
     }
 
-    if (!captchaAnswer) {
-      setErrorMessage('Please solve the anti-spam verification challenge.');
+    if (!turnstileToken) {
+      setErrorMessage('Please wait for the anti-spam check to finish, then submit again.');
       return;
     }
 
@@ -167,8 +194,7 @@ export default function InquiryForm({ services, branding, content, preselectedSe
           preferredContactMethod,
           budget,
           fileAttachment,
-          captchaAnswer,
-          captchaSignature
+          turnstileToken
         })
       });
 
@@ -203,7 +229,7 @@ Phone: ${content.contactPhone}`
 
     } catch (err: any) {
       setErrorMessage(err.message || 'Server network error. Please try again.');
-      loadCaptcha(); // load fresh captcha on failure
+      resetTurnstile();
     } finally {
       setIsLoading(false);
     }
@@ -216,12 +242,10 @@ Phone: ${content.contactPhone}`
     setEmail('');
     setPhone('');
     setProjectDescription('');
-    setCaptchaAnswer('');
     setSuccessInquiryId('');
     setSentEmailPreview(null);
     setBudget('');
     setFileAttachment(null);
-    loadCaptcha();
   };
 
   // Theme Styling helpers
@@ -727,28 +751,8 @@ Phone: ${content.contactPhone}`
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display flex items-center">
                     Anti-Spam Verification <span className="text-red-500 ml-1">*</span>
                   </label>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-bold text-slate-800 bg-slate-100 px-4 py-2.5 rounded-xl font-mono border border-slate-200 shadow-xs select-none min-w-36 text-center">
-                      {captchaQuestion || 'Loading...'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={loadCaptcha}
-                      className="p-2.5 text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-                      title="Load another verification challenge"
-                    >
-                      <Icons.RefreshCw className="h-4.5 w-4.5" />
-                    </button>
-                    <input
-                      type="number"
-                      required
-                      value={captchaAnswer}
-                      onChange={(e) => setCaptchaAnswer(e.target.value)}
-                      placeholder="Your answer"
-                      className="w-36 px-4 py-3 border border-slate-200 rounded-xl text-sm text-slate-900 font-sans focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900 bg-white shadow-xs"
-                      id="input-anti-spam"
-                    />
-                  </div>
+                  <div ref={turnstileContainer} id="turnstile-widget" className="min-h-[65px]" />
+                  {turnstileError && <p className="text-xs text-red-600">{turnstileError}</p>}
                   <p className="text-[10px] text-slate-400">Protects our administrative routing mailbox against automated script payloads.</p>
                 </div>
 

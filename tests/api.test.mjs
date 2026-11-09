@@ -56,8 +56,24 @@ const DB = { prepare(sql) {
 const call = (path, { body, token, method = body ? 'POST' : 'GET', headers = {} } = {}) => onRequest({
   request: new Request('https://x.test' + path, { method, body: body && JSON.stringify(body),
     headers: { ...headers, ...(token ? { Authorization: 'Bearer ' + token } : {}) } }),
-  env: { DB, JWT_SECRET: 'test-secret' }, waitUntil() {},
+  env: { DB, JWT_SECRET: 'test-secret', TURNSTILE_SECRET_KEY: 'turnstile-secret' }, waitUntil(p) { background.push(p); },
 });
+// Emails go out via waitUntil; tests await them so one test's emails never land in the next
+const background = [];
+const settle = () => Promise.all(background.splice(0));
+
+// Fake Turnstile siteverify: only 'good-token' with the right secret passes
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, init) => {
+  if (String(url).includes('/turnstile/v0/siteverify')) {
+    const form = new URLSearchParams(init.body);
+    const success = form.get('secret') === 'turnstile-secret' && form.get('response') === 'good-token';
+    return new Response(JSON.stringify({ success, 'error-codes': success ? [] : ['invalid-input-response'] }));
+  }
+  return realFetch(url, init);
+};
+const inquiry = (extra) => call('/api/inquiry', { body: { fullName: 'Eve', email: 'eve@x.com', serviceRequired: 'Web',
+  projectDescription: 'x', turnstileToken: 'good-token', ...extra } });
 const login = async (email, password = 'pw') => call('/api/admin/login', { body: { email, password } });
 const tokenFor = async email => (await (await login(email)).json()).token;
 
@@ -92,19 +108,21 @@ test('login locks an account after 5 failed attempts', async () => {
   assert.equal((await login('Boss@X.com ')).status, 200, 'other accounts unaffected; email case ignored');
 });
 
-test('contact form cannot inject SMTP commands, headers or HTML', async () => {
-  const { question, signature } = await (await call('/api/captcha')).json();
-  const [, a, b] = question.match(/(\d+) \+ (\d+)/);
-  const inquiry = extra => call('/api/inquiry', { body: { fullName: 'Eve', serviceRequired: 'Web', projectDescription: 'x',
-    captchaAnswer: String(+a + +b), captchaSignature: signature, ...extra } });
+test('contact form requires a valid Turnstile token', async () => {
+  for (const turnstileToken of [undefined, '', null, 'forged-token'])
+    assert.equal((await inquiry({ turnstileToken, projectDescription: `t-${turnstileToken}` })).status, 400, `token=${turnstileToken}`);
+  assert.equal((await inquiry({ projectDescription: 'valid token' })).status, 200);
+  await settle();
+});
 
+test('contact form cannot inject SMTP commands, headers or HTML', async () => {
   assert.equal((await inquiry({ email: 'a@x.com>\r\nRCPT TO:<victim@y.com' })).status, 400);
 
   globalThis.SMTP_SENT = [];
   const res = await inquiry({ email: 'eve@x.com', fullName: 'Eve\r\nBcc: victim@y.com',
     projectDescription: '"hi\n.\nMAIL FROM:<spam@evil.com>\n<script>x</script>"' });
   assert.equal(res.status, 200);
-  await new Promise(r => setTimeout(r, 50)); // emails go out in the background (waitUntil)
+  await settle();
   const stream = globalThis.SMTP_SENT.join('');
   const emails = stream.split('\r\nDATA\r\n').length - 1;
   assert.equal(emails, 2, 'acknowledgment + admin alert');
