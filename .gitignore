@@ -5,6 +5,7 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
+.dev.vars
 db.json
+!.dev.vars.example
 .wrangler/

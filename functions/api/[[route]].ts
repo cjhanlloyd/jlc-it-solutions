@@ -537,7 +537,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         pricingCards: parseJsonSafe((content as any).pricingCards, [])
       } : null;
 
-      return new Response(JSON.stringify({
+      const publicBody = JSON.stringify({
         branding: branding || { companyName: "JLC Solutions", logoType: "icon", logoIcon: "Activity", themeColor: "deepblue", tagline: "Your Tech Companion" },
         content: parsedContent || { heroTitle: "Enterprise IT Services & Custom Software", heroSubtitle: "Trusted technology partner", whyChooseUsText: "We align standard TIA/EIA specifications.", whyChooseUsPoints: [] },
         services: parsedServices,
@@ -545,7 +545,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         projectGallery: projectGalleryResult.results || [],
         processSteps: processStepsResult.results || [],
         roadmapSteps: roadmapStepsResult.results || []
-      }), { headers });
+      });
+
+      // Body carries base64 images (often MBs). With an ETag, repeat visits get a tiny 304 instead,
+      // and no-cache keeps admin edits visible immediately.
+      const etag = `"${await sha256(publicBody)}"`;
+      headers.set('ETag', etag);
+      headers.set('Cache-Control', 'no-cache');
+      if (request.headers.get('If-None-Match') === etag) {
+        return new Response(null, { headers, status: 304 });
+      }
+      return new Response(publicBody, { headers });
     }
 
     // ----------------------------------------------------
@@ -897,7 +907,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return new Response(JSON.stringify({ error: "Unauthorized access: Invalid or expired bearer token." }), { headers, status: 401 });
     }
 
-    // Role rules (same as server.ts): only Super Admins manage accounts; Editors cannot touch branding, SMTP or the email template
+    // Role rules: only Super Admins manage accounts; Editors cannot touch branding, SMTP or the email template
     const forbidden = (path === '/api/admin/accounts' && adminUser.role !== 'Super Admin')
       || (adminUser.role === 'Editor' && ['/api/admin/settings/branding', '/api/admin/settings/smtp', '/api/admin/email-template'].includes(path));
     if (forbidden) {

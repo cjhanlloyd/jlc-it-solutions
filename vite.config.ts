@@ -18,6 +18,12 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       allowedHosts: ['jlcitsolutions.com', '.jlcitsolutions.com', '.trycloudflare.com'],
+      // `npm run dev:ui` gives hot reload; API and dynamic favicons come from `npm run dev` (wrangler) on 8788
+      proxy: {
+        '/api': 'http://localhost:8788',
+        '/favicon.ico': 'http://localhost:8788',
+        '/favicon.svg': 'http://localhost:8788',
+      },
     },
   };
 });

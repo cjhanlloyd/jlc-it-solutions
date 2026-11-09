@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local `npm run dev` (wrangler reads it). Never commit .dev.vars.
+# In production, set these as secrets: npx wrangler pages secret put <NAME> --project-name jlc-it-solutions
+
+# Required: signs admin login tokens and the contact-form CAPTCHA. Use a long random value.
+JWT_SECRET="change-me-to-a-long-random-value"
+
+# Optional: enables AI tagline and reply drafts in the admin panel.
+GEMINI_API_KEY=""
