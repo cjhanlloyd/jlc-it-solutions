@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 import { randomToken, sha256 } from '../../../server/crypto';
-import { EMAIL_RE } from '../../../server/email';
+import { EMAIL_RE, sendSmtpEmail } from '../../../server/email';
 import { createCheckoutSession } from '../../../server/paymongo';
-import { LIMITS, makeSlug, validateDetails } from '../../../shared/invitation-fields';
+import { LIMITS, lockedFieldsChanged, makeSlug, validateDetails, validateRsvp } from '../../../shared/invitation-fields';
 
 interface Env {
   DB: D1Database;
@@ -15,8 +15,10 @@ interface Env {
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
 const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+const NOT_FOUND = () => json({ error: 'Invitation not found.' }, 404);
 
-export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequest: PagesFunction<Env> = async (context) => {
+  const { request, env } = context;
   const url = new URL(request.url);
   const route = `${request.method} ${url.pathname.replace(/\/+$/, '')}`;
   try {
@@ -36,6 +38,28 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     if (route === 'POST /api/invitations/checkout') return await checkout(request, env, url.origin);
+    if (route === 'POST /api/invitations/resend') return await resend(context, url.origin);
+
+    const rsvpSlug = route.match(/^POST \/api\/invitations\/i\/([^/]+)\/rsvp$/)?.[1];
+    if (rsvpSlug) return await rsvp(request, env, decodeURIComponent(rsvpSlug));
+
+    if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv') {
+      const token = request.headers.get('X-Manage-Token');
+      const inv = token && await env.DB.prepare(
+        "SELECT i.*, d.slug AS design_slug, d.name AS design_name, d.layout_key FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = ? AND i.status = 'live'",
+      ).bind(await sha256(token)).first<any>();
+      if (!inv) return NOT_FOUND();
+      if (request.method === 'POST') return await manageEdit(request, env, inv);
+      const { results } = await env.DB.prepare(
+        'SELECT guest_name, attending, party_size, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
+      ).bind(inv.id).all<any>();
+      const rsvps = (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, message: r.message ?? '', submitted: r.created_at }));
+      if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug);
+      return json({
+        slug: inv.slug, status: inv.status, design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
+        colorScheme: parse(inv.color_scheme, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
+      });
+    }
 
     return json({ error: 'Not found.' }, 404);
   } catch (e) {
@@ -44,18 +68,38 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   }
 };
 
+// Returns an error response, or null when the Turnstile token is valid.
+async function turnstileError(request: Request, env: Env, token: unknown): Promise<Response | null> {
+  if (!env.TURNSTILE_SECRET_KEY) return json({ error: 'Server misconfigured: the anti-spam key is not set.' }, 500);
+  if (typeof token !== 'string' || !token) return json({ error: 'Please complete the anti-spam check.' }, 400);
+  const verification: any = await (await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: request.headers.get('CF-Connecting-IP') || '127.0.0.1' }),
+  })).json();
+  return verification.success ? null : json({ error: 'The anti-spam check failed. Please try again.' }, 400);
+}
+
+const photoError = (p: unknown): string | null =>
+  typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Photos must be JPEG, PNG or WebP images.'
+    : p.length > LIMITS.photoChars ? 'A photo is too large.' : null;
+
+// Stores a checked data URL in R2 as inv/<invitationId>/<n>.<ext> and returns the key.
+async function putPhoto(env: Env, invitationId: number, n: number, p: string): Promise<string> {
+  const [, type] = p.match(PHOTO_RE)!;
+  const key = `inv/${invitationId}/${n}.${type === 'jpeg' ? 'jpg' : type}`;
+  const bin = atob(p.slice(p.indexOf(',') + 1));
+  await env.PHOTOS.put(key, Uint8Array.from(bin, (c) => c.charCodeAt(0)), { httpMetadata: { contentType: `image/${type}` } });
+  return key;
+}
+
 async function checkout(request: Request, env: Env, origin: string): Promise<Response> {
   const body: any = await request.json().catch(() => ({}));
   const email = String(body.email ?? '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return json({ error: 'Please enter a valid email address.' }, 400);
 
   if (!env.TURNSTILE_SECRET_KEY || !env.PAYMONGO_SECRET_KEY) return json({ error: 'Server misconfigured: payment keys are not set.' }, 500);
-  if (typeof body.turnstileToken !== 'string' || !body.turnstileToken) return json({ error: 'Please complete the anti-spam check.' }, 400);
-  const verification: any = await (await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: body.turnstileToken, remoteip: request.headers.get('CF-Connecting-IP') || '127.0.0.1' }),
-  })).json();
-  if (!verification.success) return json({ error: 'The anti-spam check failed. Please try again.' }, 400);
+  const spam = await turnstileError(request, env, body.turnstileToken);
+  if (spam) return spam;
 
   if (body.termsAccepted !== true) return json({ error: 'Please accept the terms to continue.' }, 400);
 
@@ -73,8 +117,8 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
   if (!Array.isArray(photos)) return json({ error: 'Photos must be a list.' }, 400);
   if (photos.length > LIMITS.photos) return json({ error: `Too many photos (max ${LIMITS.photos}).` }, 400);
   for (const p of photos) {
-    if (typeof p !== 'string' || !PHOTO_RE.test(p)) return json({ error: 'Photos must be JPEG, PNG or WebP images.' }, 400);
-    if (p.length > LIMITS.photoChars) return json({ error: 'A photo is too large.' }, 400);
+    const err = photoError(p);
+    if (err) return json({ error: err }, 400);
   }
 
   const token = randomToken();
@@ -91,13 +135,7 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
 
   const keys: string[] = [];
   try {
-    for (const [n, p] of (photos as string[]).entries()) {
-      const [, type] = p.match(PHOTO_RE)!;
-      const key = `inv/${invitationId}/${n}.${type === 'jpeg' ? 'jpg' : type}`;
-      const bin = atob(p.slice(p.indexOf(',') + 1));
-      await env.PHOTOS.put(key, Uint8Array.from(bin, (c) => c.charCodeAt(0)), { httpMetadata: { contentType: `image/${type}` } });
-      keys.push(key);
-    }
+    for (const [n, p] of (photos as string[]).entries()) keys.push(await putPhoto(env, invitationId, n, p));
     await env.DB.prepare('UPDATE invitations SET photos = ? WHERE id = ?').bind(JSON.stringify(keys), invitationId).run();
 
     const session = await createCheckoutSession(env.PAYMONGO_SECRET_KEY, {
@@ -118,4 +156,128 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
     await env.DB.prepare('DELETE FROM invitations WHERE id = ?').bind(invitationId).run();
     return json({ error: 'We could not start the payment. Please try again in a moment.' }, 502);
   }
+}
+
+// Body: { details, photos }. photos is the full desired list; each entry is either one of this
+// invitation's current R2 keys (kept) or a new image data URL (uploaded). Removed keys are deleted.
+async function manageEdit(request: Request, env: Env, inv: any): Promise<Response> {
+  const body: any = await request.json().catch(() => ({}));
+  if (['design', 'designSlug', 'colorScheme'].some((k) => k in body)) return json({ error: 'The design and color scheme cannot be changed after payment.' }, 400);
+
+  const v = validateDetails(body.details);
+  if (v.ok === false) return json({ error: v.error }, 400);
+  if (lockedFieldsChanged(parse(inv.details, {}), v.details)) return json({ error: 'Names cannot be changed after payment.' }, 400);
+
+  const current: string[] = parse(inv.photos, []);
+  const photos: unknown = body.photos ?? [];
+  if (!Array.isArray(photos)) return json({ error: 'Photos must be a list.' }, 400);
+  if (photos.length > LIMITS.photos) return json({ error: `Too many photos (max ${LIMITS.photos}).` }, 400);
+  for (const p of photos) {
+    if (current.includes(p as string)) continue;
+    if (typeof p === 'string' && !p.startsWith('data:')) return json({ error: 'Unknown photo.' }, 400);
+    const err = photoError(p);
+    if (err) return json({ error: err }, 400);
+  }
+
+  const added: string[] = [];
+  const keys: string[] = [];
+  try {
+    // New photos get a time-based index so a deleted key is never reused (the photo route caches for a day)
+    const base = Date.now() * 10;
+    for (const [n, p] of (photos as string[]).entries()) {
+      if (current.includes(p)) { keys.push(p); continue; }
+      const key = await putPhoto(env, inv.id, base + n, p);
+      added.push(key);
+      keys.push(key);
+    }
+    await env.DB.prepare('UPDATE invitations SET details = ?, event_date = ?, photos = ? WHERE id = ?')
+      .bind(JSON.stringify(v.details), v.details.eventDate, JSON.stringify(keys), inv.id).run();
+  } catch (e) {
+    if (added.length) await env.PHOTOS.delete(added);
+    throw e;
+  }
+  const removed = current.filter((k) => !keys.includes(k));
+  if (removed.length) await env.PHOTOS.delete(removed);
+  return json({ ok: true, details: v.details, photos: keys });
+}
+
+// Quotes every cell; a leading = + - @ gets a ' so spreadsheets do not run it as a formula.
+function csv(rsvps: { guestName: string; attending: boolean; partySize: number; message: string; submitted: string }[], slug: string): Response {
+  const cell = (v: unknown) => {
+    const s = String(v ?? '');
+    return `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
+  };
+  const lines = ['Name,Attending,Party size,Message,Submitted',
+    ...rsvps.map((r) => [r.guestName, r.attending ? 'Yes' : 'No', r.partySize, r.message, r.submitted].map(cell).join(','))];
+  return new Response(lines.join('\r\n') + '\r\n', {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="rsvps-${slug}.csv"` },
+  });
+}
+
+async function rsvp(request: Request, env: Env, slug: string): Promise<Response> {
+  const body: any = await request.json().catch(() => ({}));
+  const spam = await turnstileError(request, env, body.turnstileToken);
+  if (spam) return spam;
+
+  const inv = await env.DB.prepare("SELECT id, details FROM invitations WHERE slug = ? AND status = 'live'").bind(slug).first<any>();
+  if (!inv) return NOT_FOUND();
+  const deadline = parse(inv.details, {}).rsvpDeadline;
+  if (deadline && new Date().toISOString().slice(0, 10) > deadline) return json({ error: 'RSVPs are closed.' }, 400);
+
+  const v = validateRsvp({ guestName: body.guestName, attending: body.attending, partySize: body.partySize, message: body.message });
+  if (v.ok === false) return json({ error: v.error }, 400);
+  const r = v.rsvp;
+  // One statement, so the 300 cap holds even with concurrent submissions
+  const ins = await env.DB.prepare(
+    'INSERT INTO rsvps (invitation_id, guest_name, attending, party_size, message) SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM rsvps WHERE invitation_id = ?) < 300',
+  ).bind(inv.id, r.guestName, r.attending ? 1 : 0, r.partySize, r.message, inv.id).run();
+  if (!ins.meta.changes) return json({ error: 'This invitation is no longer accepting RSVPs.' }, 400);
+  return json({ ok: true });
+}
+
+// Always { ok: true } after Turnstile, so the response never reveals whether the email has orders.
+async function resend(context: EventContext<Env, any, any>, origin: string): Promise<Response> {
+  const { request, env } = context;
+  const body: any = await request.json().catch(() => ({}));
+  const spam = await turnstileError(request, env, body.turnstileToken);
+  if (spam) return spam;
+  const email = String(body.email ?? '').trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return json({ ok: true });
+
+  // Same pattern as the admin login lockout: 3 requests per email per hour, counted in audit_logs
+  const message = `Invitation links resend requested for ${email}`;
+  const recent = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM audit_logs WHERE log_type = 'invitation_resend' AND message = ? AND timestamp > ?",
+  ).bind(message, new Date(Date.now() - 60 * 60 * 1000).toISOString()).first<any>();
+  if ((recent?.count || 0) >= 3) return json({ ok: true });
+  await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'invitation_resend', ?)").bind(new Date().toISOString(), message).run();
+
+  // In the background, so the response time does not reveal whether anything was sent either
+  context.waitUntil((async () => {
+    try {
+      const { results } = await env.DB.prepare(
+        "SELECT i.id, i.slug FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.customer_email = ? AND o.status = 'paid' AND i.status = 'live'",
+      ).bind(email).all<any>();
+      if (!results?.length) return;
+      const smtp = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
+      for (const inv of results) {
+        const token = randomToken();
+        await env.DB.prepare('UPDATE invitations SET manage_token_hash = ? WHERE id = ?').bind(await sha256(token), inv.id).run();
+        await sendSmtpEmail(env.DB, smtp, {
+          to: email,
+          subject: 'Your wedding invitation links',
+          // "Key: value" lines: the HTML builder keeps every URL there (plain paragraphs keep only the first)
+          body: [
+            'Here are the links to your wedding invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
+            '',
+            `Guest link: ${origin}/i/${inv.slug}`,
+            `Manage link: ${origin}/manage#${token}`,
+          ].join('\n'),
+        }, request);
+      }
+    } catch (e) {
+      console.error('Resend links failed:', e instanceof Error ? e.message : e);
+    }
+  })());
+  return json({ ok: true });
 }

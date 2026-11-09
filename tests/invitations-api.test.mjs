@@ -2,7 +2,7 @@
 // Both handlers are bundled with esbuild; D1, R2, SMTP, Turnstile and PayMongo are in-memory fakes.
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,7 +29,7 @@ const design = { id: 1, slug: 'classic-elegance', name: 'Classic Elegance', layo
   preview_images: '[]', sample_details: '{}', active: 1, sort_order: 0 };
 let db;
 beforeEach(() => {
-  db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }], invitations: [], orders: [], events: [] };
+  db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
   globalThis.SMTP_SENT = [];
   r2.clear();
   paymongoCalls.length = 0;
@@ -78,6 +78,36 @@ function exec(sql, a) {
     if (!i || i.status !== 'pending') return { meta: { changes: 0 } };
     Object.assign(i, { status: 'live', manage_token_hash: a[0] });
     return { meta: { changes: 1 } };
+  }
+  // --- Task 5: manage, RSVP, resend ---
+  if (/FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = \? AND i.status = 'live'/.test(sql)) {
+    const i = db.invitations.find(x => x.manage_token_hash === a[0] && x.status === 'live');
+    if (!i) return null;
+    const d = db.designs.find(x => x.id === i.design_id);
+    return { ...i, design_slug: d.slug, design_name: d.name, layout_key: d.layout_key };
+  }
+  if (/^UPDATE invitations SET details = \?, event_date = \?, photos = \? WHERE id = \?/.test(sql)) {
+    Object.assign(row('invitations', a[3]), { details: a[0], event_date: a[1], photos: a[2] });
+    return { meta: { changes: 1 } };
+  }
+  if (/^UPDATE invitations SET manage_token_hash = \? WHERE id = \?/.test(sql)) { row('invitations', a[1]).manage_token_hash = a[0]; return { meta: { changes: 1 } }; }
+  if (/^SELECT id, details FROM invitations WHERE slug = \? AND status = 'live'/.test(sql)) return db.invitations.find(i => i.slug === a[0] && i.status === 'live') ?? null;
+  if (/^INSERT INTO rsvps .* WHERE \(SELECT COUNT\(\*\) FROM rsvps WHERE invitation_id = \?\) < 300/.test(sql)) {
+    if (db.rsvps.filter(r => r.invitation_id === a[0]).length >= 300) return { meta: { changes: 0 } };
+    db.rsvps.push({ id: db.rsvps.length + 1, invitation_id: a[0], guest_name: a[1], attending: a[2], party_size: a[3], message: a[4], created_at: '2026-11-10 08:00:00' });
+    return { meta: { changes: 1 } };
+  }
+  if (/FROM rsvps WHERE invitation_id = \?/.test(sql)) return { results: db.rsvps.filter(r => r.invitation_id === a[0]) };
+  if (/^SELECT COUNT\(\*\) AS count FROM audit_logs WHERE log_type = 'invitation_resend' AND message = \? AND timestamp > \?/.test(sql)) {
+    return { count: db.audit.filter(l => l.log_type === 'invitation_resend' && l.message === a[0] && l.timestamp > a[1]).length };
+  }
+  if (/^INSERT INTO audit_logs \(timestamp, log_type, message\) VALUES \(\?, 'invitation_resend', \?\)/.test(sql)) {
+    db.audit.push({ timestamp: a[0], log_type: 'invitation_resend', message: a[1] });
+    return { meta: { changes: 1 } };
+  }
+  if (/FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.customer_email = \? AND o.status = 'paid' AND i.status = 'live'/.test(sql)) {
+    return { results: db.orders.filter(o => o.customer_email === a[0] && o.status === 'paid')
+      .map(o => row('invitations', o.product_id)).filter(i => i && i.status === 'live').map(i => ({ id: i.id, slug: i.slug })) };
   }
   if (/smtp_settings/.test(sql)) return { enabled: 1, host: 'h', port: 587, senderName: 'JLC', senderEmail: 'co@x.com' };
   if (/FROM (branding|content)/.test(sql)) return null;
@@ -192,7 +222,6 @@ test('successful checkout creates pending rows and returns checkoutUrl', async (
   assert.equal(a.cancel_url, 'https://shop.test/invitations/classic-elegance');
   const m = a.success_url.match(/^https:\/\/shop\.test\/invitations\/success#1\.([A-Za-z0-9_-]{43})$/);
   assert.ok(m, a.success_url);
-  const { createHash } = await import('node:crypto');
   assert.equal(createHash('sha256').update(m[1]).digest('hex'), inv.manage_token_hash);
 });
 
@@ -280,4 +309,147 @@ test('other event types are stored and return 200', async () => {
   const body = JSON.stringify({ data: { id: 'evt_x', attributes: { type: 'payment.failed', livemode: false, data: {} } } });
   assert.equal((await hook(body)).status, 200);
   assert.equal(db.events[0].type, 'payment.failed');
+});
+
+// --- Manage, RSVP, resend ---
+const hash = (s) => createHash('sha256').update(s).digest('hex');
+const TOKEN = 'manage-token-1';
+const call = (method, path, body, token) => invitations(ctx(new Request('https://shop.test' + path, {
+  method, body: body === undefined ? undefined : JSON.stringify(body), headers: token === undefined ? {} : { 'X-Manage-Token': token } })));
+// A paid, live invitation (id 1, photo inv/1/0.png) whose manage token is TOKEN
+const live = async () => {
+  await post('/api/invitations/checkout', goodCheckout());
+  Object.assign(db.invitations[0], { status: 'live', manage_token_hash: hash(TOKEN) });
+  db.orders[0].status = 'paid';
+  return db.invitations[0];
+};
+const editBody = (details = {}, photos = ['inv/1/0.png']) => ({ details: { ...JSON.parse(db.invitations[0].details), ...details }, photos });
+const rsvp = (slug, extra = {}) => post(`/api/invitations/i/${slug}/rsvp`, { guestName: 'Ana', attending: true, partySize: 2, message: 'See you!', turnstileToken: 'good-token', ...extra });
+
+test('manage: no token, wrong token and a non-live invitation all get the identical 404', async () => {
+  const inv = await live();
+  const bodies = [];
+  for (const t of [undefined, 'wrong-token', 'unknown']) {
+    const res = await call('GET', '/api/invitations/manage', undefined, t);
+    assert.equal(res.status, 404);
+    bodies.push(await res.text());
+  }
+  inv.status = 'refunded';
+  const res = await call('GET', '/api/invitations/manage', undefined, TOKEN);
+  assert.equal(res.status, 404);
+  bodies.push(await res.text());
+  assert.deepEqual(new Set(bodies), new Set([JSON.stringify({ error: 'Invitation not found.' })]));
+});
+
+test('manage with the correct token returns details and RSVPs', async () => {
+  const inv = await live();
+  db.rsvps.push({ id: 1, invitation_id: 1, guest_name: 'Ana', attending: 1, party_size: 2, message: 'Yay', created_at: '2026-11-10 08:00:00' });
+  const res = await call('GET', '/api/invitations/manage', undefined, TOKEN);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.slug, inv.slug);
+  assert.equal(data.status, 'live');
+  assert.equal(data.design.slug, 'classic-elegance');
+  assert.equal(data.colorScheme.name, 'Blush');
+  assert.equal(data.details.partner2, 'Juan');
+  assert.deepEqual(data.photos, ['inv/1/0.png']);
+  assert.deepEqual(data.rsvps, [{ guestName: 'Ana', attending: true, partySize: 2, message: 'Yay', submitted: '2026-11-10 08:00:00' }]);
+});
+
+test('manage: renaming partner2 → 400, nothing stored', async () => {
+  const inv = await live();
+  const res = await call('POST', '/api/invitations/manage', editBody({ partner2: 'Pedro' }), TOKEN);
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, 'Names cannot be changed after payment.');
+  assert.equal(JSON.parse(inv.details).partner2, 'Juan');
+});
+
+test('manage: a date change → 200 and stored', async () => {
+  const inv = await live();
+  const res = await call('POST', '/api/invitations/manage', editBody({ eventDate: '2027-07-01' }), TOKEN);
+  assert.equal(res.status, 200);
+  assert.equal(JSON.parse(inv.details).eventDate, '2027-07-01');
+  assert.equal(inv.event_date, '2027-07-01');
+  assert.ok(r2.has('inv/1/0.png'));
+});
+
+test('manage: photos keep existing keys, add data URLs, delete removed ones, reject foreign keys and design changes', async () => {
+  const inv = await live();
+  let res = await call('POST', '/api/invitations/manage', editBody({}, [PNG]), TOKEN);
+  assert.equal(res.status, 200);
+  const keys = JSON.parse(inv.photos);
+  assert.equal(keys.length, 1);
+  assert.match(keys[0], /^inv\/1\/\d+\.png$/);
+  assert.notEqual(keys[0], 'inv/1/0.png');
+  assert.ok(!r2.has('inv/1/0.png'), 'removed photo deleted');
+  assert.ok(r2.has(keys[0]));
+  assert.deepEqual((await res.json()).photos, keys);
+  for (const bad of [{ photos: ['inv/2/0.png'] }, { photos: Array(7).fill(PNG) }, { photos: ['data:text/html;base64,PGI+'] }, { colorScheme: 'Blush' }, { design: 'garden' }]) {
+    res = await call('POST', '/api/invitations/manage', { ...editBody({}, keys), ...bad }, TOKEN);
+    assert.equal(res.status, 400, JSON.stringify(bad).slice(0, 80));
+  }
+  assert.deepEqual(JSON.parse(inv.photos), keys);
+  assert.equal(r2.size, 1);
+});
+
+test('RSVP: a valid one is stored; refunded → 404; party size 11 → 400; bad Turnstile → 400; past deadline → 400', async () => {
+  const inv = await live();
+  assert.equal((await rsvp(inv.slug)).status, 200);
+  assert.deepEqual(db.rsvps.map(r => [r.invitation_id, r.guest_name, r.attending, r.party_size, r.message]), [[1, 'Ana', 1, 2, 'See you!']]);
+  assert.equal((await rsvp(inv.slug, { partySize: 11 })).status, 400);
+  assert.equal((await rsvp(inv.slug, { turnstileToken: 'bad' })).status, 400);
+  inv.details = JSON.stringify({ ...JSON.parse(inv.details), rsvpDeadline: '2020-01-01' });
+  const closed = await rsvp(inv.slug);
+  assert.equal(closed.status, 400);
+  assert.equal((await closed.json()).error, 'RSVPs are closed.');
+  inv.status = 'refunded';
+  const res = await rsvp(inv.slug);
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: 'Invitation not found.' });
+  assert.equal(db.rsvps.length, 1);
+});
+
+test('RSVP CSV escapes quotes and formula cells', async () => {
+  await live();
+  db.rsvps.push({ id: 1, invitation_id: 1, guest_name: '=SUM(A1)', attending: 0, party_size: 1, message: 'He said "hi"', created_at: '2026-11-10 08:00:00' });
+  const res = await call('GET', '/api/invitations/manage/rsvps.csv', undefined, TOKEN);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('Content-Type'), /^text\/csv/);
+  const lines = (await res.text()).trim().split('\r\n');
+  assert.equal(lines[0], 'Name,Attending,Party size,Message,Submitted');
+  assert.equal(lines[1], `"'=SUM(A1)","No","1","He said ""hi""","2026-11-10 08:00:00"`);
+  assert.equal((await call('GET', '/api/invitations/manage/rsvps.csv', undefined, 'wrong')).status, 404);
+});
+
+test('resend for an unknown email → 200 and no email', async () => {
+  await live();
+  const res = await post('/api/invitations/resend', { email: 'nobody@example.com', turnstileToken: 'good-token' });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+  await settle();
+  assert.equal(emails().length, 0);
+});
+
+test('resend for a known email → 200, one email, old token stops working, new one works', async () => {
+  await live();
+  const res = await post('/api/invitations/resend', { email: 'BRIDE@example.com', turnstileToken: 'good-token' });
+  assert.deepEqual(await res.json(), { ok: true });
+  await settle();
+  assert.equal(emails().length, 1);
+  const mail = emails()[0].replace(/=\r\n/g, '');
+  assert.ok(mail.includes(`https://shop.test/i/${db.invitations[0].slug}`));
+  const fresh = mail.match(/https:\/\/shop\.test\/manage#([A-Za-z0-9_-]{43})/)[1];
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, TOKEN)).status, 404);
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, fresh)).status, 200);
+});
+
+test('resend: bad Turnstile → 400; after 3 per hour it still says ok but sends nothing', async () => {
+  await live();
+  assert.equal((await post('/api/invitations/resend', { email: 'bride@example.com', turnstileToken: 'bad' })).status, 400);
+  for (let n = 0; n < 4; n++) {
+    const res = await post('/api/invitations/resend', { email: 'bride@example.com', turnstileToken: 'good-token' });
+    assert.deepEqual(await res.json(), { ok: true });
+  }
+  await settle();
+  assert.equal(emails().length, 3);
 });
