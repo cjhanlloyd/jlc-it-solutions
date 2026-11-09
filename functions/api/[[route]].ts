@@ -29,14 +29,20 @@ function getThemeColorHex(themeColor?: string): string {
   }
 }
 
+function escapeHtml(s: string): string {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function parseTextToHtml(text: string, themeColorHex: string): { html: string; actionUrl: string } {
   const paragraphs = text.split(/\n\s*\n/);
   let htmlResult = '';
   let actionUrl = '';
 
   for (const para of paragraphs) {
-    const trimmedPara = para.trim();
-    if (!trimmedPara) continue;
+    const rawPara = para.trim();
+    if (!rawPara) continue;
+    // Body text includes visitor input (name, project description): escape before it becomes HTML
+    const trimmedPara = escapeHtml(rawPara);
 
     // Detect if this paragraph is just a URL
     const urlRegex = /^(https?:\/\/[^\s]+)$/;
@@ -91,7 +97,7 @@ function parseTextToHtml(text: string, themeColorHex: string): { html: string; a
     }
 
     // Check if it's a quoted description/quote block
-    if (trimmedPara.startsWith('"') && trimmedPara.endsWith('"')) {
+    if (rawPara.startsWith('"') && rawPara.endsWith('"')) {
       htmlResult += `
         <div style="border-left: 4px solid #cbd5e1; padding: 4px 0 4px 16px; margin: 18px 0; font-style: italic; color: #475569; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6;">
           ${trimmedPara}
@@ -191,7 +197,7 @@ function buildHtmlEmail(branding: any, content: any, subject: string, plainTextB
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
+  <title>${escapeHtml(oneLine(subject))}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; padding: 20px 0;">
@@ -261,11 +267,18 @@ function buildHtmlEmail(branding: any, content: any, subject: string, plainTextB
   return { html, actionUrl };
 }
 
+// No whitespace (so no CR/LF) and no angle brackets: safe to place inside SMTP commands and headers
+const EMAIL_RE = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/;
+const oneLine = (s: string) => String(s ?? '').replace(/[\r\n]+/g, ' ');
+
 // SMTP Transmission Client using cloudflare:sockets
 async function sendSmtpEmail(db: D1Database, smtp: any, mail: { to: string; subject: string; body: string }, request?: Request): Promise<void> {
   if (!smtp || !smtp.enabled) {
     console.log("SMTP is disabled. Skipping email transmission.");
     return;
+  }
+  if (!EMAIL_RE.test(mail.to) || !EMAIL_RE.test(smtp.senderEmail || '')) {
+    throw new Error(`Invalid email address (to: ${oneLine(mail.to)}, from: ${oneLine(smtp.senderEmail)})`);
   }
 
   // Retrieve branding and content configuration from D1
@@ -367,9 +380,9 @@ async function sendSmtpEmail(db: D1Database, smtp: any, mail: { to: string; subj
 
     let rawMail = `Message-ID: ${msgId}\r\n`;
     rawMail += `Date: ${date}\r\n`;
-    rawMail += `From: "${smtp.senderName}" <${smtp.senderEmail}>\r\n`;
+    rawMail += `From: "${oneLine(smtp.senderName).replace(/"/g, "'")}" <${smtp.senderEmail}>\r\n`;
     rawMail += `To: <${mail.to}>\r\n`;
-    rawMail += `Subject: ${mail.subject}\r\n`;
+    rawMail += `Subject: ${oneLine(mail.subject)}\r\n`;
     rawMail += `MIME-Version: 1.0\r\n`;
     rawMail += `Content-Type: multipart/related; boundary="${boundary}"\r\n`;
     rawMail += `\r\n`;
@@ -379,7 +392,7 @@ async function sendSmtpEmail(db: D1Database, smtp: any, mail: { to: string; subj
     rawMail += `Content-Type: text/html; charset=UTF-8\r\n`;
     rawMail += `Content-Transfer-Encoding: 8bit\r\n`;
     rawMail += `\r\n`;
-    rawMail += htmlBody.replace(/\r?\n/g, '\r\n') + `\r\n`;
+    rawMail += htmlBody.replace(/\r\n|\r|\n/g, '\r\n') + `\r\n`;
     rawMail += `\r\n`;
 
     // Image attachment Part (if logo exists)
@@ -401,6 +414,8 @@ async function sendSmtpEmail(db: D1Database, smtp: any, mail: { to: string; subj
     }
 
     rawMail += `--${boundary}--\r\n`;
+    // Dot-stuffing (RFC 5321 4.5.2): a line starting with "." must not end the DATA block early
+    rawMail = rawMail.replace(/\r\n\./g, '\r\n..');
     rawMail += `.\r\n`;
 
     await writer.write(encoder.encode(rawMail));
@@ -549,6 +564,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const createdAt = new Date().toISOString();
       const clientIp = request.headers.get("CF-Connecting-IP") || "127.0.0.1";
       const clientEmail = (body.email || "").trim().toLowerCase();
+      if (!EMAIL_RE.test(clientEmail)) {
+        return new Response(JSON.stringify({ error: "Please enter a valid email address." }), { headers, status: 400 });
+      }
+      body.email = clientEmail;
 
       // 1. CAPTCHA validation
       if (!body.captchaAnswer || !body.captchaSignature) {
@@ -843,6 +862,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return new Response(JSON.stringify({ error: "Unauthorized access: Invalid or expired bearer token." }), { headers, status: 401 });
     }
 
+    // Role rules (same as server.ts): only Super Admins manage accounts; Editors cannot touch branding, SMTP or the email template
+    const forbidden = (path === '/api/admin/accounts' && adminUser.role !== 'Super Admin')
+      || (adminUser.role === 'Editor' && ['/api/admin/settings/branding', '/api/admin/settings/smtp', '/api/admin/email-template'].includes(path));
+    if (forbidden) {
+      return new Response(JSON.stringify({ error: `Access Denied: your role (${adminUser.role}) is not permitted to perform this action.` }), { headers, status: 403 });
+    }
+
     // ----------------------------------------------------
     // GET /api/admin/data (Full Database fetcher)
     // ----------------------------------------------------
@@ -903,7 +929,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           processSteps: processStepsResult.results || [],
           roadmapSteps: roadmapStepsResult.results || [],
           emailTemplate: emailTemplate || { subject: "Thank You for contacting JLC Solutions!", body: "Hi {fullName}" },
-          smtpSettings: smtpSettings || { host: "localhost", port: 587, enabled: 0 }
+          // Editors cannot edit SMTP, so they never receive its password
+          smtpSettings: smtpSettings
+            ? (adminUser.role === 'Editor' ? { ...smtpSettings, password: '' } : smtpSettings)
+            : { host: "localhost", port: 587, enabled: 0 }
         },
         systemLogs: (auditLogs.results || []).map((l: any) => ({
           timestamp: l.timestamp,
