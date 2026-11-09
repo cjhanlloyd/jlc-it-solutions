@@ -85,7 +85,8 @@ CREATE TABLE content (
   pricingEnterpriseDesc TEXT,
   pricingEnterpriseHighlights TEXT,
   pricingCtaTitle TEXT,
-  pricingCtaDesc TEXT
+  pricingCtaDesc TEXT,
+  pricingCards TEXT -- JSON array of PricingCard
 );
 
 DROP TABLE IF EXISTS admins;

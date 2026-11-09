@@ -476,6 +476,14 @@ function parseJsonSafe(val: any, fallback: any = []) {
   }
 }
 
+const MAX_ATTACHMENT_BASE64 = 1_400_000;
+
+// fileAttachment is stored as JSON text; the admin panel expects an object
+async function listInquiries(db: D1Database): Promise<any[]> {
+  const { results } = await db.prepare("SELECT * FROM inquiries ORDER BY createdAt DESC").all<any>();
+  return (results || []).map(i => ({ ...i, fileAttachment: parseJsonSafe(i.fileAttachment, null) }));
+}
+
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -615,8 +623,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: "Too many submissions. Please wait 10 minutes before submitting another inquiry." }), { headers, status: 429 });
       }
 
+      // D1 caps a row at 2,000,000 bytes, so a 1 MB file (~1.37 MB as base64) is the most we can store
+      let fileAttachment: string | null = null;
+      const file = body.fileAttachment;
+      if (file) {
+        if (typeof file.name !== 'string' || typeof file.base64 !== 'string' || !/^data:[\w.+-]+\/[\w.+-]+;base64,/.test(file.base64)) {
+          return new Response(JSON.stringify({ error: "The attached file could not be read. Please try attaching it again." }), { headers, status: 400 });
+        }
+        if (file.base64.length > MAX_ATTACHMENT_BASE64) {
+          return new Response(JSON.stringify({ error: "The attached file is too large. The maximum size is 1 MB." }), { headers, status: 413 });
+        }
+        fileAttachment = JSON.stringify({ name: file.name.slice(0, 200), type: String(file.type || '').slice(0, 100), base64: file.base64 });
+      }
+
       await env.DB.prepare(
-        "INSERT INTO inquiries (id, fullName, companyName, email, phone, serviceRequired, projectDescription, preferredContactMethod, budget, createdAt, status, ipAddress) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?)"
+        "INSERT INTO inquiries (id, fullName, companyName, email, phone, serviceRequired, projectDescription, preferredContactMethod, budget, createdAt, status, ipAddress, fileAttachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?, ?)"
       ).bind(
         id, 
         body.fullName || '', 
@@ -627,8 +648,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         body.projectDescription || '', 
         body.preferredContactMethod || 'Email', 
         body.budget || '', 
-        createdAt, 
-        clientIp
+        createdAt,
+        clientIp,
+        fileAttachment
       ).run();
 
       // Trigger automatic inquiry acknowledgment email and admin notification if enabled
@@ -726,8 +748,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: "Server misconfigured: JWT_SECRET is not set." }), { headers, status: 500 });
       }
       const body: any = await request.json();
-      const admin: any = await env.DB.prepare("SELECT * FROM admins WHERE email = ?").bind(body.email).first();
-      
+      const email = String(body.email || '').trim().toLowerCase();
+      const admin: any = await env.DB.prepare("SELECT * FROM admins WHERE email = ?").bind(email).first();
+
       if (!admin) {
         return new Response(JSON.stringify({ error: "Invalid username or password credentials." }), { headers, status: 401 });
       }
@@ -736,8 +759,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: "Account status is unverified or pending invite activation." }), { headers, status: 403 });
       }
 
-      const isMatched = bcrypt.compareSync(body.password, admin.passwordHash);
+      // Brute-force guard: at most 5 failed attempts per account in 10 minutes, counted from audit_logs
+      const failureMessage = `Failed login for ${admin.email}`;
+      const recentFailures: any = await env.DB.prepare(
+        "SELECT COUNT(*) as count FROM audit_logs WHERE log_type = 'auth_failure' AND message = ? AND timestamp > ?"
+      ).bind(failureMessage, new Date(Date.now() - 10 * 60 * 1000).toISOString()).first();
+      if ((recentFailures?.count || 0) >= 5) {
+        return new Response(JSON.stringify({ error: "Too many failed login attempts. Please wait 10 minutes and try again." }), { headers, status: 429 });
+      }
+
+      const isMatched = typeof body.password === 'string' && !!admin.passwordHash && bcrypt.compareSync(body.password, admin.passwordHash);
       if (!isMatched) {
+        await env.DB.prepare(
+          "INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'auth_failure', ?)"
+        ).bind(new Date().toISOString(), failureMessage).run();
         return new Response(JSON.stringify({ error: "Invalid username or password credentials." }), { headers, status: 401 });
       }
 
@@ -891,7 +926,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         env.DB.prepare("SELECT * FROM branding WHERE id = 'default'").first(),
         env.DB.prepare("SELECT * FROM content WHERE id = 'default'").first(),
         env.DB.prepare("SELECT * FROM services ORDER BY position ASC").all(),
-        env.DB.prepare("SELECT * FROM inquiries ORDER BY createdAt DESC").all(),
+        listInquiries(env.DB),
         env.DB.prepare("SELECT * FROM sent_emails ORDER BY sentAt DESC").all(),
         env.DB.prepare("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 150").all(),
         env.DB.prepare("SELECT email, fullName, role, status, verified, createdAt FROM admins").all(),
@@ -921,7 +956,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           branding: branding || { companyName: "JLC Solutions", logoType: "icon", logoIcon: "Activity", themeColor: "deepblue", tagline: "Your Tech Companion" },
           content: parsedContent || { heroTitle: "Enterprise IT Services", heroSubtitle: "Trusted technology partner", whyChooseUsText: "", whyChooseUsPoints: [] },
           services: parsedServices,
-          inquiries: inquiries.results || [],
+          inquiries,
           sentEmails: sentEmails.results || [],
           admins: admins.results || [],
           faqs: faqs.results || [],
@@ -1133,6 +1168,32 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           return new Response(JSON.stringify({ error: "You cannot revoke your own account credentials." }), { headers, status: 400 });
         }
         await env.DB.prepare("DELETE FROM admins WHERE email = ?").bind(admin.email).run();
+      } else if (action === 'toggle_status' || action === 'reset_password') {
+        const cleanEmail = String(admin?.email || '').toLowerCase().trim();
+        const target: any = await env.DB.prepare("SELECT email, fullName, status FROM admins WHERE email = ?").bind(cleanEmail).first();
+        if (!target) {
+          return new Response(JSON.stringify({ error: "Account not found." }), { headers, status: 404 });
+        }
+        if (action === 'toggle_status') {
+          if (cleanEmail === adminUser.email.toLowerCase()) {
+            return new Response(JSON.stringify({ error: "You cannot disable your own account." }), { headers, status: 400 });
+          }
+          // Disabled accounts fail verifyAdminToken (it requires status 'Active'), so their sessions end at once
+          const newStatus = target.status === 'Active' ? 'Disabled' : 'Active';
+          await env.DB.prepare("UPDATE admins SET status = ? WHERE email = ?").bind(newStatus, cleanEmail).run();
+          await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'security', ?)")
+            .bind(new Date().toISOString(), `Account ${cleanEmail} set to ${newStatus} by ${adminUser.fullName}`).run();
+        } else {
+          if (typeof admin.password !== 'string' || !admin.password) {
+            return new Response(JSON.stringify({ error: "A new password is required." }), { headers, status: 400 });
+          }
+          await env.DB.prepare("UPDATE admins SET passwordHash = ?, resetToken = NULL, resetTokenExpires = NULL WHERE email = ?")
+            .bind(bcrypt.hashSync(admin.password, 10), cleanEmail).run();
+          await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'security', ?)")
+            .bind(new Date().toISOString(), `Password for ${cleanEmail} reset manually by ${adminUser.fullName}`).run();
+        }
+      } else {
+        return new Response(JSON.stringify({ error: `Unknown account action: ${action}` }), { headers, status: 400 });
       }
 
       const admins = await env.DB.prepare("SELECT email, fullName, role, status, verified, createdAt FROM admins").all();
@@ -1186,16 +1247,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         "UPDATE inquiries SET status = ?, adminNotes = ? WHERE id = ?"
       ).bind(body.status, body.adminNotes || '', body.id).run();
 
-      const inquiries = await env.DB.prepare("SELECT * FROM inquiries ORDER BY createdAt DESC").all();
-      return new Response(JSON.stringify({ success: true, inquiries: inquiries.results || [] }), { headers });
+      return new Response(JSON.stringify({ success: true, inquiries: await listInquiries(env.DB) }), { headers });
     }
 
     if (method === 'POST' && path === '/api/admin/inquiries/delete') {
       const body: any = await request.json();
       await env.DB.prepare("DELETE FROM inquiries WHERE id = ?").bind(body.id).run();
 
-      const inquiries = await env.DB.prepare("SELECT * FROM inquiries ORDER BY createdAt DESC").all();
-      return new Response(JSON.stringify({ success: true, inquiries: inquiries.results || [] }), { headers });
+      return new Response(JSON.stringify({ success: true, inquiries: await listInquiries(env.DB) }), { headers });
     }
 
     if (method === 'POST' && path === '/api/admin/inquiries/reply') {
@@ -1208,17 +1267,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: "SMTP is disabled or not configured. Cannot send replies." }), { headers, status: 400 });
       }
 
-      const sendReplyEmailPromise = (async () => {
-        try {
-          await sendSmtpEmail(env.DB, smtp, { to: to || '', subject: subject || '', body: replyText }, request);
-        } catch (e: any) {
-          console.error("Reply email failed: ", e.message);
-          await env.DB.prepare(
-            "INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'system_error', ?)"
-          ).bind(new Date().toISOString(), `Inquiry reply to ${to || ''} failed: ${e.message}`).run();
-        }
-      })();
-      context.waitUntil(sendReplyEmailPromise);
+      // Send before logging, so the panel never shows a reply as sent when it was not
+      try {
+        await sendSmtpEmail(env.DB, smtp, { to: to || '', subject: subject || '', body: replyText }, request);
+      } catch (e: any) {
+        console.error("Reply email failed: ", e.message);
+        await env.DB.prepare(
+          "INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'system_error', ?)"
+        ).bind(new Date().toISOString(), `Inquiry reply to ${to || ''} failed: ${e.message}`).run();
+        return new Response(JSON.stringify({ error: `Reply was not sent: ${e.message}` }), { headers, status: 502 });
+      }
 
       // Auto update inquiry status to 'In Progress' if currently 'New'
       await env.DB.prepare("UPDATE inquiries SET status = 'In Progress' WHERE id = ? AND status = 'New'").bind(inquiryId || '').run();
@@ -1232,9 +1290,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       const [sentEmails, inquiries] = await Promise.all([
         env.DB.prepare("SELECT * FROM sent_emails ORDER BY sentAt DESC").all(),
-        env.DB.prepare("SELECT * FROM inquiries ORDER BY createdAt DESC").all()
-      ]) as [any, any];
-      return new Response(JSON.stringify({ success: true, sentEmails: sentEmails.results || [], inquiries: inquiries.results || [] }), { headers });
+        listInquiries(env.DB)
+      ]) as [any, any[]];
+      return new Response(JSON.stringify({ success: true, sentEmails: sentEmails.results || [], inquiries }), { headers });
     }
 
     // ----------------------------------------------------

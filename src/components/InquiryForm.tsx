@@ -109,8 +109,8 @@ export default function InquiryForm({ services, branding, content, preselectedSe
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Maximum file attachment size is 2MB.");
+    if (file.size > 1024 * 1024) {
+      alert("Maximum file attachment size is 1MB.");
       return;
     }
 
@@ -547,7 +547,7 @@ Phone: ${content.contactPhone}`
                 {/* File Attachment Uploader */}
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display block">
-                    Attach Design Specs or Requirements <span className="text-slate-400 text-[10px] lowercase italic">(optional, PDF/Images up to 2MB)</span>
+                    Attach Design Specs or Requirements <span className="text-slate-400 text-[10px] lowercase italic">(optional, PDF/Images up to 1MB)</span>
                   </label>
                   
                   <div className="flex items-center space-x-4">
