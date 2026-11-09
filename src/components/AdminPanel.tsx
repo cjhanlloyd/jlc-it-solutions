@@ -5,31 +5,14 @@
 
 import React from 'react';
 import * as Icons from 'lucide-react';
-import { 
-  WebsiteData, 
-  Inquiry, 
-  Service, 
-  BrandingSettings, 
-  ContentSettings, 
-  EmailTemplate, 
-  AdminAccount,
-  SentEmail,
-  InquiryStatus,
-  AdminRole,
-  SmtpSettings,
-  DEFAULT_ABOUT_COMMITMENTS,
-  DEFAULT_WHY_PROMISES,
-  PricingCard,
-  DEFAULT_PRICING_CARDS
-} from '../types.js';
-import { optimizeImage } from './admin/images.js';
+import { WebsiteData, BrandingSettings, AdminRole } from '../types.js';
+import { adminApi } from './admin/api.js';
 import ContentTab from './admin/content/ContentTab.js';
 import AccountsTab from './admin/AccountsTab.js';
 import EmailTab from './admin/EmailTab.js';
 import BrandingTab from './admin/BrandingTab.js';
 import LogsTab from './admin/LogsTab.js';
 import InquiriesTab from './admin/InquiriesTab.js';
-
 
 interface AdminPanelProps {
   adminToken: string;
@@ -48,36 +31,12 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   const [apiError, setApiError] = React.useState('');
   const [successMsg, setSuccessMsg] = React.useState('');
 
-  // Local state for Services CRUD
-
-  // Local state for Branding
-
-  // Local state for Page Content
-
-  // Local state for Email Templates
-
-  // Local state for Admin accounts
-
-  // Local state for FAQs, Roadmap, and Collaboration Process CRUD
-
-  // Local state for Gemini Tagline Prompt
-
-  // Local state for Inquiry Active View & AI Reply Assistant
-
   // Fetch admin data on load
   const fetchAdminData = async () => {
     setIsLoading(true);
     setApiError('');
     try {
-      const response = await fetch('/api/admin/data', {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`
-        }
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch administrator data.');
-      }
+      const data = await adminApi('/api/admin/data', adminToken, undefined, 'Failed to fetch administrator data.');
       setDb(data.db);
       setSystemLogs(data.systemLogs);
       // Tabs initialise their own forms from db when they mount
@@ -112,41 +71,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
     }
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // Main Loader
   if (isLoading) {
     return (
@@ -158,9 +82,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
   }
 
   const activeInquiries = db?.inquiries || [];
-  const activeServices = db?.services || [];
-  const activeSentEmails = db?.sentEmails || [];
-  const activeAdminsList = db?.admins || [];
 
   // Every tab stays mounted (hidden when inactive) so unsaved edits survive switching tabs
   const tabProps = db ? { db, setDb, adminToken, adminUser, isSaving, run, showFlashMsg, setApiError, onDataChange } : null;
@@ -229,7 +150,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             )}
           </button>
 
-
           <button
             onClick={() => { setActiveSubTab('branding'); setApiError(''); }}
             className={`w-full text-left flex items-center px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
@@ -291,17 +211,12 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             </div>
           )}
 
-
-          {/* TAB 2: SERVICES MANAGEMENT CRUD */}
-
-
           {/* TAB 3: BRANDING & SLOGANS */}
           {tabProps && (
             <div hidden={activeSubTab !== 'branding'}>
               <BrandingTab {...tabProps} />
             </div>
           )}
-
 
           {/* TAB 4: PAGE CONTENT CUSTOMIZER */}
           {tabProps && (
@@ -310,7 +225,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             </div>
           )}
 
-
           {/* TAB 5: EMAIL TEMPLATES & SMTP */}
           {tabProps && (
             <div hidden={activeSubTab !== 'email'}>
@@ -318,14 +232,12 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             </div>
           )}
 
-
           {/* TAB 6: ADMIN ACCOUNTS */}
           {tabProps && (
             <div hidden={activeSubTab !== 'accounts'}>
               <AccountsTab {...tabProps} reload={fetchAdminData} />
             </div>
           )}
-
 
           {/* TAB 7: ANALYTICS & ACTIVITY LOGS */}
           {tabProps && (
