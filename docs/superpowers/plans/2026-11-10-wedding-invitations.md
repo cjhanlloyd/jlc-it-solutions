@@ -17,7 +17,7 @@
 - Secrets only via env: `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`, `JWT_SECRET`. Never returned to the browser or logged. Local test-mode values go in `.dev.vars`; add the two PayMongo names to `.dev.vars.example`.
 - PayMongo: `POST https://api.paymongo.com/v1/checkout_sessions`, HTTP Basic with `secretKey + ':'`. Keep the URL in one constant `PAYMONGO_CHECKOUT_URL` (the docs disagree on v1 vs v2; the first test-mode payment confirms which). `payment_method_types: ['card','gcash','paymaya','grab_pay']`. The response gives `data.id` (`cs_…`) and `data.attributes.checkout_url`.
 - Webhook: header `Paymongo-Signature: t=<ts>,te=<test sig>,li=<live sig>`. Signature = hex HMAC-SHA256 of `` `${t}.${rawBody}` `` with `PAYMONGO_WEBHOOK_SECRET`. Compare against `te` when the event's `data.attributes.livemode` is false, or `li` when true. Constant-time comparison. Reject if `|now − t| > 300 s`. Event type `checkout_session.payment.paid`. Paths in the payload: event id `data.id`; session id `data.attributes.data.id`; payments `data.attributes.data.attributes.payments[].id`; metadata `data.attributes.data.attributes.metadata`.
-- PayMongo sends **no** expiry event. Pending orders older than 24 h are treated as expired by cleanup (Task 11).
+- PayMongo sends **no** expiry event. Pending orders older than 72 h are treated as expired by cleanup (Task 11).
 - Partner names and design are locked after payment (server-enforced). The slug never changes.
 - Manage token: 32 random bytes, base64url, sent only in the URL fragment (`/manage#<token>`) and the `X-Manage-Token` request header. Only `sha256(token)` is stored.
 - Invitation status values: `'pending' | 'live' | 'expired' | 'refunded'`. Order status values: `'pending' | 'paid' | 'failed' | 'expired' | 'refunded'`.
@@ -301,7 +301,7 @@
 
 **Interfaces:**
 - `runCleanup(db: D1Database, photos: R2Bucket, now: Date): Promise<{ expiredOrders: number, purgedInvitations: number }>`:
-  - pending orders older than 24 h → order `expired`, invitation rows and R2 photos deleted;
+  - pending orders older than 72 h → order `expired`, invitation rows and R2 photos deleted;
   - live invitations with `event_date + 60 days < now` → `expired`, photos deleted from R2, RSVPs deleted (per the privacy notice).
 - A one-line `shortcut:` comment: cleanup runs when an admin opens the overview, because Pages has no cron; upgrade to a Worker cron trigger if orders grow.
 

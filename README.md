@@ -59,7 +59,8 @@ Security headers for static pages live in `public/_headers`.
 5. **API version.** PayMongo's docs disagree on v1 vs v2 for checkout. The code uses `PAYMONGO_CHECKOUT_URL` in `server/paymongo.ts` (v1); the first test-mode payment confirms it.
 6. **Policy pages.** `/terms`, `/refund-policy` and `/privacy` are drafts. Get them reviewed and approved before launch.
 7. **Email.** Enable SMTP in the admin panel's email settings, or couples won't get their manage-link email (the success-page link still works).
-8. **Cleanup.** Unpaid orders and old invitations are cleaned up when an admin opens the Orders or Invitations tab (Pages has no cron).
+8. **Cleanup.** Unpaid orders (pending for more than 72 h) and old invitations are cleaned up when an admin opens the Orders or Invitations tab (Pages has no cron).
+   An admin should open the Orders or Invitations tab at least weekly so cleanup runs, including the 60-day deletion promised in the privacy notice. If that's impractical, move cleanup to a Worker cron trigger.
 9. **Go live.** Switch to the live secret key and live webhook secret, make one small real purchase, and refund it.
 
 Local test mode: put the test keys in `.dev.vars`. For the webhook to reach your machine, expose it with a tunnel
