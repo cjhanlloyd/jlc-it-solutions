@@ -416,15 +416,30 @@ async function sendSmtpEmail(db: D1Database, smtp: any, mail: { to: string; subj
   }
 }
 
-// Simple session token validator
-async function verifyAdminToken(request: Request, db: D1Database): Promise<any | null> {
+// Session tokens are 'jlc.<base64 payload>.<base64 HMAC-SHA256 of payload>', keyed by JWT_SECRET.
+function hmacKey(secret: string, usage: 'sign' | 'verify'): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [usage]);
+}
+
+async function signAdminToken(email: string, secret: string): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + (60 * 60 * 24); // 24 Hours
+  const payloadB64 = btoa(JSON.stringify({ email, exp }));
+  const sig = await crypto.subtle.sign('HMAC', await hmacKey(secret, 'sign'), new TextEncoder().encode(payloadB64));
+  return `jlc.${payloadB64}.${btoa(String.fromCharCode(...new Uint8Array(sig)))}`;
+}
+
+async function verifyAdminToken(request: Request, db: D1Database, secret?: string): Promise<any | null> {
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.substring(7);
+  if (!secret || !authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const [prefix, payloadB64, sigB64, ...rest] = authHeader.substring(7).split('.');
+  if (prefix !== 'jlc' || !payloadB64 || !sigB64 || rest.length) return null;
 
   try {
-    if (token.startsWith('jlc.')) {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+    const sig = Uint8Array.from(atob(sigB64), c => c.charCodeAt(0));
+    // crypto.subtle.verify compares in constant time
+    const valid = await crypto.subtle.verify('HMAC', await hmacKey(secret, 'verify'), sig, new TextEncoder().encode(payloadB64));
+    if (valid) {
+      const payload = JSON.parse(atob(payloadB64));
       if (payload && payload.email && payload.exp > Date.now() / 1000) {
         const admin = await db.prepare("SELECT email, fullName, role FROM admins WHERE email = ? AND status = 'Active' AND verified = 1").bind(payload.email).first();
         return admin || null;
@@ -688,6 +703,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // POST /api/admin/login
     // ----------------------------------------------------
     if (method === 'POST' && path === '/api/admin/login') {
+      if (!env.JWT_SECRET) {
+        return new Response(JSON.stringify({ error: "Server misconfigured: JWT_SECRET is not set." }), { headers, status: 500 });
+      }
       const body: any = await request.json();
       const admin: any = await env.DB.prepare("SELECT * FROM admins WHERE email = ?").bind(body.email).first();
       
@@ -704,9 +722,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: "Invalid username or password credentials." }), { headers, status: 401 });
       }
 
-      const exp = Math.floor(Date.now() / 1000) + (60 * 60 * 24); // 24 Hours
-      const payload = { email: admin.email, fullName: admin.fullName, role: admin.role, exp };
-      const token = 'jlc.' + btoa(JSON.stringify(payload));
+      const token = await signAdminToken(admin.email, env.JWT_SECRET!);
 
       await env.DB.prepare(
         "INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, ?, ?)"
@@ -729,7 +745,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const body: any = await request.json();
       const admin: any = await env.DB.prepare("SELECT * FROM admins WHERE email = ?").bind(body.email).first();
 
-      if (!admin || admin.verificationToken !== body.token) {
+      // Stored token is NULL once used, so a missing/null token must never match it
+      if (typeof body.token !== 'string' || !body.token || typeof body.password !== 'string' || !body.password
+        || !admin || admin.verificationToken !== body.token) {
         return new Response(JSON.stringify({ error: "Invalid verification token or email." }), { headers, status: 400 });
       }
 
@@ -759,7 +777,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const admin: any = await env.DB.prepare("SELECT * FROM admins WHERE email = ?").bind(body.email).first();
 
       if (admin) {
-        const token = 'pwd-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+        const token = crypto.randomUUID();
         const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
         await env.DB.prepare(
@@ -800,7 +818,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const body: any = await request.json();
       const admin: any = await env.DB.prepare("SELECT * FROM admins WHERE email = ?").bind(body.email).first();
 
-      if (!admin || admin.resetToken !== body.token) {
+      if (typeof body.token !== 'string' || !body.token || typeof body.password !== 'string' || !body.password
+        || !admin || admin.resetToken !== body.token) {
         return new Response(JSON.stringify({ error: "Invalid reset token." }), { headers, status: 400 });
       }
 
@@ -819,7 +838,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // ----------------------------------------------------
     // SECURE ENDPOINTS REQUIRE AUTHENTICATION
     // ----------------------------------------------------
-    const adminUser = await verifyAdminToken(request, env.DB);
+    const adminUser = await verifyAdminToken(request, env.DB, env.JWT_SECRET);
     if (!adminUser) {
       return new Response(JSON.stringify({ error: "Unauthorized access: Invalid or expired bearer token." }), { headers, status: 401 });
     }
@@ -1044,7 +1063,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           return new Response(JSON.stringify({ error: "An administrator with this email already exists." }), { headers, status: 400 });
         }
 
-        const token = `invite-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+        const token = crypto.randomUUID();
         const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
         await env.DB.prepare(
