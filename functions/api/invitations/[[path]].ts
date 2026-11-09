@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { randomToken, sha256 } from '../../../server/crypto';
 import { EMAIL_RE, sendSmtpEmail } from '../../../server/email';
+import { decodeSegment, findGuestInvitation, todayUtc } from '../../../server/guest-invitation';
 import { createCheckoutSession } from '../../../server/paymongo';
 import { LIMITS, lockedFieldsChanged, makeSlug, validateDetails, validateRsvp } from '../../../shared/invitation-fields';
 
@@ -41,7 +42,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (route === 'POST /api/invitations/resend') return await resend(context, url.origin);
 
     const rsvpSlug = route.match(/^POST \/api\/invitations\/i\/([^/]+)\/rsvp$/)?.[1];
-    if (rsvpSlug) return await rsvp(request, env, decodeURIComponent(rsvpSlug));
+    if (rsvpSlug) {
+      const slug = decodeSegment(rsvpSlug);
+      return slug === null ? NOT_FOUND() : await rsvp(request, env, slug);
+    }
+
+    const guestSlug = route.match(/^GET \/api\/invitations\/i\/([^/]+)$/)?.[1];
+    if (guestSlug) return await guest(env, decodeSegment(guestSlug));
 
     if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv') {
       const token = request.headers.get('X-Manage-Token');
@@ -214,6 +221,20 @@ function csv(rsvps: { guestName: string; attending: boolean; partySize: number; 
   });
 }
 
+// Expired invitations show only the names: no details, photos or RSVP state.
+async function guest(env: Env, slug: string | null): Promise<Response> {
+  const inv = slug === null ? null : await findGuestInvitation(env.DB, slug);
+  if (!inv) return NOT_FOUND();
+  const details = parse(inv.details, {});
+  if (inv.status === 'expired') return json({ state: 'expired', partner1: details.partner1, partner2: details.partner2 });
+  return json({
+    state: 'live', layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
+    photos: (parse(inv.photos, []) as string[]).map((k) => `/photos/${k}`),
+    // Same rule as the RSVP route below: open through the deadline day (UTC)
+    rsvpOpen: !details.rsvpDeadline || todayUtc() <= details.rsvpDeadline,
+  });
+}
+
 async function rsvp(request: Request, env: Env, slug: string): Promise<Response> {
   const body: any = await request.json().catch(() => ({}));
   const spam = await turnstileError(request, env, body.turnstileToken);
@@ -222,7 +243,7 @@ async function rsvp(request: Request, env: Env, slug: string): Promise<Response>
   const inv = await env.DB.prepare("SELECT id, details FROM invitations WHERE slug = ? AND status = 'live'").bind(slug).first<any>();
   if (!inv) return NOT_FOUND();
   const deadline = parse(inv.details, {}).rsvpDeadline;
-  if (deadline && new Date().toISOString().slice(0, 10) > deadline) return json({ error: 'RSVPs are closed.' }, 400);
+  if (deadline && todayUtc() > deadline) return json({ error: 'RSVPs are closed.' }, 400);
 
   const v = validateRsvp({ guestName: body.guestName, attending: body.attending, partySize: body.partySize, message: body.message });
   if (v.ok === false) return json({ error: v.error }, 400);
