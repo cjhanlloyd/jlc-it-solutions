@@ -18,6 +18,7 @@ const json = (data: unknown, status = 200) => Response.json(data, { status });
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
 const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const NOT_FOUND = () => json({ error: 'Invitation not found.' }, 404);
+const PAST_DATE = 'The wedding date cannot be in the past.';
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
@@ -120,6 +121,8 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
   const v = validateDetails(body.details);
   if (v.ok === false) return json({ error: v.error }, 400);
   const details = v.details;
+  // Not in validateDetails: admin sample dates would go stale
+  if (details.eventDate < todayUtc()) return json({ error: PAST_DATE }, 400);
 
   const photos: unknown = body.photos ?? [];
   if (!Array.isArray(photos)) return json({ error: 'Photos must be a list.' }, 400);
@@ -176,7 +179,10 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
 
   const v = validateDetails(body.details);
   if (v.ok === false) return json({ error: v.error }, 400);
-  if (lockedFieldsChanged(parse(inv.details, {}), v.details)) return json({ error: 'Names cannot be changed after payment.' }, 400);
+  const old = parse(inv.details, {});
+  if (lockedFieldsChanged(old, v.details)) return json({ error: 'Names cannot be changed after payment.' }, 400);
+  // An unchanged past date (the wedding already happened) must not block other edits
+  if (v.details.eventDate !== old.eventDate && v.details.eventDate < todayUtc()) return json({ error: PAST_DATE }, 400);
 
   const current: string[] = parse(inv.photos, []);
   const photos: unknown = body.photos ?? [];

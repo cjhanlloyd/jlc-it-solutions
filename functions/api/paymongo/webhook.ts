@@ -26,7 +26,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const type = String(evt.data?.attributes?.type ?? '');
   if (!eventId) return json({ error: 'Missing event id.' }, 400);
   const ins = await env.DB.prepare('INSERT OR IGNORE INTO payment_events (paymongo_event_id, type, payload) VALUES (?, ?, ?)').bind(eventId, type, raw).run();
-  if (!ins.meta.changes) return json({ ok: true, duplicate: true });
+  // Repeats are processed again (the status guards make that safe), so a retry after a crash
+  // mid-processing still activates the order. Only the refund audit row is kept to the first delivery.
+  const firstDelivery = ins.meta.changes > 0;
 
   try {
     if (type !== 'checkout_session.payment.paid') return json({ ok: true });
@@ -37,11 +39,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     ).bind(String(session.id ?? '')).first<any>();
     if (!order) return json({ ok: true });
     await env.DB.prepare('UPDATE payment_events SET order_id = ? WHERE paymongo_event_id = ?').bind(order.id, eventId).run();
-    if (order.status === 'expired' || order.status === 'failed') {
-      // 200 so PayMongo stops retrying; the money has to be refunded by hand
-      const message = `Payment arrived for ${order.status} order ${order.id} (${order.customer_email}); nothing was activated. Refund it in PayMongo.`;
+    // Payment for an order that can no longer go live: answer 200 so PayMongo stops retrying; the money has to be refunded by hand
+    const lost = (status: string) => status === 'expired' || status === 'failed';
+    const logLatePayment = async (status: string) => {
+      if (!firstDelivery) return;
+      const message = `Payment arrived for ${status} order ${order.id} (${order.customer_email}); nothing was activated. Refund it in PayMongo.`;
       console.error('PayMongo webhook:', message);
       await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'security', ?)").bind(new Date().toISOString(), message).run();
+    };
+    if (lost(order.status)) {
+      await logLatePayment(order.status);
       return json({ ok: true });
     }
     if (order.status !== 'pending') return json({ ok: true });
@@ -52,7 +59,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         .bind(paidAt.toISOString(), session.attributes?.payments?.[0]?.id ?? null, order.id),
       env.DB.prepare("UPDATE invitations SET status = 'live' WHERE id = ? AND status = 'pending'").bind(order.invitation_id),
     ]);
-    if (!paid.meta.changes) return json({ ok: true });
+    if (!paid.meta.changes) {
+      // Cleanup may have expired the order since the read above
+      const now = await env.DB.prepare('SELECT status FROM orders WHERE id = ?').bind(order.id).first<any>();
+      if (now && lost(now.status)) await logLatePayment(now.status);
+      return json({ ok: true });
+    }
     // Email the links only if the invitation really went live
     if (!live.meta.changes) {
       console.error(`PayMongo webhook: order ${order.id} is paid but its invitation was not pending; no email sent`);

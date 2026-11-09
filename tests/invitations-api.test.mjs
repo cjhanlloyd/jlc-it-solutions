@@ -236,6 +236,14 @@ test('successful checkout creates pending rows and returns checkoutUrl', async (
   assert.equal(createHash('sha256').update(m[1]).digest('hex'), inv.manage_token_hash);
 });
 
+test('checkout with a past wedding date → 400, nothing created', async () => {
+  const res = await post('/api/invitations/checkout', goodCheckout({ details: { ...goodCheckout().details, eventDate: '2020-01-01' } }));
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /past/);
+  assert.equal(db.invitations.length, 0);
+  assert.equal(paymongoCalls.length, 0);
+});
+
 test('PayMongo 400 → 502 and the rows and R2 objects are gone', async () => {
   paymongoFails = true;
   const res = await post('/api/invitations/checkout', goodCheckout());
@@ -355,6 +363,40 @@ test('paid event whose invitation is no longer pending → order paid but no ema
   assert.equal(db.invitations[0].manage_token_hash, oldHash);
 });
 
+test('retry after an isolate died between the event insert and processing → processed, order linked, one email', async () => {
+  await checkedOut();
+  const body = paidEvent();
+  db.events.push({ paymongo_event_id: 'evt_1', type: 'checkout_session.payment.paid', payload: body, order_id: null }); // the dead attempt's row
+  assert.equal((await hook(body)).status, 200);
+  await settle();
+  assert.equal(db.orders[0].status, 'paid');
+  assert.equal(db.invitations[0].status, 'live');
+  assert.equal(db.events.length, 1);
+  assert.equal(db.events[0].order_id, 1);
+  assert.equal(emails().length, 1);
+});
+
+test('order expired by cleanup between the webhook read and the paid batch → logged for a refund once, nothing revived', async () => {
+  await checkedOut();
+  // Cleanup runs right before the batch: order expired, invitation deleted
+  const racyDB = { prepare: DB.prepare, async batch(stmts) { db.orders[0].status = 'expired'; db.invitations = []; return DB.batch(stmts); } };
+  const racyHook = (body) => webhook({ request: new Request('https://shop.test/api/paymongo/webhook', { method: 'POST', body, headers: { 'Paymongo-Signature': sign(body) } }),
+    env: { ...env(), DB: racyDB }, waitUntil(p) { background.push(p); } });
+  const errors = [];
+  const err = console.error; console.error = (...a) => errors.push(a.join(' '));
+  try {
+    const body = paidEvent();
+    assert.equal((await racyHook(body)).status, 200);
+    assert.equal((await hook(body)).status, 200); // PayMongo retry: still expired, no second audit row
+    await settle();
+  } finally { console.error = err; }
+  assert.equal(db.orders[0].status, 'expired');
+  assert.equal(emails().length, 0);
+  assert.equal(db.audit.length, 1);
+  assert.match(db.audit[0].message, /expired order 1\b.*refund/i);
+  assert.equal(errors.length, 1);
+});
+
 test('other event types are stored and return 200', async () => {
   const body = JSON.stringify({ data: { id: 'evt_x', attributes: { type: 'payment.failed', livemode: false, data: {} } } });
   assert.equal((await hook(body)).status, 200);
@@ -421,6 +463,18 @@ test('manage: a date change → 200 and stored', async () => {
   assert.equal(JSON.parse(inv.details).eventDate, '2027-07-01');
   assert.equal(inv.event_date, '2027-07-01');
   assert.ok(r2.has('inv/1/0.png'));
+});
+
+test('manage: changing the date to a past one → 400; an unchanged past date does not block other edits', async () => {
+  const inv = await live();
+  let res = await call('POST', '/api/invitations/manage', editBody({ eventDate: '2020-01-01' }), TOKEN);
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /past/);
+  assert.equal(inv.event_date, '2027-06-12');
+  inv.details = JSON.stringify({ ...JSON.parse(inv.details), eventDate: '2020-01-01' }); // the wedding already happened
+  res = await call('POST', '/api/invitations/manage', editBody({ message: 'Thank you all!' }), TOKEN);
+  assert.equal(res.status, 200);
+  assert.equal(JSON.parse(inv.details).message, 'Thank you all!');
 });
 
 test('manage: photos keep existing keys, add data URLs, delete removed ones, reject foreign keys and design changes', async () => {
