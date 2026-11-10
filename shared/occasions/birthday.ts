@@ -46,7 +46,7 @@ export const ordinal = (n: number): string => {
 };
 
 export const birthday: Occasion<BirthdayDetails> = {
-  productType: 'birthday_invitation', label: 'Birthday', noun: 'birthday',
+  productType: 'birthday_invitation', label: 'Birthday', noun: 'birthday', dateNoun: 'party',
   layouts: ['confetti', 'golden'], askKids: true,
   validateDetails,
   lockedFieldsChanged: (a, b) => a.celebrant !== b.celebrant,

@@ -10,11 +10,11 @@ export const isPastExpiry = (eventDate: string, now = new Date()) =>
 // Malformed %-escapes in a URL segment → null (callers answer 404, not 500).
 export const decodeSegment = (s: string): string | null => { try { return decodeURIComponent(s); } catch { return null; } };
 
-// The row (with layout_key) when the invitation is live or expired, else null.
+// The row (with layout_key and product_type) when the invitation is live or expired, else null.
 // A live row past expiry is marked 'expired' here, lazily.
 export async function findGuestInvitation(db: D1Database, slug: string): Promise<any | null> {
   const inv = await db.prepare(
-    'SELECT i.*, d.layout_key FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.slug = ?',
+    'SELECT i.*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.slug = ?',
   ).bind(slug).first<any>();
   if (inv?.status === 'live' && isPastExpiry(inv.event_date)) {
     await db.prepare("UPDATE invitations SET status = 'expired' WHERE id = ? AND status = 'live'").bind(inv.id).run();

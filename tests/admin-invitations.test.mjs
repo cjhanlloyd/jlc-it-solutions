@@ -121,9 +121,9 @@ function exec(sql, a) {
     return { meta: { changes: 1 } };
   }
   if (/^SELECT guest_name, attending, party_size, message, created_at FROM rsvps WHERE invitation_id = \?/.test(sql)) return { results: db.rsvps.filter(r => r.invitation_id === a[0]) };
-  if (/^SELECT i\.\*, d\.layout_key FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
+  if (/^SELECT i\.\*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
     const i = db.invitations.find(x => x.slug === a[0]);
-    return i ? { ...i, layout_key: db.designs.find(d => d.id === i.design_id).layout_key } : null;
+    return i ? { ...i, layout_key: db.designs.find(d => d.id === i.design_id).layout_key, product_type: 'wedding_invitation' } : null;
   }
   // --- Task 11: cleanup ---
   if (/^SELECT o\.id, o\.status, i\.id AS invitation_id, i\.photos FROM orders o JOIN invitations i ON i\.id = o\.product_id WHERE o\.status IN \('pending', 'expired'\) AND i\.status = 'pending' AND o\.created_at < \?$/.test(sql)) {

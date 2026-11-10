@@ -82,10 +82,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         if (!smtp?.enabled) return;
         await emailAndRotateToken(env.DB, smtp, request, order.invitation_id, (token) => ({
           to: order.customer_email,
-          subject: 'Your wedding invitation is live',
+          subject: 'Your invitation is live',
           // "Key: value" blocks: the HTML builder renders them as tables and keeps every URL (plain paragraphs keep only the first)
           body: [
-            'Thank you! Your payment was received and your wedding invitation is now live. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private.',
+            'Thank you! Your payment was received and your invitation is now live. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private.',
             '',
             `Guest link: ${origin}/i/${order.slug}`,
             `Manage link: ${origin}/manage#${token}`,

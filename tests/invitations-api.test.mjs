@@ -27,9 +27,10 @@ before(async () => {
 const design = { id: 1, slug: 'classic-elegance', name: 'Classic Elegance', layout_key: 'classic', price_centavos: 99900,
   color_schemes: JSON.stringify([{ name: 'Blush', primary: '#b76e79', accent: '#d4af37', background: '#fff8f6', text: '#3b2a2e' }]),
   preview_images: '[]', sample_details: '{}', active: 1, sort_order: 0, product_type: 'wedding_invitation' };
+const birthdayDesign = { ...design, id: 3, slug: 'confetti-pop', name: 'Confetti Pop', layout_key: 'confetti', product_type: 'birthday_invitation' };
 let db, smtpEnabled = true;
 beforeEach(() => {
-  db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
+  db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }, birthdayDesign, { ...design, id: 4, slug: 'debut', product_type: 'debut_invitation' }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
   globalThis.SMTP_SENT = [];
   globalThis.SMTP_FAIL = false;
   smtpEnabled = true;
@@ -80,7 +81,7 @@ function exec(sql, a) {
     const i = db.invitations.find(x => x.manage_token_hash === a[0] && x.status === 'live');
     if (!i) return null;
     const d = db.designs.find(x => x.id === i.design_id);
-    return { ...i, design_slug: d.slug, design_name: d.name, layout_key: d.layout_key };
+    return { ...i, design_slug: d.slug, design_name: d.name, layout_key: d.layout_key, product_type: d.product_type };
   }
   if (/^UPDATE invitations SET details = \?, event_date = \?, photos = \? WHERE id = \?/.test(sql)) {
     Object.assign(row('invitations', a[3]), { details: a[0], event_date: a[1], photos: a[2] });
@@ -99,10 +100,18 @@ function exec(sql, a) {
     i.status = 'live';
     return { meta: { changes: 1 } };
   }
-  if (/^SELECT id, details FROM invitations WHERE slug = \? AND status = 'live'/.test(sql)) return db.invitations.find(i => i.slug === a[0] && i.status === 'live') ?? null;
+  if (/^SELECT i\.id, i\.details, d\.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \? AND i\.status = 'live'/.test(sql)) {
+    const i = db.invitations.find(x => x.slug === a[0] && x.status === 'live');
+    return i ? { ...i, product_type: db.designs.find(d => d.id === i.design_id).product_type } : null;
+  }
+  if (/^SELECT i\.\*, d\.layout_key, d\.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
+    const i = db.invitations.find(x => x.slug === a[0]);
+    const d = i && db.designs.find(x => x.id === i.design_id);
+    return i ? { ...i, layout_key: d.layout_key, product_type: d.product_type } : null;
+  }
   if (/^INSERT INTO rsvps .* WHERE \(SELECT COUNT\(\*\) FROM rsvps WHERE invitation_id = \?\) < 300/.test(sql)) {
     if (db.rsvps.filter(r => r.invitation_id === a[0]).length >= 300) return { meta: { changes: 0 } };
-    db.rsvps.push({ id: db.rsvps.length + 1, invitation_id: a[0], guest_name: a[1], attending: a[2], party_size: a[3], message: a[4], created_at: '2026-11-10 08:00:00' });
+    db.rsvps.push({ id: db.rsvps.length + 1, invitation_id: a[0], guest_name: a[1], attending: a[2], party_size: a[3], kids_count: a[4], message: a[5], created_at: '2026-11-10 08:00:00' });
     return { meta: { changes: 1 } };
   }
   if (/FROM rsvps WHERE invitation_id = \?/.test(sql)) return { results: db.rsvps.filter(r => r.invitation_id === a[0]) };
@@ -175,7 +184,7 @@ test('designs lists active designs with public fields only', async () => {
   const res = await get('/api/invitations/designs');
   assert.equal(res.status, 200);
   const { designs } = await res.json();
-  assert.equal(designs.length, 1);
+  assert.equal(designs.length, 2);
   assert.deepEqual(Object.keys(designs[0]).sort(), ['colorSchemes', 'layoutKey', 'name', 'previewImages', 'priceCentavos', 'productType', 'sampleDetails', 'slug']);
   assert.equal(designs[0].productType, 'wedding_invitation');
   assert.equal(designs[0].colorSchemes[0].name, 'Blush');
@@ -462,12 +471,13 @@ test('manage with the correct token returns details and RSVPs', async () => {
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.equal(data.slug, inv.slug);
+  assert.equal(data.productType, 'wedding_invitation');
   assert.equal(data.status, 'live');
   assert.equal(data.design.slug, 'classic-elegance');
   assert.equal(data.colorScheme.name, 'Blush');
   assert.equal(data.details.partner2, 'Juan');
   assert.deepEqual(data.photos, ['inv/1/0.png']);
-  assert.deepEqual(data.rsvps, [{ guestName: 'Ana', attending: true, partySize: 2, message: 'Yay', submitted: '2026-11-10 08:00:00' }]);
+  assert.deepEqual(data.rsvps, [{ guestName: 'Ana', attending: true, partySize: 2, message: 'Yay', submitted: '2026-11-10 08:00:00', kidsCount: 0 }]);
 });
 
 test('manage: renaming partner2 → 400, nothing stored', async () => {
@@ -609,4 +619,80 @@ test('paid webhook with SMTP disabled → order paid, invitation live, success-p
   assert.equal(db.invitations[0].status, 'live');
   assert.equal(emails().length, 0);
   assert.equal((await call('GET', '/api/invitations/manage', undefined, successToken)).status, 200);
+});
+
+// --- Occasions ---
+const bdayDetails = { celebrant: 'Mia', age: 7, eventDate: '2027-06-12', venue: { name: 'Fun Hall' } };
+const bdayCheckout = (extra = {}) => goodCheckout({ designSlug: 'confetti-pop', details: bdayDetails, ...extra });
+const liveBirthday = async () => {
+  assert.equal((await post('/api/invitations/checkout', bdayCheckout())).status, 200);
+  Object.assign(db.invitations[0], { status: 'live', manage_token_hash: hash(TOKEN) });
+  return db.invitations[0];
+};
+
+test('designs list hides unknown occasions', async () => {
+  const { designs } = await (await get('/api/invitations/designs')).json();
+  assert.deepEqual(designs.map(d => d.slug), ['classic-elegance', 'confetti-pop']);
+});
+
+test('birthday checkout stores birthday details and slug', async () => {
+  const res = await post('/api/invitations/checkout', bdayCheckout());
+  assert.equal(res.status, 200);
+  assert.equal(JSON.parse(db.invitations[0].details).celebrant, 'Mia');
+  assert.match(db.invitations[0].slug, /^mia-7th-birthday-[a-z0-9]+$/);
+  assert.match(paymongoCalls[0].data.attributes.line_items[0].name, /^Birthday invitation:/);
+});
+
+test('birthday checkout with wedding details → 400; unknown-occasion design → 400; birthday past date wording', async () => {
+  let res = await post('/api/invitations/checkout', bdayCheckout({ details: goodCheckout().details }));
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /Celebrant/);
+  res = await post('/api/invitations/checkout', goodCheckout({ designSlug: 'debut' }));
+  assert.equal(res.status, 400);
+  res = await post('/api/invitations/checkout', bdayCheckout({ details: { ...bdayDetails, eventDate: '2020-01-01' } }));
+  assert.equal((await res.json()).error, 'The party date cannot be in the past.');
+  assert.equal(db.invitations.length, 0);
+});
+
+test('birthday manage: renaming the celebrant → 400 with the birthday message; manage JSON has productType', async () => {
+  await liveBirthday();
+  const res = await call('POST', '/api/invitations/manage', editBody({ celebrant: 'Zoe' }), TOKEN);
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, "The celebrant's name cannot be changed after payment.");
+  assert.equal((await (await call('GET', '/api/invitations/manage', undefined, TOKEN)).json()).productType, 'birthday_invitation');
+});
+
+test('birthday RSVP stores kids; manage JSON and CSV show them', async () => {
+  const inv = await liveBirthday();
+  assert.equal((await rsvp(inv.slug, { partySize: 2, kidsCount: 3 })).status, 200);
+  assert.equal(db.rsvps[0].kids_count, 3);
+  assert.equal((await rsvp(inv.slug, { partySize: 2, kidsCount: 99 })).status, 400);
+  const data = await (await call('GET', '/api/invitations/manage', undefined, TOKEN)).json();
+  assert.equal(data.rsvps[0].kidsCount, 3);
+  const lines = (await (await call('GET', '/api/invitations/manage/rsvps.csv', undefined, TOKEN)).text()).trim().split('\r\n');
+  assert.equal(lines[0], 'Name,Attending,Adults,Kids,Message,Submitted');
+  assert.match(lines[1], /^"Ana","Yes","2","3",/);
+});
+
+test('wedding RSVP ignores kidsCount and keeps its CSV header', async () => {
+  const inv = await live();
+  assert.equal((await rsvp(inv.slug, { kidsCount: 3 })).status, 200);
+  assert.equal(db.rsvps[0].kids_count, 0);
+  const csvText = await (await call('GET', '/api/invitations/manage/rsvps.csv', undefined, TOKEN)).text();
+  assert.equal(csvText.split('\r\n')[0], 'Name,Attending,Party size,Message,Submitted');
+});
+
+test('guest: live adds productType/askKids; expired returns only the title', async () => {
+  const w = await live();
+  let g = await (await get(`/api/invitations/i/${w.slug}`)).json();
+  assert.deepEqual([g.productType, g.askKids], ['wedding_invitation', false]);
+  w.status = 'expired';
+  w.details = JSON.stringify({ ...JSON.parse(w.details), partner1: 'Ana', partner2: 'Ben' });
+  assert.deepEqual(await (await get(`/api/invitations/i/${w.slug}`)).json(), { state: 'expired', title: 'Ana & Ben' });
+  db.invitations = [];
+  const b = await liveBirthday();
+  g = await (await get(`/api/invitations/i/${b.slug}`)).json();
+  assert.deepEqual([g.productType, g.askKids], ['birthday_invitation', true]);
+  b.status = 'expired';
+  assert.deepEqual(await (await get(`/api/invitations/i/${b.slug}`)).json(), { state: 'expired', title: "Mia's 7th Birthday" });
 });

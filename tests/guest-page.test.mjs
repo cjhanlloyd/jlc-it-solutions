@@ -43,9 +43,9 @@ beforeEach(() => {
   for (const k of ['inv/1/0.png', 'inv/2/0.png', 'inv/3/0.png']) r2.set(k, 'bytes-' + k);
 });
 function exec(sql, a) {
-  if (/^SELECT i\.\*, d\.layout_key FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
+  if (/^SELECT i\.\*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
     const i = db.find(x => x.slug === a[0]);
-    return i ? { ...i, layout_key: 'classic' } : null;
+    return i ? { ...i, layout_key: 'classic', product_type: 'wedding_invitation' } : null;
   }
   if (/^UPDATE invitations SET status = 'expired' WHERE id = \? AND status = 'live'/.test(sql)) {
     updates.push(a[0]);
@@ -152,7 +152,7 @@ test('API: live → layout, colors, details, photo URLs, rsvpOpen', async () => 
   const res = await ctx(api, '/api/invitations/i/live-one');
   assert.equal(res.status, 200);
   const data = await res.json();
-  assert.deepEqual(Object.keys(data).sort(), ['colorScheme', 'details', 'layoutKey', 'photos', 'rsvpOpen', 'state']);
+  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'colorScheme', 'details', 'layoutKey', 'photos', 'productType', 'rsvpOpen', 'state']);
   assert.equal(data.state, 'live');
   assert.equal(data.layoutKey, 'classic');
   assert.deepEqual(data.colorScheme, SCHEME);
@@ -167,14 +167,14 @@ test('API: rsvpOpen is true on the deadline day itself (UTC)', async () => {
   assert.equal((await (await ctx(api, '/api/invitations/i/closed-one')).json()).rsvpOpen, true);
 });
 
-test('API: past event + 60 days → expired shape (names only) and one lazy UPDATE', async () => {
+test('API: past event + 60 days → expired shape (title only) and one lazy UPDATE', async () => {
   const res = await ctx(api, '/api/invitations/i/old-one');
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { state: 'expired', partner1: 'A<b>', partner2: 'Juan "J"' });
+  assert.deepEqual(await res.json(), { state: 'expired', title: 'A<b> & Juan "J"' });
   assert.deepEqual(updates, [3]);
   assert.equal(db[2].status, 'expired');
   // Already expired: same shape, no further UPDATE
-  assert.deepEqual(await (await ctx(api, '/api/invitations/i/old-one')).json(), { state: 'expired', partner1: 'A<b>', partner2: 'Juan "J"' });
+  assert.deepEqual(await (await ctx(api, '/api/invitations/i/old-one')).json(), { state: 'expired', title: 'A<b> & Juan "J"' });
   assert.deepEqual(updates, [3]);
 });
 

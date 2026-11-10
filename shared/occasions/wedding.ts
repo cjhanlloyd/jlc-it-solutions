@@ -37,7 +37,7 @@ export const lockedFieldsChanged = (before: InvitationDetails, after: Invitation
   before.partner1 !== after.partner1 || before.partner2 !== after.partner2;
 
 export const wedding: Occasion<WeddingDetails> = {
-  productType: 'wedding_invitation', label: 'Wedding', noun: 'wedding',
+  productType: 'wedding_invitation', label: 'Wedding', noun: 'wedding', dateNoun: 'wedding',
   layouts: ['classic', 'garden', 'modern'], askKids: false,
   validateDetails, lockedFieldsChanged,
   lockedMessage: 'Names cannot be changed after payment.',

@@ -3,7 +3,7 @@ import { birthday } from './birthday.ts';
 import { wedding } from './wedding.ts';
 
 export type Occasion<D = any> = {
-  productType: string; label: string; noun: string;
+  productType: string; label: string; noun: string; dateNoun: string; // dateNoun: "The <dateNoun> date cannot be in the past."
   layouts: readonly string[]; askKids: boolean;
   validateDetails(input: unknown): Result<'details', D>;
   lockedFieldsChanged(before: D, after: D): boolean; lockedMessage: string;

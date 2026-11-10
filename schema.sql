@@ -238,6 +238,7 @@ CREATE TABLE rsvps (
   guest_name TEXT NOT NULL,
   attending INTEGER NOT NULL,
   party_size INTEGER NOT NULL DEFAULT 1,
+  kids_count INTEGER NOT NULL DEFAULT 0,
   message TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

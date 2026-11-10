@@ -5,7 +5,7 @@ import { decodeSegment, findGuestInvitation, todayUtc } from '../../../server/gu
 import { emailAndRotateToken } from '../../../server/invitation-links';
 import { createCheckoutSession } from '../../../server/paymongo';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
-import { lockedFieldsChanged, validateDetails, wedding } from '../../../shared/occasions/wedding';
+import { occasionOf } from '../../../shared/occasions';
 
 interface Env {
   DB: D1Database;
@@ -19,7 +19,7 @@ const json = (data: unknown, status = 200) => Response.json(data, { status });
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
 const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const NOT_FOUND = () => json({ error: 'Invitation not found.' }, 404);
-const PAST_DATE = 'The wedding date cannot be in the past.';
+const pastDate = (o: { dateNoun: string }) => `The ${o.dateNoun} date cannot be in the past.`;
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
@@ -30,7 +30,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const { results } = await env.DB.prepare(
         'SELECT slug, name, product_type, layout_key, price_centavos, color_schemes, preview_images, sample_details FROM products_designs WHERE active = 1 ORDER BY sort_order, id',
       ).all<any>();
-      return json({ designs: (results || []).map((d) => ({
+      return json({ designs: (results || []).filter((d) => occasionOf(d.product_type)).map((d) => ({
         slug: d.slug, name: d.name, productType: d.product_type, layoutKey: d.layout_key, priceCentavos: d.price_centavos,
         colorSchemes: parse(d.color_schemes, []), previewImages: parse(d.preview_images, []), sampleDetails: parse(d.sample_details, {}),
       })) });
@@ -56,17 +56,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv') {
       const token = request.headers.get('X-Manage-Token');
       const inv = token && await env.DB.prepare(
-        "SELECT i.*, d.slug AS design_slug, d.name AS design_name, d.layout_key FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = ? AND i.status = 'live'",
+        "SELECT i.*, d.slug AS design_slug, d.name AS design_name, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = ? AND i.status = 'live'",
       ).bind(await sha256(token)).first<any>();
       if (!inv) return NOT_FOUND();
       if (request.method === 'POST') return await manageEdit(request, env, inv);
       const { results } = await env.DB.prepare(
-        'SELECT guest_name, attending, party_size, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
+        'SELECT guest_name, attending, party_size, kids_count, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
       ).bind(inv.id).all<any>();
-      const rsvps = (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, message: r.message ?? '', submitted: r.created_at }));
-      if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug);
+      const rsvps = (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, kidsCount: r.kids_count ?? 0, message: r.message ?? '', submitted: r.created_at }));
+      if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug, !!occasionOf(inv.product_type)?.askKids);
       return json({
-        slug: inv.slug, status: inv.status, design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
+        slug: inv.slug, status: inv.status, productType: inv.product_type, design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
         colorScheme: parse(inv.color_scheme, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
       });
     }
@@ -119,11 +119,14 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
   const scheme = (parse(design.color_schemes, []) as any[]).find((s) => s && s.name === body.colorScheme);
   if (!scheme) return json({ error: 'Please choose one of the design\'s color schemes.' }, 400);
 
-  const v = validateDetails(body.details);
+  const occasion = occasionOf(design.product_type);
+  if (!occasion) return json({ error: 'That design is not available.' }, 400);
+
+  const v = occasion.validateDetails(body.details);
   if (v.ok === false) return json({ error: v.error }, 400);
   const details = v.details;
   // Not in validateDetails: admin sample dates would go stale
-  if (details.eventDate < todayUtc()) return json({ error: PAST_DATE }, 400);
+  if (details.eventDate < todayUtc()) return json({ error: pastDate(occasion) }, 400);
 
   const photos: unknown = body.photos ?? [];
   if (!Array.isArray(photos)) return json({ error: 'Photos must be a list.' }, 400);
@@ -135,7 +138,7 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
 
   const token = randomToken();
   const suffix = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('');
-  const slug = makeSlug(wedding.slugBase(details), suffix);
+  const slug = makeSlug(occasion.slugBase(details), suffix);
   // Rows first, so the R2 keys can use the real invitation id
   const inv = await env.DB.prepare(
     "INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?)",
@@ -153,7 +156,7 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
 
     const session = await createCheckoutSession(env.PAYMONGO_SECRET_KEY, {
       amountCentavos: design.price_centavos,
-      itemName: `Wedding invitation: ${design.name}`,
+      itemName: `${occasion.label} invitation: ${design.name}`,
       referenceNumber: String(orderId),
       successUrl: `${origin}/invitations/success#${orderId}.${token}`,
       cancelUrl: `${origin}/invitations/${design.slug}`,
@@ -178,12 +181,14 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   const body: any = await request.json().catch(() => ({}));
   if (['design', 'designSlug', 'colorScheme'].some((k) => k in body)) return json({ error: 'The design and color scheme cannot be changed after payment.' }, 400);
 
-  const v = validateDetails(body.details);
+  const occasion = occasionOf(inv.product_type);
+  if (!occasion) return NOT_FOUND();
+  const v = occasion.validateDetails(body.details);
   if (v.ok === false) return json({ error: v.error }, 400);
   const old = parse(inv.details, {});
-  if (lockedFieldsChanged(old, v.details)) return json({ error: 'Names cannot be changed after payment.' }, 400);
+  if (occasion.lockedFieldsChanged(old, v.details)) return json({ error: occasion.lockedMessage }, 400);
   // An unchanged past date (the wedding already happened) must not block other edits
-  if (v.details.eventDate !== old.eventDate && v.details.eventDate < todayUtc()) return json({ error: PAST_DATE }, 400);
+  if (v.details.eventDate !== old.eventDate && v.details.eventDate < todayUtc()) return json({ error: pastDate(occasion) }, 400);
 
   const current: string[] = parse(inv.photos, []);
   const photos: unknown = body.photos ?? [];
@@ -219,26 +224,28 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
 }
 
 // Quotes every cell; a leading = + - @ gets a ' so spreadsheets do not run it as a formula.
-function csv(rsvps: { guestName: string; attending: boolean; partySize: number; message: string; submitted: string }[], slug: string): Response {
+function csv(rsvps: { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string }[], slug: string, kids: boolean): Response {
   const cell = (v: unknown) => {
     const s = String(v ?? '');
     return `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
   };
-  const lines = ['Name,Attending,Party size,Message,Submitted',
-    ...rsvps.map((r) => [r.guestName, r.attending ? 'Yes' : 'No', r.partySize, r.message, r.submitted].map(cell).join(','))];
+  const lines = [kids ? 'Name,Attending,Adults,Kids,Message,Submitted' : 'Name,Attending,Party size,Message,Submitted',
+    ...rsvps.map((r) => [r.guestName, r.attending ? 'Yes' : 'No', r.partySize, ...(kids ? [r.kidsCount] : []), r.message, r.submitted].map(cell).join(','))];
   return new Response(lines.join('\r\n') + '\r\n', {
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="rsvps-${slug}.csv"` },
   });
 }
 
-// Expired invitations show only the names: no details, photos or RSVP state.
+// Expired invitations show only the title: no details, photos or RSVP state.
 async function guest(env: Env, slug: string | null): Promise<Response> {
   const inv = slug === null ? null : await findGuestInvitation(env.DB, slug);
   if (!inv) return NOT_FOUND();
+  const occasion = occasionOf(inv.product_type);
+  if (!occasion) return NOT_FOUND();
   const details = parse(inv.details, {});
-  if (inv.status === 'expired') return json({ state: 'expired', partner1: details.partner1, partner2: details.partner2 });
+  if (inv.status === 'expired') return json({ state: 'expired', title: occasion.title(details) });
   return json({
-    state: 'live', layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
+    state: 'live', productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
     photos: (parse(inv.photos, []) as string[]).map((k) => `/photos/${k}`),
     // Same rule as the RSVP route below: open through the deadline day (UTC)
     rsvpOpen: !details.rsvpDeadline || todayUtc() <= details.rsvpDeadline,
@@ -250,18 +257,19 @@ async function rsvp(request: Request, env: Env, slug: string): Promise<Response>
   const spam = await turnstileError(request, env, body.turnstileToken);
   if (spam) return spam;
 
-  const inv = await env.DB.prepare("SELECT id, details FROM invitations WHERE slug = ? AND status = 'live'").bind(slug).first<any>();
-  if (!inv) return NOT_FOUND();
+  const inv = await env.DB.prepare("SELECT i.id, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.slug = ? AND i.status = 'live'").bind(slug).first<any>();
+  const occasion = occasionOf(inv?.product_type);
+  if (!inv || !occasion) return NOT_FOUND();
   const deadline = parse(inv.details, {}).rsvpDeadline;
   if (deadline && todayUtc() > deadline) return json({ error: 'RSVPs are closed.' }, 400);
 
-  const v = validateRsvp({ guestName: body.guestName, attending: body.attending, partySize: body.partySize, message: body.message });
+  const v = validateRsvp({ guestName: body.guestName, attending: body.attending, partySize: body.partySize, kidsCount: body.kidsCount, message: body.message }, { askKids: occasion.askKids });
   if (v.ok === false) return json({ error: v.error }, 400);
   const r = v.rsvp;
   // One statement, so the 300 cap holds even with concurrent submissions
   const ins = await env.DB.prepare(
-    'INSERT INTO rsvps (invitation_id, guest_name, attending, party_size, message) SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM rsvps WHERE invitation_id = ?) < 300',
-  ).bind(inv.id, r.guestName, r.attending ? 1 : 0, r.partySize, r.message, inv.id).run();
+    'INSERT INTO rsvps (invitation_id, guest_name, attending, party_size, kids_count, message) SELECT ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM rsvps WHERE invitation_id = ?) < 300',
+  ).bind(inv.id, r.guestName, r.attending ? 1 : 0, r.partySize, r.kidsCount, r.message, inv.id).run();
   if (!ins.meta.changes) return json({ error: 'This invitation is no longer accepting RSVPs.' }, 400);
   return json({ ok: true });
 }
@@ -296,10 +304,10 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
       for (const inv of results) {
         await emailAndRotateToken(env.DB, smtp, request, inv.id, (token) => ({
           to: email,
-          subject: 'Your wedding invitation links',
+          subject: 'Your invitation links',
           // "Key: value" lines: the HTML builder keeps every URL there (plain paragraphs keep only the first)
           body: [
-            'Here are the links to your wedding invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
+            'Here are the links to your invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
             '',
             `Guest link: ${origin}/i/${inv.slug}`,
             `Manage link: ${origin}/manage#${token}`,
