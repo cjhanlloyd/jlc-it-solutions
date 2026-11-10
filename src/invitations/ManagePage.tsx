@@ -2,11 +2,12 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import InvitationView from './InvitationView';
-import { Alert, DetailsForm, Field, PaneToggle, PhotoPicker, checkDraft, inputCls, photoSrc, previewDetails, toDraft, useInvitationFonts, useTurnstile, type Draft } from './kit';
+import { Alert, Field, PaneToggle, PhotoPicker, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
+import { formOf } from './forms';
 import type { Scheme } from './parts';
 
-type Rsvp = { guestName: string; attending: boolean; partySize: number; message: string; submitted: string };
-type Manage = { slug: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; details: Draft; photos: string[]; rsvps: Rsvp[] };
+type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
+type Manage = { slug: string; productType: string; title: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; details: any; photos: string[]; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -58,7 +59,7 @@ export default function ManagePage({ btn }: { btn: string }) {
   useInvitationFonts();
   const token = takeToken();
   const [data, setData] = React.useState<Manage | null | 'missing' | 'offline'>(token ? null : 'missing');
-  const [draft, setDraft] = React.useState<Draft>(() => toDraft());
+  const [draft, setDraft] = React.useState<any>(null);
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [msg, setMsg] = React.useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -74,7 +75,7 @@ export default function ManagePage({ btn }: { btn: string }) {
       if (!res.ok) return setData('offline');
       const d: Manage = await res.json();
       setData(d);
-      setDraft(toDraft(d.details));
+      setDraft(formOf(d.productType)?.toDraft(d.details) ?? null);
       setPhotos(d.photos);
     }).catch(() => setData('offline'));
   }, []);
@@ -96,8 +97,11 @@ export default function ManagePage({ btn }: { btn: string }) {
     );
   }
 
+  const form = formOf(data.productType);
+  if (!form || !draft) return <p className="py-24 px-4 text-center text-sm text-slate-600">This invitation type can't be edited online yet. Please contact us.</p>;
   const guestUrl = `${window.location.origin}/i/${data.slug}`;
-  const check = checkDraft(draft);
+  const check = form.check(draft);
+  const kids = data.productType === 'birthday_invitation';
   const yes = data.rsvps.filter((r) => r.attending);
 
   async function save(e: React.FormEvent) {
@@ -109,7 +113,7 @@ export default function ManagePage({ btn }: { btn: string }) {
       const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos }) });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
-        setDraft(toDraft(body.details));
+        setDraft(form!.toDraft(body.details));
         setPhotos(body.photos);
         setMsg({ kind: 'success', text: 'Saved. Your guests see the changes right away.' });
       } else setMsg({ kind: 'error', text: res.status === 404 ? 'This manage link no longer works. Request fresh links from this page after reloading.' : body.error || 'Something went wrong. Please try again.' });
@@ -139,7 +143,7 @@ export default function ManagePage({ btn }: { btn: string }) {
         <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-8 space-y-4">
           <div>
             <p className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 font-mono">Manage your invitation · {data.design.name}</p>
-            <h1 className="text-2xl font-extrabold text-slate-900 font-display">{data.details.partner1} &amp; {data.details.partner2}</h1>
+            <h1 className="text-2xl font-extrabold text-slate-900 font-display">{data.title}</h1>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <input className={`${inputCls} flex-1`} readOnly value={guestUrl} aria-label="Guest link" onFocus={(e) => e.target.select()} />
@@ -156,7 +160,7 @@ export default function ManagePage({ btn }: { btn: string }) {
         <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-8 space-y-4" aria-labelledby="rsvp-h">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="rsvp-h" className="text-lg font-extrabold text-slate-900 font-display">
-              RSVPs <span className="text-sm font-normal text-slate-500">· {yes.length} attending ({yes.reduce((n, r) => n + r.partySize, 0)} guests) · {data.rsvps.length - yes.length} declined</span>
+              RSVPs <span className="text-sm font-normal text-slate-500">· {yes.length} attending ({kids ? `${yes.reduce((n, r) => n + r.partySize, 0)} adults, ${yes.reduce((n, r) => n + r.kidsCount, 0)} kids` : `${yes.reduce((n, r) => n + r.partySize, 0)} guests`}) · {data.rsvps.length - yes.length} declined</span>
             </h2>
             <button type="button" onClick={downloadCsv} disabled={!data.rsvps.length} className="inline-flex items-center px-4 py-2 rounded-full border border-slate-300 text-xs font-bold uppercase tracking-wider font-display text-slate-700 hover:bg-slate-100 cursor-pointer disabled:opacity-50">
               <Icons.Download className="h-4 w-4 mr-1.5" /> Download CSV
@@ -166,7 +170,7 @@ export default function ManagePage({ btn }: { btn: string }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-[10px] uppercase tracking-widest text-slate-400 font-mono">
-                  <tr><th className="py-2 pr-4">Name</th><th className="py-2 pr-4">Attending</th><th className="py-2 pr-4">Party</th><th className="py-2 pr-4">Message</th><th className="py-2">Received</th></tr>
+                  <tr><th className="py-2 pr-4">Name</th><th className="py-2 pr-4">Attending</th><th className="py-2 pr-4">{kids ? 'Adults' : 'Party'}</th>{kids && <th className="py-2 pr-4">Kids</th>}<th className="py-2 pr-4">Message</th><th className="py-2">Received</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {data.rsvps.map((r, i) => (
@@ -174,6 +178,7 @@ export default function ManagePage({ btn }: { btn: string }) {
                       <td className="py-2 pr-4 font-semibold text-slate-900">{r.guestName}</td>
                       <td className="py-2 pr-4">{r.attending ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-4">{r.attending ? r.partySize : '–'}</td>
+                      {kids && <td className="py-2 pr-4">{r.attending ? r.kidsCount : '–'}</td>}
                       <td className="py-2 pr-4 text-slate-600 whitespace-pre-line min-w-48">{r.message}</td>
                       <td className="py-2 text-slate-500 whitespace-nowrap">{new Date(r.submitted).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                     </tr>
@@ -189,7 +194,7 @@ export default function ManagePage({ btn }: { btn: string }) {
       <div className="max-w-7xl mx-auto lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-8 lg:px-8 lg:pb-8">
         <form onSubmit={save} noValidate className={`${view === 'edit' ? 'block' : 'hidden'} lg:block bg-white lg:rounded-3xl lg:border lg:border-slate-200 p-5 sm:p-8 space-y-6`}>
           <h2 className="text-lg font-extrabold text-slate-900 font-display">Edit details</h2>
-          <DetailsForm draft={draft} onChange={setDraft} lockNames />
+          <form.Form draft={draft} onChange={setDraft} lockNames />
           <PhotoPicker photos={photos} onChange={setPhotos} />
           {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
           <button type="submit" disabled={saving} className={`w-full px-6 py-3.5 rounded-full text-sm font-bold uppercase tracking-wider font-display text-white shadow-lg cursor-pointer disabled:opacity-60 ${btn}`}>
@@ -198,7 +203,7 @@ export default function ManagePage({ btn }: { btn: string }) {
         </form>
         <section aria-label="Live preview" className={`${view === 'preview' ? 'block' : 'hidden'} lg:block`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 bg-white">
-            <InvitationView layoutKey={data.design.layoutKey} scheme={data.colorScheme} details={previewDetails(draft, toDraft(data.details))} photos={photos.map(photoSrc)} />
+            <InvitationView layoutKey={data.design.layoutKey} scheme={data.colorScheme} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} />
           </div>
         </section>
       </div>

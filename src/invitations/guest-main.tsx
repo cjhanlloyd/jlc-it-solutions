@@ -2,7 +2,6 @@
 import { StrictMode, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LIMITS } from '../../shared/invitation-fields';
-import type { InvitationDetails } from '../../shared/occasions/wedding';
 import InvitationView from './InvitationView';
 import { Ornament, schemeVars, type Scheme } from './parts';
 
@@ -23,17 +22,18 @@ function loadTurnstile(): Promise<void> {
 }
 
 type Data =
-  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: InvitationDetails; photos: string[]; rsvpOpen: boolean }
-  | { state: 'expired'; partner1: string; partner2: string }
+  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; rsvpOpen: boolean; askKids?: boolean }
+  | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
 const NEUTRAL: Scheme = { primary: '#7a5752', accent: '#b8955a', background: '#faf7f2', text: '#3a3330' };
 const slug = window.location.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1] ?? '';
 
-function RsvpForm() {
+function RsvpForm({ askKids }: { askKids: boolean }) {
   const [name, setName] = useState('');
   const [attending, setAttending] = useState<boolean | null>(null);
   const [partySize, setPartySize] = useState(1);
+  const [kidsCount, setKidsCount] = useState(0);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
@@ -72,7 +72,7 @@ function RsvpForm() {
       const res = await fetch(`/api/invitations/i/${slug}/rsvp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestName: name, attending, partySize: attending ? partySize : 1, message, turnstileToken }),
+        body: JSON.stringify({ guestName: name, attending, partySize: attending ? partySize : 1, ...(askKids ? { kidsCount: attending ? kidsCount : 0 } : {}), message, turnstileToken }),
       });
       if (res.ok) return setDone(true);
       setError((await res.json().catch(() => null))?.error || 'Something went wrong. Please try again.');
@@ -108,14 +108,22 @@ function RsvpForm() {
       </fieldset>
       {attending && (
         <div>
-          <label htmlFor="rsvp-party">Number of guests, including you</label>
+          <label htmlFor="rsvp-party">{askKids ? 'Adults, including you' : 'Number of guests, including you'}</label>
           <select id="rsvp-party" value={partySize} onChange={(e) => setPartySize(Number(e.target.value))}>
             {Array.from({ length: LIMITS.partySizeMax }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
           </select>
         </div>
       )}
+      {attending && askKids && (
+        <div>
+          <label htmlFor="rsvp-kids">Kids</label>
+          <select id="rsvp-kids" value={kidsCount} onChange={(e) => setKidsCount(Number(e.target.value))}>
+            {Array.from({ length: LIMITS.kidsMax + 1 }, (_, i) => <option key={i} value={i}>{i}</option>)}
+          </select>
+        </div>
+      )}
       <div>
-        <label htmlFor="rsvp-message">Message for the couple <span className="rsvp-optional">(optional)</span></label>
+        <label htmlFor="rsvp-message">{askKids ? 'Message for the celebrant' : 'Message for the couple'} <span className="rsvp-optional">(optional)</span></label>
         <textarea id="rsvp-message" rows={3} maxLength={LIMITS.rsvpMessage} value={message} onChange={(e) => setMessage(e.target.value)} />
       </div>
       <div>
@@ -154,11 +162,11 @@ function Guest() {
     case 'live':
       return (
         <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos}
-          rsvpSlot={data.rsvpOpen ? <RsvpForm /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
+          rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
       );
     case 'expired':
       return (
-        <Plain title={`${data.partner1} & ${data.partner2}`}>
+        <Plain title={data.title}>
           <p>This celebration has passed.</p>
           <p>Thank you for being part of their story.</p>
         </Plain>
@@ -173,7 +181,7 @@ function Guest() {
     default:
       return (
         <Plain title="Invitation not available">
-          <p>This invitation link is not active. Please check the link with the couple who shared it.</p>
+          <p>This invitation link is not active. Please check the link with whoever shared it.</p>
         </Plain>
       );
   }

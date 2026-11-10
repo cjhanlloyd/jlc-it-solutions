@@ -2,13 +2,13 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import InvitationView from './InvitationView';
-import { Alert, DetailsForm, Field, Link, PaneToggle, PhotoPicker, checkDraft, inputCls, peso, previewDetails, toDraft, useInvitationFonts, useTurnstile, type Draft } from './kit';
-import type { InvitationDetails } from '../../shared/occasions/wedding';
+import { Alert, Field, Link, PaneToggle, PhotoPicker, inputCls, peso, useInvitationFonts, useTurnstile } from './kit';
+import { formOf } from './forms';
 
 export type Design = {
   slug: string; name: string; productType: string; layoutKey: string; priceCentavos: number;
   colorSchemes: { name: string; primary: string; accent: string; background: string; text: string }[];
-  previewImages: string[]; sampleDetails: InvitationDetails;
+  previewImages: string[]; sampleDetails: any;
 };
 
 export async function fetchDesigns(): Promise<Design[]> {
@@ -20,13 +20,13 @@ export async function fetchDesigns(): Promise<Design[]> {
 // PayMongo's cancel link returns here; the form is restored from this (photos are too large to keep).
 // The success page clears every key with this prefix once the payment is confirmed.
 export const DRAFT_KEY = 'jlc_inv_draft:';
-type Saved = { draft: Draft; scheme: string; email: string; hadPhotos: boolean };
+type Saved = { draft: any; scheme: string; email: string; hadPhotos: boolean };
 
 export default function CustomiserPage({ slug, btn }: { slug: string; btn: string }) {
   useInvitationFonts();
   const [design, setDesign] = React.useState<Design | null | 'missing' | 'offline'>(null);
   const [saved] = React.useState<Saved | null>(() => { try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY + slug) || 'null'); } catch { return null; } });
-  const [draft, setDraft] = React.useState<Draft>(() => toDraft(saved?.draft));
+  const [draft, setDraft] = React.useState<any>(saved?.draft ?? null);
   const [scheme, setScheme] = React.useState('');
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [email, setEmail] = React.useState(saved?.email ?? '');
@@ -41,6 +41,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       .then((all) => {
         const d = all.find((x) => x.slug === slug);
         setDesign(d ?? 'missing');
+        if (d) setDraft((cur: any) => cur ?? formOf(d.productType)?.toDraft(saved?.draft) ?? null);
         if (d) setScheme(d.colorSchemes.some((s) => s.name === saved?.scheme) ? saved!.scheme : d.colorSchemes[0]?.name ?? '');
       })
       .catch(() => setDesign('offline'));
@@ -56,8 +57,10 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     );
   }
 
+  const form = formOf(design.productType);
+  if (!form || !draft) return <p className="py-24 px-4 text-center text-sm text-slate-600">This design can't be customised online yet. Please contact us.</p>;
   const chosen = design.colorSchemes.find((s) => s.name === scheme) ?? design.colorSchemes[0];
-  const check = checkDraft(draft);
+  const check = form.check(draft);
 
   async function pay(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +101,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
               <Icons.ArrowLeft className="h-3.5 w-3.5 mr-1" /> All designs
             </Link>
             <h1 className="text-2xl font-extrabold text-slate-900 font-display">{design.name}</h1>
-            <p className="text-sm text-slate-600">{peso(design.priceCentavos)} · one-time payment · your invitation stays online until 60 days after the wedding</p>
+            <p className="text-sm text-slate-600">{peso(design.priceCentavos)} · one-time payment · your invitation stays online until 60 days after the event</p>
           </div>
 
           {design.colorSchemes.length > 1 && (
@@ -118,7 +121,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
             </fieldset>
           )}
 
-          <DetailsForm draft={draft} onChange={setDraft} />
+          <form.Form draft={draft} onChange={setDraft} />
           {saved?.hadPhotos && !photos.length && <Alert kind="info">Your details were restored. Please re-add your photos.</Alert>}
           <PhotoPicker photos={photos} onChange={setPhotos} />
 
@@ -151,7 +154,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
 
         <section aria-label="Live preview" className={`${view === 'preview' ? 'block' : 'hidden'} lg:block`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
-            {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={previewDetails(draft, toDraft(design.sampleDetails))} photos={photos} />}
+            {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} />}
           </div>
         </section>
       </div>

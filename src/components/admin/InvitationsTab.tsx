@@ -4,7 +4,7 @@ import { adminApi } from './api.js';
 import type { AdminTabProps } from './types.js';
 import type { InvTabProps } from './InvitationsCommon.js';
 
-type Rsvp = { guestName: string; attending: boolean; partySize: number; message: string; submitted: string };
+type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount?: number; message: string; submitted: string };
 
 export default function InvitationsTab({ overview, reload, adminToken, setApiError }: AdminTabProps & InvTabProps) {
   const [open, setOpen] = React.useState<number | null>(null);
@@ -40,6 +40,7 @@ export default function InvitationsTab({ overview, reload, adminToken, setApiErr
                 <div className="flex flex-wrap items-center gap-2">
                   <a href={`/i/${i.slug}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:underline">/i/{i.slug}</a>
                   <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-sm bg-slate-100 text-slate-600">{i.status}</span>
+                  <span className="text-sm font-semibold text-gray-800">{i.title}</span>
                   <span className="text-xs text-gray-500">{i.design_name} · {i.event_date || 'no date'}</span>
                 </div>
                 <button onClick={() => toggle(i.id)} className="px-2.5 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-50 cursor-pointer">
@@ -50,7 +51,7 @@ export default function InvitationsTab({ overview, reload, adminToken, setApiErr
                 <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1.5">
                   {!rsvps ? 'Loading...' : rsvps.length === 0 ? 'No RSVPs yet.' : rsvps.map((r, n) => (
                     <div key={n}>
-                      <strong>{r.guestName}</strong> · {r.attending ? `attending, party of ${r.partySize}` : 'not attending'}
+                      <strong>{r.guestName}</strong> · {r.attending ? r.kidsCount ? `attending, ${r.partySize} ${r.partySize === 1 ? 'adult' : 'adults'} + ${r.kidsCount} ${r.kidsCount === 1 ? 'kid' : 'kids'}` : `attending, party of ${r.partySize}` : 'not attending'}
                       {r.message && <span className="text-gray-500"> · "{r.message}"</span>}
                     </div>
                   ))}

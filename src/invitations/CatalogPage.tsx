@@ -3,9 +3,12 @@ import React from 'react';
 import * as Icons from 'lucide-react';
 import InvitationView from './InvitationView';
 import { fetchDesigns, type Design } from './CustomiserPage';
-import { Link, peso, toDraft, useInvitationFonts } from './kit';
+import { Link, peso, useInvitationFonts } from './kit';
+import { formOf } from './forms';
 import { occasionChips, occasionLabel } from './occasions';
 
+// Same normalising the customiser preview does, so layouts get a complete details object.
+const sampleOf = (d: { productType: string; sampleDetails: any }) => { const f = formOf(d.productType); return f ? f.preview(f.toDraft(d.sampleDetails), f.toDraft(d.sampleDetails)) : d.sampleDetails; };
 const STEPS = ['Choose a design', 'Add your details and photos', 'Pay by QR Ph and share one link'];
 
 export default function CatalogPage({ btn }: { btn: string }) {
@@ -115,7 +118,7 @@ export default function CatalogPage({ btn }: { btn: string }) {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {preview.colorSchemes[0] && <InvitationView layoutKey={preview.layoutKey} scheme={preview.colorSchemes[0]} details={toDraft(preview.sampleDetails)} photos={preview.previewImages} />}
+            {preview.colorSchemes[0] && <InvitationView layoutKey={preview.layoutKey} scheme={preview.colorSchemes[0]} details={sampleOf(preview)} photos={preview.previewImages} />}
           </div>
         </div>
       )}
