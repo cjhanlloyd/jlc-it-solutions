@@ -73,6 +73,8 @@ test('registry', () => {
   assert.equal(occasionOf('birthday_invitation'), birthday);
   assert.equal(occasionOf('debut_invitation'), null);
   assert.equal(occasionOf(undefined), null);
+  assert.equal(occasionOf('constructor'), null);
+  assert.equal(occasionOf('__proto__'), null);
   assert.deepEqual([...birthday.layouts], ['confetti', 'golden']);
   assert.deepEqual([...wedding.layouts], ['classic', 'garden', 'modern']);
   assert.equal(birthday.askKids, true);
@@ -105,4 +107,11 @@ test('docs/designs/birthday.md samples match the exported samples', async () => 
   const re = /```json\n([\s\S]*?)```/g;
   const blocks = [...readFileSync(new URL("../docs/designs/birthday.md", import.meta.url), "utf8").matchAll(re)].map((m) => JSON.parse(m[1]));
   assert.deepEqual(blocks, [SAMPLES.birthday_invitation, MILESTONE_SAMPLE]);
+});
+
+test('client-bundled code avoids Object.hasOwn (Safari < 15.4, Chrome < 93)', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(d + '/' + e.name) : [d + '/' + e.name]);
+  const bad = [...walk('src'), ...walk('shared')].filter((f) => /.tsx?$/.test(f) && readFileSync(f, 'utf8').includes('Object.hasOwn'));
+  assert.deepEqual(bad, []);
 });

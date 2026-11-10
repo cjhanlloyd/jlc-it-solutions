@@ -7,7 +7,7 @@ import { formOf } from './forms';
 import type { Scheme } from './parts';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
-type Manage = { slug: string; productType: string; title: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; details: any; photos: string[]; rsvps: Rsvp[] };
+type Manage = { slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; details: any; photos: string[]; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -101,7 +101,7 @@ export default function ManagePage({ btn }: { btn: string }) {
   if (!form || !draft) return <p className="py-24 px-4 text-center text-sm text-slate-600">This invitation type can't be edited online yet. Please contact us.</p>;
   const guestUrl = `${window.location.origin}/i/${data.slug}`;
   const check = form.check(draft);
-  const kids = data.productType === 'birthday_invitation';
+  const kids = data.askKids;
   const yes = data.rsvps.filter((r) => r.attending);
 
   async function save(e: React.FormEvent) {

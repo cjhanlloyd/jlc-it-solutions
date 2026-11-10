@@ -476,6 +476,8 @@ test('manage with the correct token returns details and RSVPs', async () => {
   assert.equal(data.design.slug, 'classic-elegance');
   assert.equal(data.colorScheme.name, 'Blush');
   assert.equal(data.details.partner2, 'Juan');
+  assert.equal(data.title, 'Maria & Juan');
+  assert.equal(data.askKids, false);
   assert.deepEqual(data.photos, ['inv/1/0.png']);
   assert.deepEqual(data.rsvps, [{ guestName: 'Ana', attending: true, partySize: 2, message: 'Yay', submitted: '2026-11-10 08:00:00', kidsCount: 0 }]);
 });
@@ -659,7 +661,10 @@ test('birthday manage: renaming the celebrant → 400 with the birthday message;
   const res = await call('POST', '/api/invitations/manage', editBody({ celebrant: 'Zoe' }), TOKEN);
   assert.equal(res.status, 400);
   assert.equal((await res.json()).error, "The celebrant's name cannot be changed after payment.");
-  assert.equal((await (await call('GET', '/api/invitations/manage', undefined, TOKEN)).json()).productType, 'birthday_invitation');
+  const m = await (await call('GET', '/api/invitations/manage', undefined, TOKEN)).json();
+  assert.equal(m.productType, 'birthday_invitation');
+  assert.equal(m.askKids, true);
+  assert.match(m.title, /'s .*Birthday$/);
 });
 
 test('birthday RSVP stores kids; manage JSON and CSV show them', async () => {

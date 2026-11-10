@@ -16,4 +16,4 @@ export const FORMS: Record<string, OccasionForm> = {
 };
 
 export const formOf = (productType: string | null | undefined): OccasionForm | null =>
-  (productType && Object.hasOwn(FORMS, productType) ? FORMS[productType] : null);
+  (productType && Object.prototype.hasOwnProperty.call(FORMS, productType) ? FORMS[productType] : null);

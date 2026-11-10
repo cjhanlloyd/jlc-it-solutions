@@ -8,7 +8,7 @@ type Props = { layoutKey: string; scheme: Scheme; details: any; photos: string[]
 
 export default function InvitationView({ layoutKey, ...rest }: Props) {
   // Unknown keys get a placeholder instead of feeding details to a layout of another occasion.
-  if (!Object.hasOwn(LAYOUTS, layoutKey)) return <p className="p-10 text-center text-sm text-slate-500">Preview available soon</p>;
+  if (!Object.prototype.hasOwnProperty.call(LAYOUTS, layoutKey)) return <p className="p-10 text-center text-sm text-slate-500">Preview available soon</p>;
   const Layout = LAYOUTS[layoutKey as LayoutKey];
   return <Layout {...rest} />;
 }

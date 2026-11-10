@@ -14,5 +14,5 @@ export type Occasion<D = any> = {
 
 export const OCCASIONS: Record<string, Occasion> = { [wedding.productType]: wedding, [birthday.productType]: birthday };
 export const occasionOf = (productType: string | null | undefined): Occasion | null =>
-  (productType && Object.hasOwn(OCCASIONS, productType) ? OCCASIONS[productType] : null);
+  (productType && Object.prototype.hasOwnProperty.call(OCCASIONS, productType) ? OCCASIONS[productType] : null);
 export const LAYOUT_KEYS: readonly string[] = Object.values(OCCASIONS).flatMap((o) => o.layouts);

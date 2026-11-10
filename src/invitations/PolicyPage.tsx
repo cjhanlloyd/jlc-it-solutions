@@ -20,7 +20,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>How long it stays online</h2>
         <p>Your invitation stays online until 60 days after the event date. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
         <h2>Editing</h2>
-        <p>After payment you can change the date, time, venues, schedule, photos, messages and other details through your manage link. The two names and the design cannot be changed after payment. Keep your manage link private: anyone who has it can edit your invitation. If you lose it, request fresh links from the manage page.</p>
+        <p>After payment you can change the date, time, venues, schedule, photos, messages and other details through your manage link. The names on the invitation (the couple's, or the celebrant's) and the design cannot be changed after payment. Keep your manage link private: anyone who has it can edit your invitation. If you lose it, request fresh links from the manage page.</p>
         <h2>Your content</h2>
         <p>You are responsible for the names, text and photos you add, and you confirm you have the right to use them. Do not upload anything unlawful, offensive, or that infringes someone else's rights. We may take down an invitation that breaks these rules.</p>
         <h2>Availability</h2>
@@ -52,7 +52,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>What we collect</h2>
         <ul>
           <li><strong>From the customer:</strong> your email address, the names, dates, venues, messages and photos you put on the invitation, and order records (amount, date, payment status). Card and e-wallet details are handled by PayMongo, not by us.</li>
-          <li><strong>From guests who RSVP:</strong> name, whether they are attending, party size, and an optional message.</li>
+          <li><strong>From guests who RSVP:</strong> name, whether they are attending, party size (and number of kids, for birthdays), and an optional message.</li>
           <li><strong>Technical data:</strong> an anti-spam check by Cloudflare Turnstile on forms, and standard server logs.</li>
         </ul>
         <h2>Why we use it</h2>
@@ -60,7 +60,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>Who sees it</h2>
         <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the customer who bought the invitation, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage), PayMongo (payments) and our email provider.</p>
         <h2>How long we keep it</h2>
-        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the event date, including for refunded invitations. Only the celebrant names are kept, for the short "this celebration has passed" page. Order and payment records are kept as long as required for accounting and tax purposes.</p>
+        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the event date, including for refunded invitations. Only the names (and, for birthdays, the age) shown on the "this celebration has passed" page are kept. Order and payment records are kept as long as required for accounting and tax purposes.</p>
         <h2>Your rights</h2>
         <p>Under the Data Privacy Act you may ask to access, correct, or delete your personal information, object to its processing, and file a complaint with the National Privacy Commission. Customers can correct most details themselves through the manage link. Guests who want their RSVP changed or removed can contact the customer or us.</p>
         <h2>Contact</h2>

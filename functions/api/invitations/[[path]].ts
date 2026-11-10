@@ -64,9 +64,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         'SELECT guest_name, attending, party_size, kids_count, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
       ).bind(inv.id).all<any>();
       const rsvps = (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, kidsCount: r.kids_count ?? 0, message: r.message ?? '', submitted: r.created_at }));
-      if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug, !!occasionOf(inv.product_type)?.askKids);
+      const occasion = occasionOf(inv.product_type);
+      if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug, !!occasion?.askKids);
       return json({
-        slug: inv.slug, status: inv.status, productType: inv.product_type, design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
+        slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
+        title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
         colorScheme: parse(inv.color_scheme, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
       });
     }
