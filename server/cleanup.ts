@@ -1,10 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 // Expires unpaid orders and purges guest data after the event (privacy notice: 60 days).
 // Safe to run repeatedly or concurrently: every write is conditional, and R2 deletes of missing keys are no-ops.
+import { occasionOf } from '../shared/occasions';
 import { isPastExpiry } from './guest-invitation';
-
-// The expired page and link previews need only the names; everything else in details is deleted.
-const NAMES_ONLY = "json_object('partner1', json_extract(details, '$.partner1'), 'partner2', json_extract(details, '$.partner2'))";
 
 const keysOf = (photos: string) => { try { const k = JSON.parse(photos); return Array.isArray(k) ? k as string[] : []; } catch { return []; } };
 
@@ -38,15 +36,25 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
   }
 
   // 'expired' rows are included because the guest page marks them lazily without purging; 'refunded' ones
-  // follow the same 60-day rule but keep their status. Rows already reduced to photos '[]', names only
-  // and no RSVPs are not selected again.
+  // follow the same 60-day rule but keep their status. Rows already reduced (photos '[]', details marked
+  // _purged, no RSVPs) are not selected again. The expired page and link previews keep only what the
+  // occasion's title needs (expiredSummary); everything else in details is deleted.
   const { results: live } = await db.prepare(
-    `SELECT id, event_date, photos FROM invitations WHERE status = 'live' OR (status IN ('expired', 'refunded') AND (photos != '[]' OR details != ${NAMES_ONLY} OR id IN (SELECT invitation_id FROM rsvps)))`,
+    "SELECT i.id, i.event_date, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))",
   ).all<any>();
   for (const i of (live || []).filter((x) => isPastExpiry(x.event_date, now))) {
+    const occasion = occasionOf(i.product_type);
+    let summary: string;
+    try {
+      if (!occasion) throw new Error(`unknown product type ${i.product_type}`);
+      summary = JSON.stringify(occasion.expiredSummary(JSON.parse(i.details)));
+    } catch (e) {
+      console.error(`cleanup: cannot purge invitation ${i.id}:`, e instanceof Error ? e.message : e);
+      continue;
+    }
     if (!await deletePhotos(photos, keysOf(i.photos), `invitation ${i.id}`)) continue;
     await db.batch([
-      db.prepare(`UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ${NAMES_ONLY} WHERE id = ? AND status IN ('live', 'expired', 'refunded')`).bind(i.id),
+      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
       db.prepare('DELETE FROM rsvps WHERE invitation_id = ?').bind(i.id),
     ]);
     purgedInvitations++;

@@ -2,8 +2,7 @@
 import { runCleanup } from '../../../../server/cleanup';
 import { verifyAdminToken } from '../../../../server/crypto';
 import { emailAndRotateToken } from '../../../../server/invitation-links';
-import { LAYOUT_KEYS } from '../../../../shared/occasions';
-import { validateDetails } from '../../../../shared/occasions/wedding';
+import { occasionOf } from '../../../../shared/occasions';
 
 interface Env {
   DB: D1Database;
@@ -43,6 +42,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 };
 
+// Display title from the stored details; '' when the type or details are unknown.
+function titleOf(productType: string, details: string | null): string {
+  const o = occasionOf(productType);
+  try { return o && details ? o.title(JSON.parse(details)) : ''; } catch { return ''; }
+}
+
 async function overview(env: Env): Promise<Response> {
   // shortcut: cleanup runs when an admin opens the overview, because Pages has no cron; upgrade to a Worker cron trigger if orders grow.
   try {
@@ -53,12 +58,12 @@ async function overview(env: Env): Promise<Response> {
   const [designs, orders, events, invitations, totals] = await Promise.all([
     env.DB.prepare('SELECT * FROM products_designs ORDER BY sort_order, id').all<any>(),
     env.DB.prepare(
-      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.paymongo_checkout_id, o.paymongo_payment_id, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
+      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.paymongo_checkout_id, o.paymongo_payment_id, o.product_id AS invitation_id, i.slug, i.details, d.product_type, d.name AS design_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
     ).all<any>(),
     // Type and time only: the raw payload stays out of the response
     env.DB.prepare('SELECT order_id, type, received_at FROM payment_events WHERE order_id IS NOT NULL ORDER BY received_at, rowid').all<any>(),
     env.DB.prepare(
-      'SELECT i.id, i.slug, i.status, i.event_date, i.created_at, d.name AS design_name, (SELECT COUNT(*) FROM rsvps r WHERE r.invitation_id = i.id) AS rsvpCount FROM invitations i JOIN products_designs d ON d.id = i.design_id ORDER BY i.id DESC',
+      'SELECT i.id, i.slug, i.status, i.event_date, i.created_at, i.details, d.product_type, d.name AS design_name, (SELECT COUNT(*) FROM rsvps r WHERE r.invitation_id = i.id) AS rsvpCount FROM invitations i JOIN products_designs d ON d.id = i.design_id ORDER BY i.id DESC',
     ).all<any>(),
     env.DB.prepare("SELECT COUNT(*) AS paidCount, COALESCE(SUM(amount_centavos), 0) AS paidCentavos FROM orders WHERE status = 'paid'").first<any>(),
   ]);
@@ -68,17 +73,17 @@ async function overview(env: Env): Promise<Response> {
     designs: (designs.results || []).map((d) => ({
       ...d, active: !!d.active, color_schemes: parse(d.color_schemes, []), preview_images: parse(d.preview_images, []), sample_details: parse(d.sample_details, {}),
     })),
-    orders: (orders.results || []).map((o) => ({ ...o, payment_events: trail.get(o.id) || [] })),
-    invitations: invitations.results || [],
+    orders: (orders.results || []).map(({ details, product_type, ...o }) => ({ ...o, title: titleOf(product_type, details), payment_events: trail.get(o.id) || [] })),
+    invitations: (invitations.results || []).map(({ details, product_type, ...i }) => ({ ...i, title: titleOf(product_type, details) })),
     totals: { paidCount: totals?.paidCount ?? 0, paidCentavos: totals?.paidCentavos ?? 0 },
   });
 }
 
 async function rsvps(env: Env, id: number): Promise<Response> {
   const { results } = await env.DB.prepare(
-    'SELECT guest_name, attending, party_size, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
+    'SELECT guest_name, attending, party_size, kids_count, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
   ).bind(id).all<any>();
-  return json({ rsvps: (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, message: r.message ?? '', submitted: r.created_at })) });
+  return json({ rsvps: (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, kidsCount: r.kids_count ?? 0, message: r.message ?? '', submitted: r.created_at })) });
 }
 
 // Returns the cleaned design, or an error message.
@@ -87,17 +92,19 @@ function validateDesign(b: any): { ok: true; d: any } | { ok: false; error: stri
   const name = typeof b.name === 'string' ? b.name.trim() : '';
   if (!name || name.length > 80) return bad('Name must be 1 to 80 characters.');
   if (typeof b.slug !== 'string' || b.slug.length > 60 || !SLUG_RE.test(b.slug)) return bad('Slug must be lowercase letters, numbers and single hyphens (max 60).');
-  if (!(LAYOUT_KEYS as readonly string[]).includes(b.layout_key)) return bad('Unknown layout.');
+  const occasion = occasionOf(b.product_type);
+  if (!occasion) return bad('Unknown product type.');
+  if (!occasion.layouts.includes(b.layout_key)) return bad(`Layout ${b.layout_key} is not a ${occasion.label} layout.`);
   if (!Number.isInteger(b.price_centavos) || b.price_centavos < 1000 || b.price_centavos > 10_000_000) return bad('Price must be a whole number of centavos from 1,000 to 10,000,000.');
   const schemes = b.color_schemes;
   const schemeOk = (s: any) => s && typeof s.name === 'string' && s.name.trim() && ['primary', 'accent', 'background', 'text'].every((k) => typeof s[k] === 'string' && HEX_RE.test(s[k]));
   if (!Array.isArray(schemes) || !schemes.length || !schemes.every(schemeOk)) return bad('Color schemes need a name and #rrggbb primary, accent, background and text.');
   const imgs = b.preview_images;
   if (!Array.isArray(imgs) || !imgs.every((u) => typeof u === 'string' && /^https:\/\/\S+$/.test(u))) return bad('Preview images must be a list of https URLs.');
-  const v = validateDetails(b.sample_details);
+  const v = occasion.validateDetails(b.sample_details);
   if (v.ok === false) return bad(`Sample details: ${v.error}`);
   return { ok: true, d: {
-    slug: b.slug, name, layout_key: b.layout_key, price_centavos: b.price_centavos,
+    slug: b.slug, name, product_type: b.product_type, layout_key: b.layout_key, price_centavos: b.price_centavos,
     color_schemes: JSON.stringify(schemes.map((s: any) => ({ name: s.name.trim(), primary: s.primary, accent: s.accent, background: s.background, text: s.text }))),
     preview_images: JSON.stringify(imgs), sample_details: JSON.stringify(v.details), active: b.active === false ? 0 : 1,
   } };
@@ -130,14 +137,14 @@ async function designAction(env: Env, b: any): Promise<Response> {
   try {
     if (b.action === 'add') {
       await env.DB.prepare(
-        'INSERT INTO products_designs (slug, name, layout_key, price_centavos, color_schemes, preview_images, sample_details, active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM products_designs))',
-      ).bind(...fields).run();
+        'INSERT INTO products_designs (slug, name, layout_key, price_centavos, color_schemes, preview_images, sample_details, active, product_type, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM products_designs))',
+      ).bind(...fields, d.product_type).run();
       return json({ ok: true });
     }
-    // Live invitations read layout_key from their design, so it is fixed for life; other edits do not reach them (they keep their own scheme copy)
-    const stored = await env.DB.prepare('SELECT layout_key FROM products_designs WHERE id = ?').bind(b.id).first<any>();
+    // Live invitations read layout_key and product_type from their design, so both are fixed for life; other edits do not reach them (they keep their own scheme copy)
+    const stored = await env.DB.prepare('SELECT layout_key, product_type FROM products_designs WHERE id = ?').bind(b.id).first<any>();
     if (!stored) return json({ error: 'Design not found.' }, 404);
-    if (stored.layout_key !== d.layout_key) return json({ error: "A design's layout can't be changed; add a new design instead." }, 409);
+    if (stored.layout_key !== d.layout_key || stored.product_type !== d.product_type) return json({ error: "A design's layout and type can't be changed; add a new design instead." }, 409);
     const [slug, name, , price, schemes, imgs, sample, active] = fields;
     const r = await env.DB.prepare(
       'UPDATE products_designs SET slug = ?, name = ?, price_centavos = ?, color_schemes = ?, preview_images = ?, sample_details = ?, active = ? WHERE id = ?',
@@ -176,10 +183,10 @@ async function resend(request: Request, env: Env, orderId: unknown, origin: stri
   try {
     await emailAndRotateToken(env.DB, smtp, request, order.product_id, (token) => ({
       to: order.customer_email,
-      subject: 'Your wedding invitation links',
+      subject: 'Your invitation links',
       // "Key: value" lines: the HTML builder keeps every URL there (plain paragraphs keep only the first)
       body: [
-        'Here are the links to your wedding invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
+        'Here are the links to your invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
         '',
         `Guest link: ${origin}/i/${order.slug}`,
         `Manage link: ${origin}/manage#${token}`,

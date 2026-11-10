@@ -28,7 +28,7 @@ before(async () => {
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const scheme = { name: 'Blush', primary: '#b76e79', accent: '#d4af37', background: '#fff8f6', text: '#3b2a2e' };
 const details = { partner1: 'Ana', partner2: 'Ben', eventDate: '2099-06-01', ceremony: { name: 'Chapel', address: '1 Main St', mapUrl: '' }, schedule: [] };
-const goodDesign = { slug: 'new-look', name: 'New Look', layout_key: 'garden', price_centavos: 149900, color_schemes: [scheme],
+const goodDesign = { product_type: 'wedding_invitation', slug: 'new-look', name: 'New Look', layout_key: 'garden', price_centavos: 149900, color_schemes: [scheme],
   preview_images: ['https://cdn.test/a.jpg'], sample_details: details, active: true };
 
 let db, smtpEnabled;
@@ -36,8 +36,8 @@ const ADMINS = { 'boss@x.com': 'Super Admin', 'adm@x.com': 'Administrator', 'ed@
 beforeEach(() => {
   db = {
     designs: [
-      { id: 1, slug: 'classic', name: 'Classic', layout_key: 'classic', price_centavos: 99900, color_schemes: JSON.stringify([scheme]), preview_images: '[]', sample_details: '{}', active: 1, sort_order: 1 },
-      { id: 2, slug: 'garden', name: 'Garden', layout_key: 'garden', price_centavos: 79900, color_schemes: JSON.stringify([scheme]), preview_images: '[]', sample_details: '{}', active: 1, sort_order: 2 },
+      { id: 1, product_type: 'wedding_invitation', slug: 'classic', name: 'Classic', layout_key: 'classic', price_centavos: 99900, color_schemes: JSON.stringify([scheme]), preview_images: '[]', sample_details: '{}', active: 1, sort_order: 1 },
+      { id: 2, product_type: 'wedding_invitation', slug: 'garden', name: 'Garden', layout_key: 'garden', price_centavos: 79900, color_schemes: JSON.stringify([scheme]), preview_images: '[]', sample_details: '{}', active: 1, sort_order: 2 },
     ],
     invitations: [
       { id: 1, design_id: 1, slug: 'ana-ben-1', color_scheme: '{}', details: JSON.stringify(details), photos: '[]', status: 'live', event_date: '2099-06-01', manage_token_hash: sha('old-token'), created_at: 't' },
@@ -48,7 +48,7 @@ beforeEach(() => {
       { id: 2, product_id: 2, customer_email: 'cy@example.com', amount_centavos: 50000, status: 'pending', created_at: 't', paid_at: null },
     ],
     events: [{ paymongo_event_id: 'evt_1', type: 'checkout_session.payment.paid', order_id: 1, received_at: 't', payload: 'SECRET-RAW' }],
-    rsvps: [{ id: 1, invitation_id: 1, guest_name: 'Gus', attending: 1, party_size: 2, message: 'Yay', created_at: 't' }],
+    rsvps: [{ id: 1, invitation_id: 1, guest_name: 'Gus', attending: 1, party_size: 2, kids_count: 1, message: 'Yay', created_at: 't' }],
     audit: [],
   };
   smtpEnabled = true;
@@ -58,19 +58,17 @@ beforeEach(() => {
   globalThis.SMTP_FAIL = false;
 });
 
-const NAMES_SQL = "json_object('partner1', json_extract(details, '$.partner1'), 'partner2', json_extract(details, '$.partner2'))";
-const PURGE_SELECT = `SELECT id, event_date, photos FROM invitations WHERE status = 'live' OR (status IN ('expired', 'refunded') AND (photos != '[]' OR details != ${NAMES_SQL} OR id IN (SELECT invitation_id FROM rsvps)))`;
-const PURGE_UPDATE = `UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ${NAMES_SQL} WHERE id = ? AND status IN ('live', 'expired', 'refunded')`;
-const namesOnly = (details) => { const d = JSON.parse(details); return JSON.stringify({ partner1: d.partner1 ?? null, partner2: d.partner2 ?? null }); };
+const PURGE_SELECT = `SELECT i.id, i.event_date, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))`;
+const PURGE_UPDATE = "UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')";
 function exec(sql, a) {
   if (/FROM admins WHERE email/.test(sql)) return a[0] in ADMINS ? { email: a[0], fullName: a[0], role: ADMINS[a[0]] } : null;
   if (/^SELECT \* FROM products_designs ORDER BY/.test(sql)) return { results: [...db.designs].sort((x, y) => x.sort_order - y.sort_order || x.id - y.id) };
   if (/^SELECT o\.id, .* FROM orders o LEFT JOIN invitations i .* ORDER BY/.test(sql)) {
-    return { results: db.orders.map(o => { const i = db.invitations.find(x => x.id === o.product_id); return { ...o, invitation_id: o.product_id, slug: i?.slug ?? null, design_name: i ? db.designs.find(d => d.id === i.design_id).name : null }; }) };
+    return { results: db.orders.map(o => { const i = db.invitations.find(x => x.id === o.product_id); return { ...o, invitation_id: o.product_id, slug: i?.slug ?? null, details: i?.details ?? null, product_type: i ? db.designs.find(d => d.id === i.design_id).product_type : null, design_name: i ? db.designs.find(d => d.id === i.design_id).name : null }; }) };
   }
   if (/^SELECT order_id, type, received_at FROM payment_events/.test(sql)) return { results: db.events.map(({ order_id, type, received_at }) => ({ order_id, type, received_at })) };
   if (/^SELECT i\.id, i\.slug, .* FROM invitations i JOIN products_designs d/.test(sql)) {
-    return { results: db.invitations.map(i => ({ ...i, manage_token_hash: undefined, design_name: db.designs.find(d => d.id === i.design_id).name, rsvpCount: db.rsvps.filter(r => r.invitation_id === i.id).length })) };
+    return { results: db.invitations.map(i => ({ ...i, manage_token_hash: undefined, product_type: db.designs.find(d => d.id === i.design_id).product_type, design_name: db.designs.find(d => d.id === i.design_id).name, rsvpCount: db.rsvps.filter(r => r.invitation_id === i.id).length })) };
   }
   if (/^SELECT COUNT\(\*\) AS paidCount, COALESCE\(SUM\(amount_centavos\), 0\) AS paidCentavos FROM orders WHERE status = 'paid'/.test(sql)) {
     const paid = db.orders.filter(o => o.status === 'paid');
@@ -80,10 +78,10 @@ function exec(sql, a) {
   if (/^SELECT id FROM products_designs WHERE slug = \?/.test(sql)) return db.designs.find(d => d.slug === a[0]) ?? null;
   if (/^INSERT INTO products_designs/.test(sql)) {
     const id = Math.max(...db.designs.map(d => d.id)) + 1;
-    db.designs.push({ id, slug: a[0], name: a[1], layout_key: a[2], price_centavos: a[3], color_schemes: a[4], preview_images: a[5], sample_details: a[6], active: a[7], sort_order: Math.max(...db.designs.map(d => d.sort_order)) + 1 });
+    db.designs.push({ id, product_type: a[8], slug: a[0], name: a[1], layout_key: a[2], price_centavos: a[3], color_schemes: a[4], preview_images: a[5], sample_details: a[6], active: a[7], sort_order: Math.max(...db.designs.map(d => d.sort_order)) + 1 });
     return { meta: { last_row_id: id, changes: 1 } };
   }
-  if (/^SELECT layout_key FROM products_designs WHERE id = \?/.test(sql)) return db.designs.find(d => d.id === a[0]) ?? null;
+  if (/^SELECT layout_key, product_type FROM products_designs WHERE id = \?/.test(sql)) return db.designs.find(d => d.id === a[0]) ?? null;
   if (/^UPDATE products_designs SET slug = \?/.test(sql)) {
     const d = db.designs.find(x => x.id === a[7]);
     if (!d) return { meta: { changes: 0 } };
@@ -120,7 +118,7 @@ function exec(sql, a) {
     i.manage_token_hash = a[0];
     return { meta: { changes: 1 } };
   }
-  if (/^SELECT guest_name, attending, party_size, message, created_at FROM rsvps WHERE invitation_id = \?/.test(sql)) return { results: db.rsvps.filter(r => r.invitation_id === a[0]) };
+  if (/^SELECT guest_name, attending, party_size, kids_count, message, created_at FROM rsvps WHERE invitation_id = \?/.test(sql)) return { results: db.rsvps.filter(r => r.invitation_id === a[0]) };
   if (/^SELECT i\.\*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
     const i = db.invitations.find(x => x.slug === a[0]);
     return i ? { ...i, layout_key: db.designs.find(d => d.id === i.design_id).layout_key, product_type: 'wedding_invitation' } : null;
@@ -145,11 +143,12 @@ function exec(sql, a) {
   // Purge: keeps only the names in details, like SQLite's json_object(json_extract(...)) (missing → null)
   if (sql === PURGE_SELECT) {
     return { results: db.invitations.filter(i => i.status === 'live' || (['expired', 'refunded'].includes(i.status)
-      && (i.photos !== '[]' || i.details !== namesOnly(i.details) || db.rsvps.some(r => r.invitation_id === i.id)))) };
+      && (i.photos !== '[]' || JSON.parse(i.details)._purged === undefined || db.rsvps.some(r => r.invitation_id === i.id))))
+      .map(i => ({ ...i, product_type: db.designs.find(d => d.id === i.design_id).product_type })) };
   }
   if (sql === PURGE_UPDATE) {
-    const i = db.invitations.find(x => x.id === a[0] && ['live', 'expired', 'refunded'].includes(x.status));
-    if (i) Object.assign(i, { status: i.status === 'refunded' ? 'refunded' : 'expired', photos: '[]', details: namesOnly(i.details) });
+    const i = db.invitations.find(x => x.id === a[1] && ['live', 'expired', 'refunded'].includes(x.status));
+    if (i) Object.assign(i, { status: i.status === 'refunded' ? 'refunded' : 'expired', photos: '[]', details: a[0] });
     return { meta: { changes: i ? 1 : 0 } };
   }
   if (/^DELETE FROM rsvps WHERE invitation_id = \?$/.test(sql)) { db.rsvps = db.rsvps.filter(r => r.invitation_id !== a[0]); return { meta: { changes: 1 } }; }
@@ -241,6 +240,33 @@ test('design update changes the design only; keeps its own slug; unknown id → 
   assert.equal((await designs({ action: 'update', id: 99, ...goodDesign })).status, 404);
 });
 
+const bdayDetails = { celebrant: 'Mia', age: 7, eventDate: '2099-03-14', eventTime: '15:00', venue: { name: 'Hall', address: '1 Main St', mapUrl: '' }, schedule: [] };
+const bdayDesign = { ...goodDesign, product_type: 'birthday_invitation', slug: 'party', layout_key: 'confetti', sample_details: bdayDetails };
+
+test('design add: birthday with a wedding layout → 400; with confetti → ok and product_type stored', async () => {
+  const res = await designs({ action: 'add', ...bdayDesign, layout_key: 'classic' });
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, 'Layout classic is not a Birthday layout.');
+  assert.equal((await designs({ action: 'add', ...bdayDesign, product_type: 'nope' })).status, 400);
+  assert.equal((await designs({ action: 'add', ...bdayDesign, sample_details: details })).status, 400);
+  assert.equal(db.designs.length, 2);
+  assert.equal((await designs({ action: 'add', ...bdayDesign })).status, 200);
+  assert.equal(db.designs.at(-1).product_type, 'birthday_invitation');
+});
+
+test('design update changing product_type → 409', async () => {
+  const res = await designs({ action: 'update', id: 1, ...bdayDesign, slug: 'classic' });
+  assert.equal(res.status, 409);
+  assert.equal(db.designs[0].product_type, 'wedding_invitation');
+});
+
+test('overview: invitation and order rows carry the occasion title, not the raw details', async () => {
+  const data = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
+  assert.equal(data.invitations.find(i => i.id === 1).title, 'Ana & Ben');
+  assert.equal(data.orders.find(o => o.id === 1).title, 'Ana & Ben');
+  assert.ok(!JSON.stringify(data.invitations).includes('Chapel'));
+});
+
 test('design update with a different layout_key → 409, stored layout unchanged; same layout_key succeeds', async () => {
   const res = await designs({ action: 'update', id: 1, ...goodDesign, slug: 'classic', layout_key: 'garden' });
   assert.equal(res.status, 409);
@@ -316,7 +342,7 @@ test('resend: a failed send keeps the old token; non-paid order → 409', async 
 test('invitation RSVPs list', async () => {
   const res = await call('/api/admin/invitations/invitations/1/rsvps', { as: 'ed@x.com' });
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).rsvps, [{ guestName: 'Gus', attending: true, partySize: 2, message: 'Yay', submitted: 't' }]);
+  assert.deepEqual((await res.json()).rsvps, [{ guestName: 'Gus', attending: true, partySize: 2, kidsCount: 1, message: 'Yay', submitted: 't' }]);
   assert.equal((await call('/api/admin/invitations/nope', { as: 'ed@x.com' })).status, 404);
 });
 
@@ -390,7 +416,7 @@ test('cleanup: purges an invitation the guest page already marked expired', asyn
 test('cleanup: an expired purge keeps only the two names in details', async () => {
   liveInvitation(20, 61);
   await runCleanup(DB, PHOTOS, NOW);
-  assert.deepEqual(JSON.parse(db.invitations.find(x => x.id === 20).details), { partner1: 'Maria', partner2: 'Juan' });
+  assert.deepEqual(JSON.parse(db.invitations.find(x => x.id === 20).details), { partner1: 'Maria', partner2: 'Juan', _purged: true });
 });
 
 test('cleanup: a refunded invitation 61 days after the event → photos, RSVPs and details purged, stays refunded', async () => {
@@ -399,7 +425,7 @@ test('cleanup: a refunded invitation 61 days after the event → photos, RSVPs a
   const i = db.invitations.find(x => x.id === 20);
   assert.equal(i.status, 'refunded');
   assert.equal(i.photos, '[]');
-  assert.deepEqual(JSON.parse(i.details), { partner1: 'Maria', partner2: 'Juan' });
+  assert.deepEqual(JSON.parse(i.details), { partner1: 'Maria', partner2: 'Juan', _purged: true });
   assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 0);
   assert.equal(r2.has('inv/20/0.png'), false);
   assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 }, 'idempotent');
@@ -437,4 +463,24 @@ test('overview runs cleanup first; an expired order still lists without its invi
   assert.equal(o.slug, null);
   assert.equal(data.invitations.find(i => i.id === 10), undefined);
   assert.equal(r2.size, 0);
+});
+
+test('cleanup: a birthday row keeps celebrant and age plus _purged; RSVPs and photos go; not selected again', async () => {
+  db.designs.push({ id: 3, product_type: 'birthday_invitation', slug: 'party', name: 'Party', layout_key: 'confetti', price_centavos: 1000, color_schemes: '[]', preview_images: '[]', sample_details: '{}', active: 1, sort_order: 3 });
+  liveInvitation(30, 61);
+  Object.assign(db.invitations.find(x => x.id === 30), { design_id: 3, details: JSON.stringify({ celebrant: 'Mia', age: 7, message: 'Hi!', venue: { name: 'Hall' } }) });
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1 });
+  assert.equal(db.invitations.find(x => x.id === 30).details, '{"celebrant":"Mia","age":7,"_purged":true}');
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 30).length, 0);
+  assert.equal(r2.has('inv/30/0.png'), false);
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 });
+});
+
+test('cleanup: a legacy names-only wedding row gets _purged once, then is left alone; still titles "A & B"', async () => {
+  db.invitations.push({ id: 31, design_id: 1, slug: 'leg-31', color_scheme: '{}', details: '{"partner1":"A","partner2":"B"}', photos: '[]', status: 'expired', event_date: dateDaysAgo(90), manage_token_hash: sha('l31'), created_at: 't' });
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1 });
+  assert.equal(db.invitations.find(x => x.id === 31).details, '{"partner1":"A","partner2":"B","_purged":true}');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0 });
+  const g = await (await guestGet('leg-31')).json();
+  assert.equal(g.title, 'A & B');
 });

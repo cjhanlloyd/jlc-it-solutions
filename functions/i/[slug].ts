@@ -2,6 +2,7 @@
 // Guest page: serves invitation.html with link-preview tags (<title>, og:*) for this invitation.
 import { escapeHtml } from '../../server/email';
 import { decodeSegment, findGuestInvitation } from '../../server/guest-invitation';
+import { occasionOf } from '../../shared/occasions';
 import { SECURITY_HEADERS } from '../../server/security-headers';
 
 interface Env { DB: D1Database; ASSETS: Fetcher }
@@ -10,20 +11,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const url = new URL(request.url);
   const slug = decodeSegment(url.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1] ?? '');
   const inv = slug ? await findGuestInvitation(env.DB, slug) : null;
-  const d = inv ? JSON.parse(inv.details) : {};
-  const names = `${d.partner1} & ${d.partner2}`;
+  const occasion = inv ? occasionOf(inv.product_type) : null;
+  const name = occasion ? occasion.title(JSON.parse(inv.details)) : '';
 
   let title = 'Invitation not available', description = 'This invitation is not available.', image = '';
-  if (inv?.status === 'live') {
+  if (occasion && inv?.status === 'live') {
     // UTC so the date cannot shift a day; e.g. "June 12, 2027"
-    const when = new Date(`${d.eventDate}T00:00:00Z`);
-    title = `${names} — ${isNaN(when.getTime()) ? 'Wedding invitation' : when.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' })}`;
-    description = `You're invited to the wedding of ${names}.`;
+    const when = new Date(`${inv.event_date}T00:00:00Z`);
+    title = `${name} — ${isNaN(when.getTime()) ? 'Invitation' : when.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' })}`;
+    description = inv.product_type === 'wedding_invitation' ? `You're invited to the wedding of ${name}.` : `You're invited to ${name}.`;
     const first = JSON.parse(inv.photos || '[]')[0];
     if (first) image = `${url.origin}/photos/${first}`;
-  } else if (inv) {
-    title = `${names} — celebration has passed`;
-    description = `The wedding of ${names} has already been celebrated.`;
+  } else if (occasion) {
+    title = `${name} — celebration has passed`;
+    description = 'This celebration has already passed.';
   }
 
   const tags = [

@@ -38,6 +38,9 @@ beforeEach(() => {
     inv(3, 'old-one', 'live', '2020-01-01', {}, ['inv/3/0.png']),
     inv(4, 'pending-one', 'pending', '2099-06-12'),
     inv(5, 'closed-one', 'live', '2099-06-12', { rsvpDeadline: '2020-01-01' }),
+    { ...inv(6, 'mia-bday', 'live', '2027-03-14', { celebrant: 'Mia', age: 7 }), product_type: 'birthday_invitation' },
+    { ...inv(7, 'rob-bday', 'live', '2027-03-14', { celebrant: 'Roberto' }), product_type: 'birthday_invitation' },
+    { ...inv(8, 'old-bday', 'live', '2020-01-01', { celebrant: 'Mia', age: 7 }), product_type: 'birthday_invitation' },
   ];
   r2.clear();
   for (const k of ['inv/1/0.png', 'inv/2/0.png', 'inv/3/0.png']) r2.set(k, 'bytes-' + k);
@@ -45,7 +48,7 @@ beforeEach(() => {
 function exec(sql, a) {
   if (/^SELECT i\.\*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
     const i = db.find(x => x.slug === a[0]);
-    return i ? { ...i, layout_key: 'classic', product_type: 'wedding_invitation' } : null;
+    return i ? { ...i, layout_key: 'classic', product_type: i.product_type ?? 'wedding_invitation' } : null;
   }
   if (/^UPDATE invitations SET status = 'expired' WHERE id = \? AND status = 'live'/.test(sql)) {
     updates.push(a[0]);
@@ -77,7 +80,7 @@ const ASSETS = { async fetch(u) { assetsFetched.push(String(u)); return new Resp
 
 const ctx = (fn, path, params = {}) => fn({ request: new Request('https://shop.test' + path), env: { DB, PHOTOS, ASSETS }, params, waitUntil() {} });
 const view = async (slug) => { const res = await ctx(page, `/i/${slug}`, { slug }); return { res, html: await res.text() }; };
-const og = (html, prop) => html.match(new RegExp(`<meta property="og:${prop}" content="([^"]*)">`))?.[1];
+const og = (html, prop) => html.match(new RegExp(`<meta property="og:${prop}" content="([^"]*)">`))?.[1]?.replaceAll('&#39;', "'");
 
 // --- Guest page ---
 test('live slug: escaped names in og:title and <title>, absolute og:image of the first photo', async () => {
@@ -100,6 +103,22 @@ test('live slug: the wedding date is in og:title and <title>', async () => {
   const title = 'A&lt;b&gt; &amp; Juan &quot;J&quot; — June 12, 2099';
   assert.equal(og(html, 'title'), title);
   assert.ok(html.includes(`<title>${title}</title>`));
+});
+
+test('birthday OG: title with age and date, description names the celebration', async () => {
+  const { html } = await view('mia-bday');
+  assert.equal(og(html, 'title'), "Mia's 7th Birthday — March 14, 2027");
+  assert.equal(og(html, 'description'), "You're invited to Mia's 7th Birthday.");
+});
+
+test('birthday OG: no age', async () => {
+  assert.equal(og((await view('rob-bday')).html, 'title'), "Roberto's Birthday — March 14, 2027");
+});
+
+test('expired birthday OG: generic wording', async () => {
+  const { html } = await view('old-bday');
+  assert.equal(og(html, 'title'), "Mia's 7th Birthday — celebration has passed");
+  assert.equal(og(html, 'description'), 'This celebration has already passed.');
 });
 
 test('guest page responses carry the same security headers as public/_headers', async () => {
