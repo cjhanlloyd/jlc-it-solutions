@@ -92,9 +92,10 @@ function exec(sql, a) {
     i.manage_token_hash = a[0];
     return { meta: { changes: 1 } };
   }
-  if (/^UPDATE invitations SET status = 'live' WHERE id = \? AND status = 'pending'/.test(sql)) {
+  // Batch statements run in order, so the EXISTS sees the order UPDATE that just ran
+  if (/^UPDATE invitations SET status = 'live' WHERE id = \? AND status = 'pending' AND EXISTS \(SELECT 1 FROM orders WHERE id = \? AND status = 'paid'\)$/.test(sql)) {
     const i = row('invitations', a[0]);
-    if (!i || i.status !== 'pending') return { meta: { changes: 0 } };
+    if (!i || i.status !== 'pending' || row('orders', a[1])?.status !== 'paid') return { meta: { changes: 0 } };
     i.status = 'live';
     return { meta: { changes: 1 } };
   }
@@ -374,6 +375,26 @@ test('retry after an isolate died between the event insert and processing → pr
   assert.equal(db.events.length, 1);
   assert.equal(db.events[0].order_id, 1);
   assert.equal(emails().length, 1);
+});
+
+test('cleanup half-done (order expired, invitation still pending) before the paid batch → invitation stays pending, one refund audit row, no email', async () => {
+  await checkedOut();
+  // Cleanup expired the order but has not deleted the invitation yet (e.g. its R2 delete failed)
+  const racyDB = { prepare: DB.prepare, async batch(stmts) { db.orders[0].status = 'expired'; return DB.batch(stmts); } };
+  const errors = [];
+  const err = console.error; console.error = (...a) => errors.push(a.join(' '));
+  try {
+    const body = paidEvent();
+    const res = await webhook({ request: new Request('https://shop.test/api/paymongo/webhook', { method: 'POST', body, headers: { 'Paymongo-Signature': sign(body) } }),
+      env: { ...env(), DB: racyDB }, waitUntil(p) { background.push(p); } });
+    assert.equal(res.status, 200);
+    await settle();
+  } finally { console.error = err; }
+  assert.equal(db.invitations[0].status, 'pending');
+  assert.equal(db.orders[0].status, 'expired');
+  assert.equal(db.audit.length, 1);
+  assert.match(db.audit[0].message, /expired order 1\b.*refund/i);
+  assert.equal(emails().length, 0);
 });
 
 test('order expired by cleanup between the webhook read and the paid batch → logged for a refund once, nothing revived', async () => {

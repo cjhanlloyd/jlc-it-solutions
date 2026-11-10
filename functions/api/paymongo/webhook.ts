@@ -57,7 +57,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const [paid, live] = await env.DB.batch([
       env.DB.prepare("UPDATE orders SET status = 'paid', paid_at = ?, paymongo_payment_id = ? WHERE id = ? AND status = 'pending'")
         .bind(paidAt.toISOString(), session.attributes?.payments?.[0]?.id ?? null, order.id),
-      env.DB.prepare("UPDATE invitations SET status = 'live' WHERE id = ? AND status = 'pending'").bind(order.invitation_id),
+      // Only if the order really became paid above (batch runs in order, in one transaction)
+      env.DB.prepare("UPDATE invitations SET status = 'live' WHERE id = ? AND status = 'pending' AND EXISTS (SELECT 1 FROM orders WHERE id = ? AND status = 'paid')")
+        .bind(order.invitation_id, order.id),
     ]);
     if (!paid.meta.changes) {
       // Cleanup may have expired the order since the read above
