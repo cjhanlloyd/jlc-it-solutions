@@ -53,8 +53,8 @@ export default function App() {
 
   const setActiveTab = (tabName: string) => {
     if (tabName === 'shop') {
-      // The shop is the bare homepage, without a hash
-      window.history.pushState(null, '', '/');
+      // The shop is the bare homepage, without a hash; no duplicate history entry when already there
+      if (window.location.pathname + window.location.hash !== '/') window.history.pushState(null, '', '/');
       window.dispatchEvent(new PopStateEvent('popstate'));
     } else if (window.location.pathname !== '/') {
       window.history.pushState(null, '', '/#/' + tabName);
@@ -774,7 +774,7 @@ export default function App() {
             <button
               onClick={() => {
                 setLoginError('');
-                window.location.hash = '#/' + activeTab;
+                setActiveTab(activeTab);
               }}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 p-1.5 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
               id="login-close-btn"

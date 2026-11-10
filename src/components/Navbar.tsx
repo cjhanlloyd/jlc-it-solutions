@@ -54,9 +54,14 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
   // Desktop "IT Services" menu: closes on item click, Escape, or a click outside it
   const [itOpen, setItOpen] = React.useState(false);
   const itMenuRef = React.useRef<HTMLDivElement>(null);
+  const itToggleRef = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
     if (!itOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setItOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setItOpen(false);
+      itToggleRef.current?.focus();
+    };
     const onClick = (e: MouseEvent) => !itMenuRef.current?.contains(e.target as Node) && setItOpen(false);
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onClick);
@@ -154,10 +159,15 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
             <button onClick={() => handleNavClick('shop')} className={pill(shopActive)} id="nav-item-invitations">
               Invitations
             </button>
-            <div className="relative" ref={itMenuRef}>
+            <div
+              className="relative"
+              ref={itMenuRef}
+              onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setItOpen(false)}
+            >
               <button
+                ref={itToggleRef}
                 onClick={() => setItOpen(!itOpen)}
-                aria-haspopup="menu"
+                aria-controls="it-services-menu"
                 aria-expanded={itOpen}
                 className={`${pill(itActive)} inline-flex items-center`}
                 id="nav-item-it-services"
@@ -166,11 +176,10 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
                 <Icons.ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${itOpen ? 'rotate-180' : ''}`} />
               </button>
               {itOpen && (
-                <div role="menu" className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-lg p-2 z-50">
+                <div id="it-services-menu" className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-lg p-2 z-50">
                   {itItems.map((item) => (
                     <button
                       key={item.id}
-                      role="menuitem"
                       onClick={() => handleNavClick(item.id)}
                       className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold font-display cursor-pointer ${
                         activeTab === item.id ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
