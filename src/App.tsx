@@ -43,24 +43,20 @@ import CustomiserPage from './invitations/CustomiserPage.tsx';
 import SuccessPage from './invitations/SuccessPage.tsx';
 import ManagePage from './invitations/ManagePage.tsx';
 import PolicyPage from './invitations/PolicyPage.tsx';
+import { tabFromHash } from './site-tabs.ts';
 
 export default function App() {
-  const [activeTab, setActiveTabState] = React.useState<string>(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#/')) {
-      const route = hash.split('?')[0].substring(2);
-      if (['home', 'about', 'services', 'pricing', 'why', 'contact', 'inquiry', 'admin'].includes(route)) {
-        return route;
-      }
-    }
-    return 'home';
-  });
+  const [activeTab, setActiveTabState] = React.useState<string>(() => tabFromHash(window.location.hash) ?? 'shop');
 
   // Real-path pages (/invitations, /manage, policies) render instead of the hash-routed site.
   const [path, setPath] = React.useState(window.location.pathname);
 
   const setActiveTab = (tabName: string) => {
-    if (window.location.pathname !== '/') {
+    if (tabName === 'shop') {
+      // The shop is the bare homepage, without a hash
+      window.history.pushState(null, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else if (window.location.pathname !== '/') {
       window.history.pushState(null, '', '/#/' + tabName);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } else {
@@ -121,9 +117,8 @@ export default function App() {
   // Synchronize state with URL hash on mount and hashchange
   React.useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash || '#/home';
-      const [routePart] = hash.split('?');
-      const route = routePart.substring(2) || 'home';
+      const route = window.location.hash.split('?')[0].replace(/^#\/?/, '');
+      const tab = tabFromHash(window.location.hash);
 
       if (route === 'login') {
         setShowLoginModal(true);
@@ -134,11 +129,7 @@ export default function App() {
       } else {
         setShowLoginModal(false);
         setShowForgotPassword(false);
-        if (['home', 'about', 'services', 'pricing', 'why', 'contact', 'inquiry', 'admin'].includes(route)) {
-          setActiveTabState(route);
-        } else {
-          setActiveTabState('home');
-        }
+        setActiveTabState(tab ?? 'shop');
       }
     };
 
@@ -220,13 +211,13 @@ export default function App() {
       document.title = "JLC Solutions";
       const timer = setTimeout(() => {
         const coName = branding.companyName || "JLC Solutions";
-        document.title = `${coName} | Premium IT Solutions`;
+        document.title = `${coName} | Digital Invitations & IT Services`;
         setHasTransitionedTitle(true);
       }, 1500);
       return () => clearTimeout(timer);
     } else {
       const coName = branding.companyName || "JLC Solutions";
-      document.title = `${coName} | Premium IT Solutions`;
+      document.title = `${coName} | Digital Invitations & IT Services`;
     }
   }, [branding.companyName, hasTransitionedTitle]);
 
@@ -299,7 +290,7 @@ export default function App() {
     localStorage.removeItem('jlc_admin_user');
     setAdminToken('');
     setAdminUser(null);
-    setActiveTab('home');
+    setActiveTab('shop');
     loadPublicData();
   };
 
@@ -575,7 +566,10 @@ export default function App() {
         {page}
         {!page && <>
 
-        {/* HOMEPAGE VIEW */}
+        {/* SHOP (the homepage) */}
+        {activeTab === 'shop' && <CatalogPage btn={btn} />}
+
+        {/* IT SERVICES HOME VIEW */}
         {activeTab === 'home' && (
           <div className="space-y-4" id="view-home">
             {/* Hero Main Slider */}

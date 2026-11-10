@@ -86,7 +86,7 @@ export default function Footer({ branding, content, services, setActiveTab }: Fo
             <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 font-mono mb-6">Company</h3>
             <ul className="space-y-4 text-sm font-medium">
               <li>
-                <button onClick={() => handleLinkClick('home')} className="hover:text-white hover:translate-x-1 transition-all flex items-center cursor-pointer">
+                <button onClick={() => handleLinkClick('shop')} className="hover:text-white hover:translate-x-1 transition-all flex items-center cursor-pointer">
                   <Icons.ChevronRight className="h-3 w-3 mr-1 text-slate-600" /> Home
                 </button>
               </li>
