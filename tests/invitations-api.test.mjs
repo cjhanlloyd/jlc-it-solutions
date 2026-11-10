@@ -26,7 +26,7 @@ before(async () => {
 // --- In-memory D1: answers only the statements the two handlers issue ---
 const design = { id: 1, slug: 'classic-elegance', name: 'Classic Elegance', layout_key: 'classic', price_centavos: 99900,
   color_schemes: JSON.stringify([{ name: 'Blush', primary: '#b76e79', accent: '#d4af37', background: '#fff8f6', text: '#3b2a2e' }]),
-  preview_images: '[]', sample_details: '{}', active: 1, sort_order: 0 };
+  preview_images: '[]', sample_details: '{}', active: 1, sort_order: 0, product_type: 'wedding_invitation' };
 let db, smtpEnabled = true;
 beforeEach(() => {
   db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
@@ -176,7 +176,8 @@ test('designs lists active designs with public fields only', async () => {
   assert.equal(res.status, 200);
   const { designs } = await res.json();
   assert.equal(designs.length, 1);
-  assert.deepEqual(Object.keys(designs[0]).sort(), ['colorSchemes', 'layoutKey', 'name', 'previewImages', 'priceCentavos', 'sampleDetails', 'slug']);
+  assert.deepEqual(Object.keys(designs[0]).sort(), ['colorSchemes', 'layoutKey', 'name', 'previewImages', 'priceCentavos', 'productType', 'sampleDetails', 'slug']);
+  assert.equal(designs[0].productType, 'wedding_invitation');
   assert.equal(designs[0].colorSchemes[0].name, 'Blush');
 });
 

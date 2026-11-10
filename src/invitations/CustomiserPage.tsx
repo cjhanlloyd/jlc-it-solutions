@@ -6,7 +6,7 @@ import { Alert, DetailsForm, Field, Link, PaneToggle, PhotoPicker, checkDraft, i
 import type { InvitationDetails } from '../../shared/invitation-fields';
 
 export type Design = {
-  slug: string; name: string; layoutKey: string; priceCentavos: number;
+  slug: string; name: string; productType: string; layoutKey: string; priceCentavos: number;
   colorSchemes: { name: string; primary: string; accent: string; background: string; text: string }[];
   previewImages: string[]; sampleDetails: InvitationDetails;
 };

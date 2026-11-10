@@ -27,10 +27,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   try {
     if (route === 'GET /api/invitations/designs') {
       const { results } = await env.DB.prepare(
-        'SELECT slug, name, layout_key, price_centavos, color_schemes, preview_images, sample_details FROM products_designs WHERE active = 1 ORDER BY sort_order, id',
+        'SELECT slug, name, product_type, layout_key, price_centavos, color_schemes, preview_images, sample_details FROM products_designs WHERE active = 1 ORDER BY sort_order, id',
       ).all<any>();
       return json({ designs: (results || []).map((d) => ({
-        slug: d.slug, name: d.name, layoutKey: d.layout_key, priceCentavos: d.price_centavos,
+        slug: d.slug, name: d.name, productType: d.product_type, layoutKey: d.layout_key, priceCentavos: d.price_centavos,
         colorSchemes: parse(d.color_schemes, []), previewImages: parse(d.preview_images, []), sampleDetails: parse(d.sample_details, {}),
       })) });
     }
