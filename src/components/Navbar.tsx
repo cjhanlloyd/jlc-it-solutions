@@ -6,7 +6,6 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { BrandingSettings } from '../types.js';
-import { Link } from '../invitations/kit.tsx';
 
 interface NavbarProps {
   branding: BrandingSettings;
@@ -24,7 +23,7 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
   const [lastClickTime, setLastClickTime] = React.useState(0);
 
   const handleLogoClick = () => {
-    handleNavClick('home');
+    handleNavClick('shop');
     const now = Date.now();
     if (now - lastClickTime < 1000) {
       const nextClicks = logoClicks + 1;
@@ -41,22 +40,42 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
 
   // Dynamic Icon retrieval from lucide-react
   const LogoIcon = (Icons as any)[branding.logoIcon] || Icons.Activity;
-  const onInvitations = window.location.pathname.startsWith('/invitations');
+  const shopActive = activeTab === 'shop' || window.location.pathname.startsWith('/invitations');
 
-  const navItems = [
-    { id: 'home', label: 'Home' },
+  const itItems = [
+    { id: 'home', label: 'IT Services overview' },
     { id: 'about', label: 'About Us' },
     { id: 'services', label: 'Services' },
     { id: 'pricing', label: 'Pricing' },
     { id: 'why', label: 'Why Choose Us' },
-    { id: 'contact', label: 'Contact Us' },
   ];
+  const itActive = itItems.some((i) => i.id === activeTab);
+
+  // Desktop "IT Services" menu: closes on item click, Escape, or a click outside it
+  const [itOpen, setItOpen] = React.useState(false);
+  const itMenuRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!itOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setItOpen(false);
+    const onClick = (e: MouseEvent) => !itMenuRef.current?.contains(e.target as Node) && setItOpen(false);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onClick); };
+  }, [itOpen]);
 
   const handleNavClick = (tabId: string) => {
     setActiveTab(tabId);
     setIsOpen(false);
+    setItOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const pill = (active: boolean) => `px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider font-display transition-all cursor-pointer ${
+    active ? 'bg-slate-900 text-white font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+  }`;
+  const mobileRow = (active: boolean) => `w-full text-left block px-4 py-3 rounded-full text-sm font-bold uppercase tracking-wider font-display transition-all ${
+    active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+  }`;
 
   // Dynamic Theme Styling
   const getThemeColorClass = () => {
@@ -132,42 +151,51 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
 
           {/* Desktop Nav Items */}
           <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider font-display transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-slate-900 text-white font-bold' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                  id={`nav-item-${item.id}`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-            <Link
-              href="/invitations"
-              className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider font-display transition-all ${
-                onInvitations ? 'bg-slate-900 text-white font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-              id="nav-item-invitations"
-            >
+            <button onClick={() => handleNavClick('shop')} className={pill(shopActive)} id="nav-item-invitations">
               Invitations
-            </Link>
+            </button>
+            <div className="relative" ref={itMenuRef}>
+              <button
+                onClick={() => setItOpen(!itOpen)}
+                aria-haspopup="menu"
+                aria-expanded={itOpen}
+                className={`${pill(itActive)} inline-flex items-center`}
+                id="nav-item-it-services"
+              >
+                IT Services
+                <Icons.ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${itOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {itOpen && (
+                <div role="menu" className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-lg p-2 z-50">
+                  {itItems.map((item) => (
+                    <button
+                      key={item.id}
+                      role="menuitem"
+                      onClick={() => handleNavClick(item.id)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold font-display cursor-pointer ${
+                        activeTab === item.id ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                      id={`nav-item-${item.id}`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={() => handleNavClick('contact')} className={pill(activeTab === 'contact')} id="nav-item-contact">
+              Contact Us
+            </button>
           </div>
 
           {/* Desktop CTA & Admin */}
           <div className="hidden md:flex items-center space-x-3">
             <button
-              onClick={() => handleNavClick('inquiry')}
+              onClick={() => handleNavClick('shop')}
               className={`inline-flex items-center px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-102 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${getButtonBgClass()}`}
-              id="nav-cta-inquire"
+              id="nav-cta-start"
             >
-              Get a Quote
+              Start an invitation
               <Icons.ArrowRight className="ml-2 h-4 w-4" />
             </button>
 
@@ -215,39 +243,26 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
       {isOpen && (
         <div className="md:hidden border-t border-slate-200 bg-white" id="mobile-menu-drawer">
           <div className="px-4 pt-2 pb-6 space-y-2">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full text-left block px-4 py-3 rounded-full text-sm font-bold uppercase tracking-wider font-display transition-all ${
-                    isActive 
-                      ? 'bg-slate-900 text-white font-bold' 
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                  id={`mobile-nav-${item.id}`}
-                >
+            <button onClick={() => handleNavClick('shop')} className={mobileRow(shopActive)} id="mobile-nav-invitations">
+              Invitations
+            </button>
+            <p className="px-4 pt-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 font-mono">IT Services</p>
+            <div className="pl-4 space-y-1">
+              {itItems.map((item) => (
+                <button key={item.id} onClick={() => handleNavClick(item.id)} className={mobileRow(activeTab === item.id)} id={`mobile-nav-${item.id}`}>
                   {item.label}
                 </button>
-              );
-            })}
-            <Link
-              href="/invitations"
-              onClick={() => setIsOpen(false)}
-              className={`w-full text-left block px-4 py-3 rounded-full text-sm font-bold uppercase tracking-wider font-display transition-all ${
-                onInvitations ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-              id="mobile-nav-invitations"
-            >
-              Invitations
-            </Link>
+              ))}
+            </div>
+            <button onClick={() => handleNavClick('contact')} className={mobileRow(activeTab === 'contact')} id="mobile-nav-contact">
+              Contact Us
+            </button>
             <button
-              onClick={() => handleNavClick('inquiry')}
+              onClick={() => handleNavClick('shop')}
               className={`w-full mt-4 inline-flex items-center justify-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-lg focus:outline-hidden ${getButtonBgClass()}`}
               id="mobile-nav-cta"
             >
-              Get a Quote
+              Start an invitation
               <Icons.ArrowRight className="ml-2 h-4 w-4" />
             </button>
           </div>
