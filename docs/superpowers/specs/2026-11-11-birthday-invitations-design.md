@@ -105,7 +105,7 @@ keep working exactly as today, including every invitation already paid for.
   then the builder pushes. The plan's last task states the exact command.
 - The builder does not write to the production database. The plan ships, for each birthday design, a ready-to-paste
   admin entry (name, suggested slug, colour schemes, sample details that pass validation) and preview images
-  captured from the local sample preview, saved under `docs/designs/birthday/`. The owner creates the two designs in
+  captured from the local sample preview, saved under `public/designs/birthday/` (served at `https://jlcitsolutions.com/designs/birthday/<file>.png`, because the admin accepts only https URLs); the entries are in `docs/designs/birthday.md`. The owner creates the two designs in
   the admin Designs tab, sets the price, and uploads the images.
 
 ## Left to the builder

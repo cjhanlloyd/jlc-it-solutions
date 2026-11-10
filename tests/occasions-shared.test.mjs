@@ -90,10 +90,19 @@ test('validateRsvp kids', () => {
 });
 
 test('admin design samples pass their occasion rules', async () => {
-  const { SAMPLES } = await import('../src/components/admin/design-samples.ts');
+  const { SAMPLES, MILESTONE_SAMPLE } = await import('../src/components/admin/design-samples.ts');
+  assert.equal(occasionOf('birthday_invitation').validateDetails(MILESTONE_SAMPLE).ok, true);
   assert.deepEqual(Object.keys(SAMPLES).sort(), ['birthday_invitation', 'wedding_invitation']);
   for (const [type, sample] of Object.entries(SAMPLES)) {
     const r = occasionOf(type).validateDetails(sample);
     assert.equal(r.ok, true, `${type}: ${r.error}`);
   }
+});
+
+test('docs/designs/birthday.md samples match the exported samples', async () => {
+  const { SAMPLES, MILESTONE_SAMPLE } = await import('../src/components/admin/design-samples.ts');
+  const { readFileSync } = await import('node:fs');
+  const re = /```json\n([\s\S]*?)```/g;
+  const blocks = [...readFileSync(new URL("../docs/designs/birthday.md", import.meta.url), "utf8").matchAll(re)].map((m) => JSON.parse(m[1]));
+  assert.deepEqual(blocks, [SAMPLES.birthday_invitation, MILESTONE_SAMPLE]);
 });

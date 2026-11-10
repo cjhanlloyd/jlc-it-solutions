@@ -1,4 +1,4 @@
-// /terms, /refund-policy, /privacy for the digital wedding invitation product.
+// /terms, /refund-policy, /privacy for the digital invitation product.
 // DRAFT — must be reviewed and approved by JLC before launch. This is starting text written by the builder, not legal advice.
 import React from 'react';
 
@@ -12,13 +12,13 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
     terms: {
       title: 'Terms of Service',
       body: <>
-        <p>These terms cover the digital wedding invitations sold by {company} ("we", "us") at this website. By buying an invitation you agree to them.</p>
+        <p>These terms cover the digital invitations sold by {company} ("we", "us") at this website. By buying an invitation you agree to them.</p>
         <h2>What you get</h2>
-        <p>One online wedding invitation in the design you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, maps links, and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs.</p>
+        <p>One online invitation in the design you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, maps links, and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs.</p>
         <h2>Price and payment</h2>
         <p>The price is shown in Philippine pesos on the design page and is a one-time payment. Payments are processed by PayMongo; payment is by QR Ph (GCash, Maya or your bank app), and we never see or store your bank or e-wallet details. Your invitation goes live once PayMongo confirms the payment.</p>
         <h2>How long it stays online</h2>
-        <p>Your invitation stays online until 60 days after the wedding date. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
+        <p>Your invitation stays online until 60 days after the event date. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
         <h2>Editing</h2>
         <p>After payment you can change the date, time, venues, schedule, photos, messages and other details through your manage link. The two names and the design cannot be changed after payment. Keep your manage link private: anyone who has it can edit your invitation. If you lose it, request fresh links from the manage page.</p>
         <h2>Your content</h2>
@@ -48,21 +48,21 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
     privacy: {
       title: 'Privacy Notice',
       body: <>
-        <p>This notice explains how {company} handles personal information for the digital wedding invitation service, in line with the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
+        <p>This notice explains how {company} handles personal information for the digital invitation service, in line with the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
         <h2>What we collect</h2>
         <ul>
-          <li><strong>From the couple:</strong> your email address, the names, dates, venues, messages and photos you put on the invitation, and order records (amount, date, payment status). Card and e-wallet details are handled by PayMongo, not by us.</li>
+          <li><strong>From the customer:</strong> your email address, the names, dates, venues, messages and photos you put on the invitation, and order records (amount, date, payment status). Card and e-wallet details are handled by PayMongo, not by us.</li>
           <li><strong>From guests who RSVP:</strong> name, whether they are attending, party size, and an optional message.</li>
           <li><strong>Technical data:</strong> an anti-spam check by Cloudflare Turnstile on forms, and standard server logs.</li>
         </ul>
         <h2>Why we use it</h2>
-        <p>To publish and run your invitation, process payment, send your receipt and links, show RSVPs to the couple, prevent spam and abuse, and keep financial records required by law.</p>
+        <p>To publish and run your invitation, process payment, send your receipt and links, show RSVPs to the customer, prevent spam and abuse, and keep financial records required by law.</p>
         <h2>Who sees it</h2>
-        <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the couple, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage), PayMongo (payments) and our email provider.</p>
+        <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the customer who bought the invitation, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage), PayMongo (payments) and our email provider.</p>
         <h2>How long we keep it</h2>
-        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the wedding date, including for refunded invitations. Only the couple's names are kept, for the short "this celebration has passed" page. Order and payment records are kept as long as required for accounting and tax purposes.</p>
+        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the event date, including for refunded invitations. Only the celebrant names are kept, for the short "this celebration has passed" page. Order and payment records are kept as long as required for accounting and tax purposes.</p>
         <h2>Your rights</h2>
-        <p>Under the Data Privacy Act you may ask to access, correct, or delete your personal information, object to its processing, and file a complaint with the National Privacy Commission. Couples can correct most details themselves through the manage link. Guests who want their RSVP changed or removed can contact the couple or us.</p>
+        <p>Under the Data Privacy Act you may ask to access, correct, or delete your personal information, object to its processing, and file a complaint with the National Privacy Commission. Customers can correct most details themselves through the manage link. Guests who want their RSVP changed or removed can contact the customer or us.</p>
         <h2>Contact</h2>
         <p>For privacy questions or requests, email {mail}.</p>
       </>,
@@ -79,7 +79,7 @@ export default function PolicyPage({ kind, company, email }: { kind: PolicyKind;
           Draft — must be reviewed and approved by JLC before launch. This text is not legal advice.
         </p>
         <h1 className="text-3xl font-extrabold text-slate-900 font-display">{page.title}</h1>
-        <p className="text-xs text-slate-500">Digital wedding invitations · Last updated {UPDATED}</p>
+        <p className="text-xs text-slate-500">Digital invitations · Last updated {UPDATED}</p>
         {page.body}
       </article>
     </div>

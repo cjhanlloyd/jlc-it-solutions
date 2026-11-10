@@ -5,16 +5,13 @@ import type { AdminTabProps } from './types.js';
 import { money, type InvTabProps } from './InvitationsCommon.js';
 import InvitationView from '../../invitations/InvitationView.js';
 import { useInvitationFonts } from '../../invitations/kit.js';
-import { LAYOUT_KEYS } from '../../../shared/occasions/index.js';
-import { validateDetails } from '../../../shared/occasions/wedding.js';
+import { OCCASIONS, occasionOf } from '../../../shared/occasions/index.js';
+import { SAMPLES } from './design-samples.js';
 
 type Scheme = { name: string; primary: string; accent: string; background: string; text: string };
 const newScheme = (): Scheme => ({ name: '', primary: '#7a1f3d', accent: '#c9a45c', background: '#fffaf5', text: '#2b2b2b' });
-const SAMPLE = JSON.stringify({
-  partner1: 'Maria', partner2: 'Juan', eventDate: '2027-06-12', eventTime: '16:00',
-  ceremony: { name: 'St. Joseph Church', address: 'Manila', mapUrl: '' }, schedule: [], message: 'We would love to celebrate with you.',
-}, null, 2);
-const blank = () => ({ id: null as number | null, slug: '', name: '', layout_key: 'classic', pesos: '', schemes: [newScheme()], images: '', sample: SAMPLE, active: true });
+const sampleFor = (type: string) => JSON.stringify(SAMPLES[type], null, 2);
+const blank = () => ({ id: null as number | null, productType: 'wedding_invitation', slug: '', name: '', layout_key: 'classic', pesos: '', schemes: [newScheme()], images: '', sample: sampleFor('wedding_invitation'), active: true });
 
 export default function DesignsTab({ overview, reload, adminToken, adminUser, isSaving, run }: AdminTabProps & InvTabProps) {
   useInvitationFonts();
@@ -25,13 +22,13 @@ export default function DesignsTab({ overview, reload, adminToken, adminUser, is
 
   const parsed = React.useMemo(() => {
     try {
-      const v = validateDetails(JSON.parse(form.sample));
+      const v = occasionOf(form.productType)!.validateDetails(JSON.parse(form.sample));
       return v.ok === false ? { error: v.error } : { details: v.details };
     } catch { return { error: 'Sample details is not valid JSON.' }; }
-  }, [form.sample]);
+  }, [form.sample, form.productType]);
 
   const edit = (d: any) => setForm({
-    id: d.id, slug: d.slug, name: d.name, layout_key: d.layout_key, pesos: String(d.price_centavos / 100),
+    id: d.id, productType: d.product_type, slug: d.slug, name: d.name, layout_key: d.layout_key, pesos: String(d.price_centavos / 100),
     schemes: d.color_schemes, images: d.preview_images.join('\n'), sample: JSON.stringify(d.sample_details, null, 2), active: d.active,
   });
 
@@ -50,7 +47,7 @@ export default function DesignsTab({ overview, reload, adminToken, adminUser, is
     e.preventDefault();
     if ('error' in parsed) return window.alert(parsed.error);
     const saved = await post({
-      action: form.id ? 'update' : 'add', id: form.id ?? undefined, slug: form.slug.trim(), name: form.name, layout_key: form.layout_key,
+      action: form.id ? 'update' : 'add', product_type: form.productType, id: form.id ?? undefined, slug: form.slug.trim(), name: form.name, layout_key: form.layout_key,
       price_centavos: Math.round(Number(form.pesos) * 100), color_schemes: form.schemes,
       preview_images: form.images.split('\n').map((s) => s.trim()).filter(Boolean), sample_details: JSON.parse(form.sample), active: form.active,
     }, form.id ? 'Design updated.' : 'Design added.');
@@ -75,13 +72,20 @@ export default function DesignsTab({ overview, reload, adminToken, adminUser, is
       {canWrite && (
         <form onSubmit={save} className="bg-gray-50 p-5 rounded-2xl border border-gray-200/60 space-y-4">
           <h3 className="text-sm font-bold text-gray-900">{form.id ? `Edit design #${form.id}` : 'Add design'}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             <div className="space-y-1.5"><label className={lbl}>Name</label><input required className={inp} value={form.name} onChange={(e) => set({ name: e.target.value })} /></div>
             <div className="space-y-1.5"><label className={lbl}>Slug</label><input required className={inp} value={form.slug} onChange={(e) => set({ slug: e.target.value })} placeholder="classic-rose" /></div>
             <div className="space-y-1.5">
+              <label className={lbl}>Occasion {form.id && <span className="font-normal lowercase">(read-only)</span>}</label>
+              <select disabled={!!form.id} className={`${inp} disabled:bg-slate-100`} value={form.productType}
+                onChange={(e) => set({ productType: e.target.value, layout_key: OCCASIONS[e.target.value].layouts[0], sample: sampleFor(e.target.value) })}>
+                {Object.values(OCCASIONS).map((o) => <option key={o.productType} value={o.productType}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
               <label className={lbl}>Layout {form.id && <span className="font-normal lowercase">(read-only)</span>}</label>
               <select disabled={!!form.id} className={`${inp} disabled:bg-slate-100`} value={form.layout_key} onChange={(e) => set({ layout_key: e.target.value })}>
-                {LAYOUT_KEYS.map((k) => <option key={k}>{k}</option>)}
+                {occasionOf(form.productType)!.layouts.map((k) => <option key={k}>{k}</option>)}
               </select>
             </div>
             <div className="space-y-1.5"><label className={lbl}>Price (pesos)</label><input required type="number" min="10" step="0.01" className={inp} value={form.pesos} onChange={(e) => set({ pesos: e.target.value })} /></div>
