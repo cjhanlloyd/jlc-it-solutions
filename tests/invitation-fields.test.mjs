@@ -40,6 +40,18 @@ test('non-https mapUrl fails, empty passes', () => {
   assert.equal(validateDetails(d).ok, true);
 });
 
+test('map links without https:// are completed, other schemes still fail', () => {
+  const link = (u) => { const d = base(); d.ceremony.mapUrl = u; const r = validateDetails(d); return r.ok ? r.details.ceremony.mapUrl : 'FAIL'; };
+  assert.equal(link('maps.app.goo.gl/AbC123'), 'https://maps.app.goo.gl/AbC123');
+  assert.equal(link('www.google.com/maps/place/X'), 'https://www.google.com/maps/place/X');
+  assert.equal(link('http://maps.google.com/?q=x'), 'https://maps.google.com/?q=x');
+  assert.equal(link('HTTPS://maps.google.com/?q=x'), 'https://maps.google.com/?q=x');
+  assert.equal(link('https://maps.google.com/?q=x'), 'https://maps.google.com/?q=x');
+  assert.equal(link('javascript:alert(1)'), 'FAIL');
+  assert.equal(link('data:text/html,hi'), 'FAIL');
+  assert.equal(link('not a link'), 'FAIL');
+});
+
 test('9 schedule items fail', () => {
   const schedule = Array.from({ length: 9 }, () => ({ time: '10:00', label: 'x' }));
   assert.equal(validateDetails({ ...base(), schedule }).ok, false);

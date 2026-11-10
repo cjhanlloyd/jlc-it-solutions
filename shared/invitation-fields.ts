@@ -48,8 +48,14 @@ const obj = (v: unknown, label: string): Record<string, unknown> =>
 
 function venue(v: unknown, label: string, required: boolean): Venue {
   const o = obj(v, label);
-  const mapUrl = str(o.mapUrl, `${label} map link`, LIMITS.mapUrl);
-  if (mapUrl && !mapUrl.startsWith('https://')) fail(`${label} map link must start with https://`);
+  let mapUrl = str(o.mapUrl, `${label} map link`, LIMITS.mapUrl);
+  if (mapUrl) {
+    // Couples paste links without a scheme (maps.app.goo.gl/…) or with http://; complete them to https://
+    const scheme = mapUrl.match(/^([a-z][a-z0-9+.-]*):/i)?.[1];
+    if (!scheme) mapUrl = 'https://' + mapUrl;
+    else if (/^https?$/i.test(scheme)) mapUrl = 'https:' + mapUrl.slice(scheme.length + 1);
+    if (!/^https:\/\/[^\s/]+\.[^\s/]+\S*$/.test(mapUrl)) fail(`${label} map link must be a web link, like https://maps.app.goo.gl/…`);
+  }
   return { name: str(o.name, `${label} name`, LIMITS.venueName, required), address: str(o.address, `${label} address`, LIMITS.address), mapUrl };
 }
 
