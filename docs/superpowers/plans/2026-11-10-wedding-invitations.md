@@ -306,8 +306,8 @@
 - A one-line `shortcut:` comment: cleanup runs when an admin opens the overview, because Pages has no cron; upgrade to a Worker cron trigger if orders grow.
 
 - [ ] **Step 1: Write failing tests:**
-  - a pending order 25 h old → expired, and its photos are deleted;
-  - one 23 h old → untouched;
+  - a pending order 73 h old → expired, and its photos are deleted;
+  - one 71 h old → untouched;
   - a live invitation 61 days after the event → expired, RSVPs deleted;
   - one 59 days after → untouched.
 - [ ] **Step 2:** Run `npm test`. Expected: FAIL.
