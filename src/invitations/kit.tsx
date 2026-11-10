@@ -29,7 +29,7 @@ export const peso = (centavos: number) =>
   `₱${(centavos / 100).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
 // The layouts use the same Google Fonts as invitation.html; load them once so previews match the guest page.
-const FONTS_HREF = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;700&display=swap';
+const FONTS_HREF = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Fredoka:wght@500;700&family=Jost:wght@300;400;500;700&display=swap';
 export function useInvitationFonts() {
   React.useEffect(() => {
     if (document.querySelector(`link[href="${FONTS_HREF}"]`)) return;

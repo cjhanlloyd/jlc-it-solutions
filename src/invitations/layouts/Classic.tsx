@@ -1,8 +1,9 @@
 // Classic: formal and centered, serif type, double-ruled frame and ornamental dividers.
 import type { LayoutProps } from '.';
+import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Countdown, MapLink, Ornament, Photos, longDate, schemeVars, time12, venues } from '../parts';
 
-export default function Classic({ details: d, scheme, photos, rsvpSlot }: LayoutProps) {
+export default function Classic({ details: d, scheme, photos, rsvpSlot }: LayoutProps<InvitationDetails>) {
   const divider = <Ornament className="cl-orn" />;
   return (
     <main className="inv cl" style={schemeVars(scheme)}>
@@ -57,7 +58,7 @@ export default function Classic({ details: d, scheme, photos, rsvpSlot }: Layout
           </section>
         )}
 
-        {photos.length > 0 && <>{divider}<Photos photos={photos} details={d} className="cl-photos" /></>}
+        {photos.length > 0 && <>{divider}<Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="cl-photos" /></>}
 
         {rsvpSlot && (
           <section aria-labelledby="cl-rsvp">

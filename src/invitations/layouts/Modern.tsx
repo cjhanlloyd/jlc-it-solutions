@@ -1,8 +1,9 @@
 // Modern: minimal and asymmetric, bold sans type, a color bar, labelled rows and an offset feature photo.
 import type { LayoutProps } from '.';
+import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Countdown, MapLink, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues } from '../parts';
 
-export default function Modern({ details: d, scheme, photos, rsvpSlot }: LayoutProps) {
+export default function Modern({ details: d, scheme, photos, rsvpSlot }: LayoutProps<InvitationDetails>) {
   return (
     <main className="inv md" style={schemeVars(scheme)}>
       <header className="md-hero">
@@ -20,7 +21,7 @@ export default function Modern({ details: d, scheme, photos, rsvpSlot }: LayoutP
         <Countdown details={d} className="md-countdown" />
       </header>
 
-      {photos[0] && <img className="md-feature" src={photos[0]} alt={photoAlt(d, 0, photos.length)} loading="lazy" decoding="async" />}
+      {photos[0] && <img className="md-feature" src={photos[0]} alt={photoAlt(`${d.partner1} and ${d.partner2}`, 0, photos.length)} loading="lazy" decoding="async" />}
 
       <div className="md-body">
         {d.message && <p className="md-lead">{d.message}</p>}
@@ -61,7 +62,7 @@ export default function Modern({ details: d, scheme, photos, rsvpSlot }: LayoutP
         {photos.length > 1 && (
           <section className="md-row" aria-labelledby="md-moments">
             <h2 id="md-moments" className="md-label">Moments</h2>
-            <Photos photos={photos} start={1} details={d} className="md-photos" />
+            <Photos photos={photos} start={1} title={`${d.partner1} and ${d.partner2}`} className="md-photos" />
           </section>
         )}
 

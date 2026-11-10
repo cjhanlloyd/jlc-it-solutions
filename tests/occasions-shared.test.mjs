@@ -88,3 +88,12 @@ test('validateRsvp kids', () => {
   assert.equal(no.partySize, 1);
   assert.equal(no.kidsCount, 0);
 });
+
+test('admin design samples pass their occasion rules', async () => {
+  const { SAMPLES } = await import('../src/components/admin/design-samples.ts');
+  assert.deepEqual(Object.keys(SAMPLES).sort(), ['birthday_invitation', 'wedding_invitation']);
+  for (const [type, sample] of Object.entries(SAMPLES)) {
+    const r = occasionOf(type).validateDetails(sample);
+    assert.equal(r.ok, true, `${type}: ${r.error}`);
+  }
+});

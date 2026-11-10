@@ -7,7 +7,7 @@ import './invitations.css';
 type Props = { layoutKey: string; scheme: Scheme; details: any; photos: string[]; rsvpSlot?: ReactNode };
 
 export default function InvitationView({ layoutKey, ...rest }: Props) {
-  // Birthday layouts are registered later; until then show a placeholder instead of feeding birthday details to a wedding layout.
+  // Unknown keys get a placeholder instead of feeding details to a layout of another occasion.
   if (!Object.hasOwn(LAYOUTS, layoutKey)) return <p className="p-10 text-center text-sm text-slate-500">Preview available soon</p>;
   const Layout = LAYOUTS[layoutKey as LayoutKey];
   return <Layout {...rest} />;

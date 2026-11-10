@@ -1,6 +1,7 @@
-// Small pieces shared by the three layouts and the guest page. Text is rendered only through JSX.
+// Small pieces shared by the layouts and the guest page. Text is rendered only through JSX.
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Venue } from '../../shared/invitation-fields';
+import { ordinal } from '../../shared/occasions/birthday';
 import type { InvitationDetails } from '../../shared/occasions/wedding';
 
 export type Scheme = { primary: string; accent: string; background: string; text: string };
@@ -28,7 +29,7 @@ export const MapLink = ({ venue, className = 'btn' }: { venue: Venue; className?
 
 // Days and hours until the event; renders nothing once it has started.
 // shortcut: event times are read as Philippine time (UTC+8); store a timezone per invitation if couples abroad buy this.
-export function Countdown({ details, className }: { details: InvitationDetails; className: string }) {
+export function Countdown({ details, className }: { details: { eventDate: string; eventTime: string }; className: string }) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
@@ -46,17 +47,20 @@ export function Countdown({ details, className }: { details: InvitationDetails; 
   );
 }
 
-export const photoAlt = (d: InvitationDetails, i: number, total: number) => `${d.partner1} and ${d.partner2}, photo ${i + 1} of ${total}`;
+export const photoAlt = (title: string, i: number, total: number) => `${title}, photo ${i + 1} of ${total}`;
 
 // `start` skips photos a layout already showed elsewhere, keeping the alt numbering right.
-export const Photos = ({ photos, details, className, start = 0 }: { photos: string[]; details: InvitationDetails; className: string; start?: number }) =>
+export const Photos = ({ photos, title, className, start = 0 }: { photos: string[]; title: string; className: string; start?: number }) =>
   photos.length > start ? (
     <div className={className}>
       {photos.slice(start).map((src, i) => (
-        <img key={src} src={src} loading="lazy" decoding="async" alt={photoAlt(details, i + start, photos.length)} />
+        <img key={src} src={src} loading="lazy" decoding="async" alt={photoAlt(title, i + start, photos.length)} />
       ))}
     </div>
   ) : null;
+
+// 7 -> 7<sup>th</sup>
+export const Ordinal = ({ n }: { n: number }) => <>{n}<sup>{ordinal(n).slice(String(n).length)}</sup></>;
 
 export const Ornament = ({ className }: { className: string }) => (
   <svg className={className} viewBox="0 0 240 24" aria-hidden="true" focusable="false">

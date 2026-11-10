@@ -1,5 +1,6 @@
 // Garden: soft and botanical, leafy sprigs, rounded cards, a vine timeline and arched photos.
 import type { LayoutProps } from '.';
+import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Countdown, MapLink, Photos, longDate, schemeVars, time12, venues } from '../parts';
 
 const LEAVES: [number, number, number][] = [[46, 37, -50], [70, 33, 35], [100, 24, -40], [126, 23, 40], [156, 13, -35], [176, 12, 30]];
@@ -14,7 +15,7 @@ const Sprig = ({ className }: { className: string }) => (
   </svg>
 );
 
-export default function Garden({ details: d, scheme, photos, rsvpSlot }: LayoutProps) {
+export default function Garden({ details: d, scheme, photos, rsvpSlot }: LayoutProps<InvitationDetails>) {
   return (
     <main className="inv gd" style={schemeVars(scheme)}>
       <div className="gd-wrap">
@@ -58,7 +59,7 @@ export default function Garden({ details: d, scheme, photos, rsvpSlot }: LayoutP
           </section>
         )}
 
-        <Photos photos={photos} details={d} className="gd-photos" />
+        <Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="gd-photos" />
 
         {rsvpSlot && (
           <section className="gd-card" aria-labelledby="gd-rsvp">
