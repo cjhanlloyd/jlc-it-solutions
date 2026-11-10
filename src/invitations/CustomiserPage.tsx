@@ -145,7 +145,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
               {paying ? 'Starting secure payment…' : `Pay ${peso(design.priceCentavos)}`}
               {!paying && <Icons.Lock className="ml-2 h-4 w-4" />}
             </button>
-            <p className="text-[11px] text-slate-500 text-center">You'll be taken to PayMongo to pay securely (GCash, Maya, GrabPay or card).</p>
+            <p className="text-[11px] text-slate-500 text-center">You'll be taken to PayMongo to pay securely by scanning a QR Ph code with GCash, Maya or your bank app.</p>
           </fieldset>
         </form>
 

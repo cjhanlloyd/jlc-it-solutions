@@ -14,7 +14,7 @@ only where this product needs it, or where it is free to do now and costly to re
 ## Goals
 1. Browse wedding designs with a live preview of each, on the public site.
 2. Customise without help: choose a design and one of its color schemes, then fill in a form. A live preview updates as they type.
-3. Pay through PayMongo hosted checkout (GCash, Maya, cards). An order becomes paid **only** when PayMongo's signed webhook confirms it.
+3. Pay through PayMongo hosted checkout, QR Ph only (client decision, 2026-11-10): payable from GCash, Maya or any bank app. An order becomes paid **only** when PayMongo's signed webhook confirms it.
 4. After payment: a public invitation page at `/i/<slug>`, and an email to the couple with that link and a private **manage link**.
 5. Guests RSVP on the page. The couple sees and exports the RSVP list through the manage link and can edit their details.
 6. Admin can manage designs (catalog fields, price, color schemes, on/off), orders and payment status, invitations and RSVPs.

@@ -22,7 +22,7 @@ export async function createCheckoutSession(
       data: {
         attributes: {
           line_items: [{ name: o.itemName, amount: o.amountCentavos, currency: 'PHP', quantity: 1 }],
-          payment_method_types: ['card', 'gcash', 'paymaya', 'grab_pay'],
+          payment_method_types: ['qrph'], // QR Ph only (client decision): payable from GCash, Maya or any bank app
           success_url: o.successUrl,
           cancel_url: o.cancelUrl,
           reference_number: o.referenceNumber,

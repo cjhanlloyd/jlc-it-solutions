@@ -16,7 +16,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>What you get</h2>
         <p>One online wedding invitation in the design you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, maps links, and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs.</p>
         <h2>Price and payment</h2>
-        <p>The price is shown in Philippine pesos on the design page and is a one-time payment. Payments are processed by PayMongo; we never see or store your card or e-wallet details. Your invitation goes live once PayMongo confirms the payment.</p>
+        <p>The price is shown in Philippine pesos on the design page and is a one-time payment. Payments are processed by PayMongo; payment is by QR Ph (GCash, Maya or your bank app), and we never see or store your bank or e-wallet details. Your invitation goes live once PayMongo confirms the payment.</p>
         <h2>How long it stays online</h2>
         <p>Your invitation stays online until 60 days after the wedding date. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
         <h2>Editing</h2>

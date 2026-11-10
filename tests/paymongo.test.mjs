@@ -49,6 +49,7 @@ test('createCheckoutSession sends auth + amount and parses response', async () =
     assert.equal(call.init.headers.Authorization, 'Basic ' + Buffer.from('sk_test_x:').toString('base64'));
     const a = JSON.parse(call.init.body).data.attributes;
     assert.equal(a.line_items[0].amount, 99900);
+    assert.deepEqual(a.payment_method_types, ['qrph']);
     assert.equal(a.billing.email, 'a@b.co');
   } finally { globalThis.fetch = orig; }
 });
