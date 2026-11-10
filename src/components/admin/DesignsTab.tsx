@@ -5,7 +5,8 @@ import type { AdminTabProps } from './types.js';
 import { money, type InvTabProps } from './InvitationsCommon.js';
 import InvitationView from '../../invitations/InvitationView.js';
 import { useInvitationFonts } from '../../invitations/kit.js';
-import { LAYOUT_KEYS, validateDetails } from '../../../shared/invitation-fields.js';
+import { LAYOUT_KEYS } from '../../../shared/occasions/index.js';
+import { validateDetails } from '../../../shared/occasions/wedding.js';
 
 type Scheme = { name: string; primary: string; accent: string; background: string; text: string };
 const newScheme = (): Scheme => ({ name: '', primary: '#7a1f3d', accent: '#c9a45c', background: '#fffaf5', text: '#2b2b2b' });

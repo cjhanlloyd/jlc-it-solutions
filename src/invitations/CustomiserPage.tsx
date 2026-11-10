@@ -3,7 +3,7 @@ import React from 'react';
 import * as Icons from 'lucide-react';
 import InvitationView from './InvitationView';
 import { Alert, DetailsForm, Field, Link, PaneToggle, PhotoPicker, checkDraft, inputCls, peso, previewDetails, toDraft, useInvitationFonts, useTurnstile, type Draft } from './kit';
-import type { InvitationDetails } from '../../shared/invitation-fields';
+import type { InvitationDetails } from '../../shared/occasions/wedding';
 
 export type Design = {
   slug: string; name: string; productType: string; layoutKey: string; priceCentavos: number;

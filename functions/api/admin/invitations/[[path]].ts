@@ -2,7 +2,8 @@
 import { runCleanup } from '../../../../server/cleanup';
 import { verifyAdminToken } from '../../../../server/crypto';
 import { emailAndRotateToken } from '../../../../server/invitation-links';
-import { LAYOUT_KEYS, validateDetails } from '../../../../shared/invitation-fields';
+import { LAYOUT_KEYS } from '../../../../shared/occasions';
+import { validateDetails } from '../../../../shared/occasions/wedding';
 
 interface Env {
   DB: D1Database;

@@ -1,7 +1,9 @@
 // Shared invitation field rules, used by both the Pages Functions and the React frontend.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateDetails, validateRsvp, lockedFieldsChanged, makeSlug, LIMITS, LAYOUT_KEYS } from '../shared/invitation-fields.ts';
+import { validateRsvp, makeSlug, LIMITS } from '../shared/invitation-fields.ts';
+import { validateDetails, lockedFieldsChanged } from '../shared/occasions/wedding.ts';
+import { LAYOUT_KEYS } from '../shared/occasions/index.ts';
 
 const base = () => ({
   partner1: '  María ', partner2: 'Juan', eventDate: '2027-06-12', eventTime: '15:00',
@@ -74,7 +76,7 @@ test('non-object input fails', () => {
 
 test('validateRsvp accepts valid, rejects bad party size and missing name', () => {
   const ok = validateRsvp({ guestName: ' Ana ', attending: true, partySize: 2, message: 'hi' });
-  assert.deepEqual(ok, { ok: true, rsvp: { guestName: 'Ana', attending: true, partySize: 2, message: 'hi' } });
+  assert.deepEqual(ok, { ok: true, rsvp: { guestName: 'Ana', attending: true, partySize: 2, kidsCount: 0, message: 'hi' } });
   assert.equal(validateRsvp({ guestName: 'Ana', attending: true, partySize: 0 }).ok, false);
   assert.equal(validateRsvp({ guestName: 'Ana', attending: true, partySize: 11 }).ok, false);
   assert.equal(validateRsvp({ attending: true, partySize: 1 }).ok, false);
@@ -88,8 +90,8 @@ test('lockedFieldsChanged: partner rename true, date change false', () => {
 });
 
 test('makeSlug folds accents and suffixes', () => {
-  assert.equal(makeSlug('María', 'Juan', 'k3x9'), 'maria-and-juan-k3x9');
-  assert.ok(makeSlug('a'.repeat(100), 'b', 'z').length <= 62);
+  assert.equal(makeSlug('María and Juan', 'k3x9'), 'maria-and-juan-k3x9');
+  assert.ok(makeSlug('a'.repeat(100) + ' and b', 'z').length <= 62);
 });
 
-test('LAYOUT_KEYS', () => assert.deepEqual([...LAYOUT_KEYS], ['classic', 'garden', 'modern']));
+test('LAYOUT_KEYS', () => assert.deepEqual([...LAYOUT_KEYS], ['classic', 'garden', 'modern', 'confetti', 'golden']));

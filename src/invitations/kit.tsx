@@ -1,7 +1,8 @@
 // Pieces shared by the main-site invitation pages (catalog, customiser, success, manage, policies).
 import React from 'react';
 import * as Icons from 'lucide-react';
-import { LIMITS, validateDetails, type InvitationDetails, type Venue } from '../../shared/invitation-fields';
+import { LIMITS, type Venue } from '../../shared/invitation-fields';
+import { validateDetails, type InvitationDetails } from '../../shared/occasions/wedding';
 import { optimizeImage } from '../components/admin/images';
 
 // Client-side navigation for real-path pages: App listens to popstate and re-renders.

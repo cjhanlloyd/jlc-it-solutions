@@ -1,6 +1,7 @@
 // Small pieces shared by the three layouts and the guest page. Text is rendered only through JSX.
 import { useEffect, useState, type CSSProperties } from 'react';
-import type { InvitationDetails, Venue } from '../../shared/invitation-fields';
+import type { Venue } from '../../shared/invitation-fields';
+import type { InvitationDetails } from '../../shared/occasions/wedding';
 
 export type Scheme = { primary: string; accent: string; background: string; text: string };
 

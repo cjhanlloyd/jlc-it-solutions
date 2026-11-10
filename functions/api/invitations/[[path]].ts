@@ -4,7 +4,8 @@ import { EMAIL_RE } from '../../../server/email';
 import { decodeSegment, findGuestInvitation, todayUtc } from '../../../server/guest-invitation';
 import { emailAndRotateToken } from '../../../server/invitation-links';
 import { createCheckoutSession } from '../../../server/paymongo';
-import { LIMITS, lockedFieldsChanged, makeSlug, validateDetails, validateRsvp } from '../../../shared/invitation-fields';
+import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
+import { lockedFieldsChanged, validateDetails, wedding } from '../../../shared/occasions/wedding';
 
 interface Env {
   DB: D1Database;
@@ -134,7 +135,7 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
 
   const token = randomToken();
   const suffix = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('');
-  const slug = makeSlug(details.partner1, details.partner2, suffix);
+  const slug = makeSlug(wedding.slugBase(details), suffix);
   // Rows first, so the R2 keys can use the real invitation id
   const inv = await env.DB.prepare(
     "INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?)",

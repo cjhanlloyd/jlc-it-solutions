@@ -1,7 +1,8 @@
 // Guest page entry (/i/<slug>). Kept apart from the main app: never import from src/components/ here.
 import { StrictMode, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LIMITS, type InvitationDetails } from '../../shared/invitation-fields';
+import { LIMITS } from '../../shared/invitation-fields';
+import type { InvitationDetails } from '../../shared/occasions/wedding';
 import InvitationView from './InvitationView';
 import { Ornament, schemeVars, type Scheme } from './parts';
 

@@ -1,6 +1,6 @@
 // Renders an invitation in its chosen layout. The countdown, map links and photos live in ./parts and are placed by each layout.
 import type { ReactNode } from 'react';
-import type { InvitationDetails } from '../../shared/invitation-fields';
+import type { InvitationDetails } from '../../shared/occasions/wedding';
 import { LAYOUTS, type LayoutKey } from './layouts';
 import type { Scheme } from './parts';
 import './invitations.css';

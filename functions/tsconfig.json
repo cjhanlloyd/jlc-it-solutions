@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "allowJs": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "strict": false
   },
   "include": ["**/*.ts", "../server", "../shared"]
