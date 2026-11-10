@@ -20,6 +20,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   return new Response(obj.body, { headers: {
     ...SECURITY_HEADERS,
     'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream',
-    'Cache-Control': 'public, max-age=86400',
+    // Short so a refunded or expired invitation's photos stop being served within minutes
+    'Cache-Control': 'public, max-age=300',
   } });
 };

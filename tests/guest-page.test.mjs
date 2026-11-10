@@ -198,7 +198,7 @@ test('photo of a live invitation → body, content type and a day of caching', a
   assert.equal(res.status, 200);
   assert.equal(await res.text(), 'bytes-inv/1/0.png');
   assert.equal(res.headers.get('Content-Type'), 'image/png');
-  assert.equal(res.headers.get('Cache-Control'), 'public, max-age=86400');
+  assert.equal(res.headers.get('Cache-Control'), 'public, max-age=300');
   assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
 });
 
