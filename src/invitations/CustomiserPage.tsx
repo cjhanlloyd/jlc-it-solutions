@@ -4,6 +4,7 @@ import * as Icons from 'lucide-react';
 import InvitationView from './InvitationView';
 import { Alert, Field, Link, PaneToggle, PhotoPicker, inputCls, peso, useInvitationFonts, useTurnstile } from './kit';
 import { formOf } from './forms';
+import { restoreDraft, savedFor } from './forms/restore';
 
 export type Design = {
   slug: string; name: string; productType: string; layoutKey: string; priceCentavos: number;
@@ -20,13 +21,13 @@ export async function fetchDesigns(): Promise<Design[]> {
 // PayMongo's cancel link returns here; the form is restored from this (photos are too large to keep).
 // The success page clears every key with this prefix once the payment is confirmed.
 export const DRAFT_KEY = 'jlc_inv_draft:';
-type Saved = { draft: any; scheme: string; email: string; hadPhotos: boolean };
+type Saved = { slug: string; draft: any; scheme: string; email: string; hadPhotos: boolean };
 
 export default function CustomiserPage({ slug, btn }: { slug: string; btn: string }) {
   useInvitationFonts();
   const [design, setDesign] = React.useState<Design | null | 'missing' | 'offline'>(null);
-  const [saved] = React.useState<Saved | null>(() => { try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY + slug) || 'null'); } catch { return null; } });
-  const [draft, setDraft] = React.useState<any>(saved?.draft ?? null);
+  const [saved] = React.useState<Saved | null>(() => { try { return savedFor(JSON.parse(sessionStorage.getItem(DRAFT_KEY + slug) || 'null'), slug); } catch { return null; } });
+  const [draft, setDraft] = React.useState<any>(null);
   const [scheme, setScheme] = React.useState('');
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [email, setEmail] = React.useState(saved?.email ?? '');
@@ -41,7 +42,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       .then((all) => {
         const d = all.find((x) => x.slug === slug);
         setDesign(d ?? 'missing');
-        if (d) setDraft((cur: any) => cur ?? formOf(d.productType)?.toDraft(saved?.draft) ?? null);
+        if (d) setDraft((cur: any) => cur ?? (formOf(d.productType) ? restoreDraft(saved, slug, formOf(d.productType)!) : null));
         if (d) setScheme(d.colorSchemes.some((s) => s.name === saved?.scheme) ? saved!.scheme : d.colorSchemes[0]?.name ?? '');
       })
       .catch(() => setDesign('offline'));
@@ -69,7 +70,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     if (!turnstile.token) return setError('Please wait for the anti-spam check to finish, then try again.');
     setPaying(true);
     setError('');
-    try { sessionStorage.setItem(DRAFT_KEY + slug, JSON.stringify({ draft, scheme: chosen?.name ?? '', email, hadPhotos: photos.length > 0 } satisfies Saved)); } catch { /* private mode: nothing restored */ }
+    try { sessionStorage.setItem(DRAFT_KEY + slug, JSON.stringify({ slug, draft, scheme: chosen?.name ?? '', email, hadPhotos: photos.length > 0 } satisfies Saved)); } catch { /* private mode: nothing restored */ }
     try {
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',

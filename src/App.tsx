@@ -427,7 +427,7 @@ export default function App() {
   const page =
     /^\/invitations\/?$/.test(path) ? <CatalogPage btn={btn} />
     : designSlug === 'success' ? <SuccessPage btn={btn} email={content.contactEmail} />
-    : designSlug ? <CustomiserPage slug={designSlug} btn={btn} />
+    : designSlug ? <React.Fragment key={designSlug}><CustomiserPage slug={designSlug} btn={btn} /></React.Fragment>
     : /^\/manage\/?$/.test(path) ? <ManagePage btn={btn} />
     : policy ? <PolicyPage kind={policy} company={branding.companyName || 'JLC IT Solutions'} email={content.contactEmail} />
     : null;
