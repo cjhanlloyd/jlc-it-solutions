@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
-import { emailAndRotateToken } from '../../../server/invitation-links';
-import { verifyPaymongoSignature } from '../../../server/paymongo';
+import { emailAndRotateToken } from '../../../../server/invitation-links';
+import { verifyPaymongoSignature } from '../../../../server/paymongo';
 
 interface Env {
   DB: D1Database;

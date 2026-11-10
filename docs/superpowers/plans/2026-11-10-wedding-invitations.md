@@ -4,7 +4,7 @@
 
 **Goal:** Sell wedding invitation web pages end to end: catalog, customiser with live preview, PayMongo checkout confirmed by webhook, public guest page with RSVP, private manage link, admin management.
 
-**Architecture:** New server code lives in plain modules under `server/` (not routed), imported by new Pages Function files: `functions/api/invitations/[[path]].ts`, `functions/api/paymongo/webhook.ts`, `functions/api/admin/invitations/[[path]].ts`, `functions/i/[slug].ts`, `functions/photos/[[key]].ts`. These are more specific than the existing `functions/api/[[route]].ts` catch-all, so they take precedence. Shared field rules live in `shared/invitation-fields.ts`, used by both server and React. Layouts are React components in `src/invitations/layouts/`. The guest page is a separate Vite entry (`invitation.html`). Photos go to R2, data to D1.
+**Architecture:** New server code lives in plain modules under `server/` (not routed), imported by new Pages Function files: `functions/api/invitations/[[path]].ts`, `functions/api/payments/paymongo/webhook.ts`, `functions/api/admin/invitations/[[path]].ts`, `functions/i/[slug].ts`, `functions/photos/[[key]].ts`. These are more specific than the existing `functions/api/[[route]].ts` catch-all, so they take precedence. Shared field rules live in `shared/invitation-fields.ts`, used by both server and React. Layouts are React components in `src/invitations/layouts/`. The guest page is a separate Vite entry (`invitation.html`). Photos go to R2, data to D1.
 
 **Tech Stack:** Cloudflare Pages Functions, D1, R2, PayMongo Checkout Sessions + webhooks, React 19 + Vite multi-page + Tailwind, Node test runner with esbuild bundling (existing `tests/api.test.mjs` pattern).
 
@@ -113,7 +113,7 @@
 
 **Files:**
 - Create: `functions/api/invitations/[[path]].ts`. Routes: `GET /api/invitations/designs` (active designs, public fields only); `POST /api/invitations/checkout`; `GET /api/invitations/order-status?order=<id>` → `{ status }` only.
-- Create: `functions/api/paymongo/webhook.ts` (POST only)
+- Create: `functions/api/payments/paymongo/webhook.ts` (POST only)
 - Modify: `wrangler.toml` (add `[[r2_buckets]] binding = "PHOTOS"`, `bucket_name = "jlc-invitation-photos"`)
 - Test: `tests/invitations-api.test.mjs` (bundles both files with esbuild, as `tests/api.test.mjs` does; fake D1 and a fake R2 `{ put, get, delete }`; stubbed `fetch` for PayMongo and Turnstile)
 
@@ -325,7 +325,7 @@
   1. create the R2 bucket `jlc-invitation-photos`;
   2. run `migrations/0001_invitations.sql` with `--remote`;
   3. set the PayMongo secrets with `wrangler pages secret put`;
-  4. register a PayMongo webhook to `https://jlcitsolutions.com/api/paymongo/webhook` for `checkout_session.payment.paid` (test mode first, then live);
+  4. register a PayMongo webhook to `https://jlcitsolutions.com/api/payments/paymongo/webhook` for `checkout_session.payment.paid` (test mode first, then live);
   5. get the policy pages reviewed;
   6. switch to live keys.
 - [ ] **Step 2:** Run locally with the client's **test** keys (from `.dev.vars`, entered by the client) and a tunnel URL for the webhook. In the browser: buy an invitation with a PayMongo test card, confirm the webhook marks it paid, open the guest page, RSVP, open the manage link, change the date, try renaming (refused), and export the CSV. In admin: refund, then confirm the guest page shows 404. Record the results in the commit message.

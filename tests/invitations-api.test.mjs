@@ -20,7 +20,7 @@ before(async () => {
     return import(pathToFileURL(outfile).href);
   };
   invitations = (await bundle('functions/api/invitations/[[path]].ts', 'inv.mjs')).onRequest;
-  webhook = (await bundle('functions/api/paymongo/webhook.ts', 'hook.mjs')).onRequestPost;
+  webhook = (await bundle('functions/api/payments/paymongo/webhook.ts', 'hook.mjs')).onRequestPost;
 });
 
 // --- In-memory D1: answers only the statements the two handlers issue ---
@@ -267,7 +267,7 @@ const paidEvent = (id = 'evt_1', checkoutId = 'cs_1') => JSON.stringify({ data: 
   type: 'checkout_session.payment.paid', livemode: false,
   data: { id: checkoutId, type: 'checkout_session', attributes: { payments: [{ id: 'pay_1' }] } } } } });
 const sign = (body, t = Math.floor(Date.now() / 1000)) => `t=${t},te=${createHmac('sha256', WEBHOOK_SECRET).update(`${t}.${body}`).digest('hex')},li=`;
-const hook = (body, sig = sign(body)) => webhook(ctx(new Request('https://shop.test/api/paymongo/webhook',
+const hook = (body, sig = sign(body)) => webhook(ctx(new Request('https://shop.test/api/payments/paymongo/webhook',
   { method: 'POST', body, headers: { 'Paymongo-Signature': sig } })));
 const emails = () => globalThis.SMTP_SENT.filter(t => t.startsWith('Message-ID'));
 const checkedOut = async () => { await post('/api/invitations/checkout', goodCheckout()); return db.invitations[0].manage_token_hash; };
@@ -385,7 +385,7 @@ test('cleanup half-done (order expired, invitation still pending) before the pai
   const err = console.error; console.error = (...a) => errors.push(a.join(' '));
   try {
     const body = paidEvent();
-    const res = await webhook({ request: new Request('https://shop.test/api/paymongo/webhook', { method: 'POST', body, headers: { 'Paymongo-Signature': sign(body) } }),
+    const res = await webhook({ request: new Request('https://shop.test/api/payments/paymongo/webhook', { method: 'POST', body, headers: { 'Paymongo-Signature': sign(body) } }),
       env: { ...env(), DB: racyDB }, waitUntil(p) { background.push(p); } });
     assert.equal(res.status, 200);
     await settle();
@@ -401,7 +401,7 @@ test('order expired by cleanup between the webhook read and the paid batch → l
   await checkedOut();
   // Cleanup runs right before the batch: order expired, invitation deleted
   const racyDB = { prepare: DB.prepare, async batch(stmts) { db.orders[0].status = 'expired'; db.invitations = []; return DB.batch(stmts); } };
-  const racyHook = (body) => webhook({ request: new Request('https://shop.test/api/paymongo/webhook', { method: 'POST', body, headers: { 'Paymongo-Signature': sign(body) } }),
+  const racyHook = (body) => webhook({ request: new Request('https://shop.test/api/payments/paymongo/webhook', { method: 'POST', body, headers: { 'Paymongo-Signature': sign(body) } }),
     env: { ...env(), DB: racyDB }, waitUntil(p) { background.push(p); } });
   const errors = [];
   const err = console.error; console.error = (...a) => errors.push(a.join(' '));

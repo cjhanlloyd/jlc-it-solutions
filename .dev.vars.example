@@ -14,5 +14,5 @@ TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 # PayMongo secret API key for invitation checkout. Use the test key (sk_test_...) until launch.
 PAYMONGO_SECRET_KEY="sk_test_..."
 
-# PayMongo webhook signing secret (whsk_...) for /api/paymongo/webhook; test and live differ.
+# PayMongo webhook signing secret (whsk_...) for /api/payments/paymongo/webhook; test and live differ.
 PAYMONGO_WEBHOOK_SECRET="whsk_..."
