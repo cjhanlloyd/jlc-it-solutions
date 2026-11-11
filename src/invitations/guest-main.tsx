@@ -22,14 +22,14 @@ function loadTurnstile(): Promise<void> {
 }
 
 type Data =
-  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; rsvpOpen: boolean; askKids?: boolean }
+  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; rsvpOpen: boolean; askKids?: boolean; productType?: string }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
 const NEUTRAL: Scheme = { primary: '#7a5752', accent: '#b8955a', background: '#faf7f2', text: '#3a3330' };
 const slug = window.location.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1] ?? '';
 
-function RsvpForm({ askKids }: { askKids: boolean }) {
+function RsvpForm({ askKids, productType }: { askKids: boolean; productType?: string }) {
   const [name, setName] = useState('');
   const [attending, setAttending] = useState<boolean | null>(null);
   const [partySize, setPartySize] = useState(1);
@@ -123,7 +123,7 @@ function RsvpForm({ askKids }: { askKids: boolean }) {
         </div>
       )}
       <div>
-        <label htmlFor="rsvp-message">{askKids ? 'Message for the celebrant' : 'Message for the couple'} <span className="rsvp-optional">(optional)</span></label>
+        <label htmlFor="rsvp-message">{productType === 'wedding_invitation' ? 'Message for the couple' : 'Message for the celebrant'} <span className="rsvp-optional">(optional)</span></label>
         <textarea id="rsvp-message" rows={3} maxLength={LIMITS.rsvpMessage} value={message} onChange={(e) => setMessage(e.target.value)} />
       </div>
       <div>
@@ -162,7 +162,7 @@ function Guest() {
     case 'live':
       return (
         <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos}
-          rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
+          rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
       );
     case 'expired':
       return (

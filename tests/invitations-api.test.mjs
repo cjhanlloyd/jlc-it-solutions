@@ -30,7 +30,7 @@ const design = { id: 1, slug: 'classic-elegance', name: 'Classic Elegance', layo
 const birthdayDesign = { ...design, id: 3, slug: 'confetti-pop', name: 'Confetti Pop', layout_key: 'confetti', product_type: 'birthday_invitation' };
 let db, smtpEnabled = true;
 beforeEach(() => {
-  db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }, birthdayDesign, { ...design, id: 4, slug: 'debut', product_type: 'debut_invitation' }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
+  db = { designs: [design, { ...design, id: 2, slug: 'hidden', active: 0 }, birthdayDesign, { ...design, id: 4, slug: 'baptism', product_type: 'baptism_invitation' }], invitations: [], orders: [], events: [], rsvps: [], audit: [] };
   globalThis.SMTP_SENT = [];
   globalThis.SMTP_FAIL = false;
   smtpEnabled = true;
@@ -649,7 +649,7 @@ test('birthday checkout with wedding details â†’ 400; unknown-occasion design â†
   let res = await post('/api/invitations/checkout', bdayCheckout({ details: goodCheckout().details }));
   assert.equal(res.status, 400);
   assert.match((await res.json()).error, /Celebrant/);
-  res = await post('/api/invitations/checkout', goodCheckout({ designSlug: 'debut' }));
+  res = await post('/api/invitations/checkout', goodCheckout({ designSlug: 'baptism' }));
   assert.equal(res.status, 400);
   res = await post('/api/invitations/checkout', bdayCheckout({ details: { ...bdayDetails, eventDate: '2020-01-01' } }));
   assert.equal((await res.json()).error, 'The party date cannot be in the past.');

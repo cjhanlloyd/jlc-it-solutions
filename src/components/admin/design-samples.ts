@@ -19,4 +19,14 @@ export const SAMPLES: Record<string, object> = {
     dressCode: 'Come in blue or a sea-creature costume', giftsNote: 'Gift idea: books or art sets', message: 'Mia is turning seven and would love to celebrate with you!',
     hostedBy: 'Anna & Carlo',
   },
+  debut_invitation: {
+    debutante: 'Ana Reyes', eventDate: '2027-08-21', eventTime: '18:00', headline: 'A night to remember', theme: 'Enchanted Garden',
+    venue: { name: 'The Rose Ballroom', address: 'Pasig City', mapUrl: '' },
+    schedule: [{ time: '18:00', label: 'Arrival & cocktails' }, { time: '19:00', label: 'Cotillion & 18 Roses' }, { time: '20:00', label: 'Dinner, 18 Candles & Treasures' }, { time: '21:30', label: 'Party' }],
+    escort: 'Miguel Santos', hostedBy: 'Mr. & Mrs. Reyes', dressCode: 'Formal, in shades of blush and gold',
+    message: 'Please join us as Ana celebrates her eighteenth birthday.',
+    roses: ['Ramon Reyes (father)', 'Paolo Reyes', 'Tito Ben Cruz', 'Miguel Santos'],
+    candles: ['Liza Reyes (mother)', 'Lola Carmen', 'Bea Cruz', 'Joy Tan'],
+    treasures: ['Tita Marie', 'Ninang Grace', 'Carla Lim'],
+  },
 };

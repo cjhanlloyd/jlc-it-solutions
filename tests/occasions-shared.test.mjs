@@ -71,7 +71,7 @@ test('expired summaries', () => {
 
 test('registry', () => {
   assert.equal(occasionOf('birthday_invitation'), birthday);
-  assert.equal(occasionOf('debut_invitation'), null);
+  assert.equal(occasionOf('baptism_invitation'), null);
   assert.equal(occasionOf(undefined), null);
   assert.equal(occasionOf('constructor'), null);
   assert.equal(occasionOf('__proto__'), null);
@@ -94,7 +94,7 @@ test('validateRsvp kids', () => {
 test('admin design samples pass their occasion rules', async () => {
   const { SAMPLES, MILESTONE_SAMPLE } = await import('../src/components/admin/design-samples.ts');
   assert.equal(occasionOf('birthday_invitation').validateDetails(MILESTONE_SAMPLE).ok, true);
-  assert.deepEqual(Object.keys(SAMPLES).sort(), ['birthday_invitation', 'wedding_invitation']);
+  assert.deepEqual(Object.keys(SAMPLES).sort(), ['birthday_invitation', 'debut_invitation', 'wedding_invitation']);
   for (const [type, sample] of Object.entries(SAMPLES)) {
     const r = occasionOf(type).validateDetails(sample);
     assert.equal(r.ok, true, `${type}: ${r.error}`);
@@ -104,7 +104,7 @@ test('admin design samples pass their occasion rules', async () => {
 test('docs/designs/birthday.md samples match the exported samples', async () => {
   const { SAMPLES, MILESTONE_SAMPLE } = await import('../src/components/admin/design-samples.ts');
   const { readFileSync } = await import('node:fs');
-  const re = /```json\n([\s\S]*?)```/g;
+  const re = /```json\r?\n([\s\S]*?)```/g; // \r?: git may check docs out with CRLF on Windows
   const blocks = [...readFileSync(new URL("../docs/designs/birthday.md", import.meta.url), "utf8").matchAll(re)].map((m) => JSON.parse(m[1]));
   assert.deepEqual(blocks, [SAMPLES.birthday_invitation, MILESTONE_SAMPLE]);
 });

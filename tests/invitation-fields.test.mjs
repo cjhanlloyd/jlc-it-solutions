@@ -94,4 +94,4 @@ test('makeSlug folds accents and suffixes', () => {
   assert.ok(makeSlug('a'.repeat(100) + ' and b', 'z').length <= 62);
 });
 
-test('LAYOUT_KEYS', () => assert.deepEqual([...LAYOUT_KEYS], ['classic', 'garden', 'modern', 'confetti', 'golden']));
+test('LAYOUT_KEYS', () => assert.deepEqual([...LAYOUT_KEYS], ['classic', 'garden', 'modern', 'confetti', 'golden', 'blush']));

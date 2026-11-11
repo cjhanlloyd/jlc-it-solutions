@@ -4,7 +4,7 @@ export const LIMITS = {
   name: 60, venueName: 120, address: 200, mapUrl: 500, dressCode: 200, message: 1000, giftsNote: 300,
   scheduleItems: 8, scheduleLabel: 80, photos: 6, photoChars: 1_400_000,
   rsvpName: 80, rsvpMessage: 500, partySizeMax: 10,
-  headline: 120, theme: 80, hostedBy: 120, ageMax: 120, kidsMax: 10,
+  headline: 120, theme: 80, hostedBy: 120, ageMax: 120, kidsMax: 10, traditionNames: 18,
 } as const;
 
 export type Venue = { name: string; address: string; mapUrl: string };

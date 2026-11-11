@@ -1,5 +1,6 @@
 import type { Result } from '../invitation-fields.ts';
 import { birthday } from './birthday.ts';
+import { debut } from './debut.ts';
 import { wedding } from './wedding.ts';
 
 export type Occasion<D = any> = {
@@ -12,7 +13,7 @@ export type Occasion<D = any> = {
   expiredSummary(d: D): Record<string, unknown>; // fields title() needs + _purged: true
 };
 
-export const OCCASIONS: Record<string, Occasion> = { [wedding.productType]: wedding, [birthday.productType]: birthday };
+export const OCCASIONS: Record<string, Occasion> = { [wedding.productType]: wedding, [birthday.productType]: birthday, [debut.productType]: debut };
 export const occasionOf = (productType: string | null | undefined): Occasion | null =>
   (productType && Object.prototype.hasOwnProperty.call(OCCASIONS, productType) ? OCCASIONS[productType] : null);
 export const LAYOUT_KEYS: readonly string[] = Object.values(OCCASIONS).flatMap((o) => o.layouts);
