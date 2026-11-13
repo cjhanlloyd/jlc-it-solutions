@@ -4,10 +4,10 @@
 import { occasionOf } from '../shared/occasions';
 import { isPastExpiry } from './guest-invitation';
 
-const keysOf = (photos: string) => { try { const k = JSON.parse(photos); return Array.isArray(k) ? k as string[] : []; } catch { return []; } };
+export const keysOf = (photos: string) => { try { const k = JSON.parse(photos); return Array.isArray(k) ? k as string[] : []; } catch { return []; } };
 
 // Photos go first: if R2 fails the row is left for the next run instead of losing track of its keys.
-async function deletePhotos(photos: R2Bucket, keys: string[], what: string): Promise<boolean> {
+export async function deletePhotos(photos: R2Bucket, keys: string[], what: string): Promise<boolean> {
   try {
     if (keys.length) await photos.delete(keys);
     return true;
