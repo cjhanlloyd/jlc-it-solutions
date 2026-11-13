@@ -49,11 +49,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Every step below is resumable: a retry after a mid-processing failure continues where it stopped
     if (order.status === 'payment_confirmed') {
       const next = await transition(env.DB, order.id, 'for_review', { actor: 'system' });
-      if (!next.ok) throw new Error(next.error);
+      if (next.ok === false) throw new Error(next.error);
     } else if (order.status === 'pending_payment' || order.status === 'payment_verification') {
       if (order.status === 'pending_payment') {
         const moved = await transition(env.DB, order.id, 'payment_verification', { actor: 'paymongo' });
-        if (!moved.ok) throw new Error(moved.error);
+        if (moved.ok === false) throw new Error(moved.error);
       }
       let pay = await env.DB.prepare("SELECT id FROM payments WHERE order_id = ? AND provider = 'paymongo' AND status = 'submitted' ORDER BY id LIMIT 1").bind(order.id).first<any>();
       if (!pay) {
@@ -62,7 +62,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         pay = { id: ins2.meta.last_row_id };
       }
       const done = await confirmPayment(env.DB, pay.id, { actor: 'paymongo' });
-      if (!done.ok) throw new Error(done.error);
+      if (done.ok === false) throw new Error(done.error);
     } else return json({ ok: true }); // past review already (repeat delivery)
     context.waitUntil(notify(env.DB, request, order.id, 'confirmed'));
     return json({ ok: true });
