@@ -136,7 +136,7 @@ test('receipt: PNG → payment_verification + submitted payment under receipts/;
   assert.equal(o.status, 'payment_verification');
   const [p] = q('SELECT * FROM payments');
   assert.deepEqual([p.status, p.amount_centavos, p.provider, p.customer_reference], ['submitted', 99900, 'manual_gcash', '1234 5678']);
-  assert.match(p.receipt_key, new RegExp(`^receipts/${o.id}/\\d+\\.png$`));
+  assert.match(p.receipt_key, new RegExp(`^receipts/${o.id}/\\d+-[0-9a-f]{8}\\.png$`));
   assert.deepEqual([...r2.map.keys()].filter(k => k.startsWith('receipts/')), [p.receipt_key]);
   assert.equal(r2.map.get(p.receipt_key).httpMetadata.contentType, 'image/png');
   const again = await upload(reference, trackingToken, dataUrl('png', PNG_BYTES));
