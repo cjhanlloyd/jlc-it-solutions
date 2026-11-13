@@ -14,7 +14,6 @@ import BrandingTab from './admin/BrandingTab.js';
 import LogsTab from './admin/LogsTab.js';
 import InquiriesTab from './admin/InquiriesTab.js';
 import DesignsTab from './admin/DesignsTab.js';
-import OrdersTab from './admin/OrdersTab.js';
 import InvitationsTab from './admin/InvitationsTab.js';
 import type { InvOverview } from './admin/InvitationsCommon.js';
 
@@ -27,7 +26,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ adminToken, adminUser, onLogout, branding, onDataChange }: AdminPanelProps) {
-  const [activeSubTab, setActiveSubTab] = React.useState<'inquiries' | 'services' | 'branding' | 'content' | 'email' | 'accounts' | 'logs' | 'designs' | 'orders' | 'invitations'>('inquiries');
+  const [activeSubTab, setActiveSubTab] = React.useState<'inquiries' | 'services' | 'branding' | 'content' | 'email' | 'accounts' | 'logs' | 'designs' | 'invitations'>('inquiries');
   const [db, setDb] = React.useState<WebsiteData | null>(null);
   const [systemLogs, setSystemLogs] = React.useState<{ timestamp: string; type: string; message: string }[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -64,7 +63,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
       setApiError(err.message);
     }
   };
-  const isInvTab = ['designs', 'orders', 'invitations'].includes(activeSubTab);
+  const isInvTab = ['designs', 'invitations'].includes(activeSubTab);
   React.useEffect(() => {
     if (isInvTab && !invOverview) loadInvOverview();
   }, [isInvTab]);
@@ -208,7 +207,7 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
             Admin Accounts
           </button>
 
-          {([['designs', 'Palette', 'Invitation Designs'], ['orders', 'Receipt', 'Orders'], ['invitations', 'Heart', 'Invitations']] as const).map(([key, icon, label]) => {
+          {([['designs', 'Palette', 'Invitation Designs'], ['invitations', 'Heart', 'Invitations']] as const).map(([key, icon, label]) => {
             const Icon = Icons[icon];
             return (
               <button
@@ -277,7 +276,6 @@ export default function AdminPanel({ adminToken, adminUser, onLogout, branding, 
           {tabProps && (
             <>
               <div hidden={activeSubTab !== 'designs'}><DesignsTab {...tabProps} overview={invOverview} reload={loadInvOverview} /></div>
-              <div hidden={activeSubTab !== 'orders'}><OrdersTab {...tabProps} overview={invOverview} reload={loadInvOverview} /></div>
               <div hidden={activeSubTab !== 'invitations'}><InvitationsTab {...tabProps} overview={invOverview} reload={loadInvOverview} /></div>
             </>
           )}

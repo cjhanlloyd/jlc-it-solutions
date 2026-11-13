@@ -1,7 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 import { runCleanup } from '../../../../server/cleanup';
 import { verifyAdminToken } from '../../../../server/crypto';
-import { can } from '../../../../server/permissions';
 import { occasionOf } from '../../../../shared/occasions';
 import { PAID_STATUSES } from '../../../../shared/order-status';
 
@@ -27,7 +26,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (request.method === 'POST' && !WRITERS.includes(me.role)) return json({ error: 'Your role cannot make changes.' }, 403);
 
     const route = `${request.method} ${path}`;
-    if (route === 'GET /overview') return await overview(env, can(me.role, 'orders.contact'));
+    if (route === 'GET /overview') return await overview(env);
     const rsvpsId = route.match(/^GET \/invitations\/(\d+)\/rsvps$/)?.[1];
     if (rsvpsId) return await rsvps(env, Number(rsvpsId));
 
@@ -45,34 +44,26 @@ function titleOf(productType: string, details: string | null): string {
   try { return o && details ? o.title(JSON.parse(details)) : ''; } catch { return ''; }
 }
 
-// contact: whether the caller may see customer emails (Editors may not)
-async function overview(env: Env, contact: boolean): Promise<Response> {
+async function overview(env: Env): Promise<Response> {
   // shortcut: cleanup runs when an admin opens the overview, because Pages has no cron; upgrade to a Worker cron trigger if orders grow.
   try {
     await runCleanup(env.DB, env.PHOTOS, new Date());
   } catch (e) {
     console.error('cleanup failed:', e instanceof Error ? e.message : e);
   }
-  const [designs, orders, events, invitations, totals] = await Promise.all([
+  // Orders live in the admin portal (/api/admin/orders); only the paid totals stay here
+  const [designs, invitations, totals] = await Promise.all([
     env.DB.prepare('SELECT * FROM products_designs ORDER BY sort_order, id').all<any>(),
-    env.DB.prepare(
-      'SELECT o.id, o.customer_email, o.amount_centavos, o.status, o.created_at, o.paid_at, o.paymongo_checkout_id, o.paymongo_payment_id, o.product_id AS invitation_id, i.slug, i.details, d.product_type, d.name AS design_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id ORDER BY o.id DESC',
-    ).all<any>(),
-    // Type and time only: the raw payload stays out of the response
-    env.DB.prepare('SELECT order_id, type, received_at FROM payment_events WHERE order_id IS NOT NULL ORDER BY received_at, rowid').all<any>(),
     env.DB.prepare(
       'SELECT i.id, i.slug, i.status, i.event_date, i.created_at, i.details, d.product_type, d.name AS design_name, (SELECT COUNT(*) FROM rsvps r WHERE r.invitation_id = i.id) AS rsvpCount FROM invitations i JOIN products_designs d ON d.id = i.design_id ORDER BY i.id DESC',
     ).all<any>(),
     env.DB.prepare(`SELECT COUNT(*) AS paidCount, COALESCE(SUM(amount_centavos), 0) AS paidCentavos FROM orders WHERE status IN (${PAID_STATUSES.map(() => '?').join(', ')})`)
       .bind(...PAID_STATUSES).first<any>(),
   ]);
-  const trail = new Map<number, { type: string; received_at: string }[]>();
-  for (const e of events.results || []) trail.set(e.order_id, [...(trail.get(e.order_id) || []), { type: e.type, received_at: e.received_at }]);
   return json({
     designs: (designs.results || []).map((d) => ({
       ...d, active: !!d.active, color_schemes: parse(d.color_schemes, []), preview_images: parse(d.preview_images, []), sample_details: parse(d.sample_details, {}),
     })),
-    orders: (orders.results || []).map(({ details, product_type, customer_email, ...o }) => ({ ...o, ...(contact ? { customer_email } : {}), title: titleOf(product_type, details), payment_events: trail.get(o.id) || [] })),
     invitations: (invitations.results || []).map(({ details, product_type, ...i }) => ({ ...i, title: titleOf(product_type, details) })),
     totals: { paidCount: totals?.paidCount ?? 0, paidCentavos: totals?.paidCentavos ?? 0 },
   });

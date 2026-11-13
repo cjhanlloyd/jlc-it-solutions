@@ -747,6 +747,10 @@ export default function App() {
 
         {/* SECURE ADMIN CONTROL PANEL DASHBOARD */}
         {activeTab === 'admin' && adminToken && adminUser && (
+          <>
+          <p className="mx-auto mt-4 max-w-7xl rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" role="note">
+            Orders moved to the new portal. <a href="/admin" className="font-semibold underline">Open the admin portal</a>
+          </p>
           <AdminPanel
             adminToken={adminToken}
             adminUser={adminUser}
@@ -754,6 +758,7 @@ export default function App() {
             branding={branding}
             onDataChange={loadPublicData}
           />
+          </>
         )}
         </>}
 

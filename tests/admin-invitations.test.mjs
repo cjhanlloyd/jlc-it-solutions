@@ -63,10 +63,6 @@ const PURGE_UPDATE = "UPDATE invitations SET status = CASE WHEN status = 'refund
 function exec(sql, a) {
   if (/FROM admins WHERE email/.test(sql)) return a[0] in ADMINS ? { email: a[0], fullName: a[0], role: ADMINS[a[0]] } : null;
   if (/^SELECT \* FROM products_designs ORDER BY/.test(sql)) return { results: [...db.designs].sort((x, y) => x.sort_order - y.sort_order || x.id - y.id) };
-  if (/^SELECT o\.id, .* FROM orders o LEFT JOIN invitations i .* ORDER BY/.test(sql)) {
-    return { results: db.orders.map(o => { const i = db.invitations.find(x => x.id === o.product_id); return { ...o, invitation_id: o.product_id, slug: i?.slug ?? null, details: i?.details ?? null, product_type: i ? db.designs.find(d => d.id === i.design_id).product_type : null, design_name: i ? db.designs.find(d => d.id === i.design_id).name : null }; }) };
-  }
-  if (/^SELECT order_id, type, received_at FROM payment_events/.test(sql)) return { results: db.events.map(({ order_id, type, received_at }) => ({ order_id, type, received_at })) };
   if (/^SELECT i\.id, i\.slug, .* FROM invitations i JOIN products_designs d/.test(sql)) {
     return { results: db.invitations.map(i => ({ ...i, manage_token_hash: undefined, product_type: db.designs.find(d => d.id === i.design_id).product_type, design_name: db.designs.find(d => d.id === i.design_id).name, rsvpCount: db.rsvps.filter(r => r.invitation_id === i.id).length })) };
   }
@@ -182,16 +178,16 @@ test('no token → 401', async () => {
   assert.equal((await call('/api/admin/invitations/designs', { body: goodDesign })).status, 401);
 });
 
-test('Editor: POST → 403, GET overview → 200 without customer emails', async () => {
+test('Editor: POST → 403, GET overview → 200 without customer emails or orders', async () => {
   assert.equal((await designs({ action: 'add', ...goodDesign }, 'ed@x.com')).status, 403);
   const res = await call('/api/admin/invitations/overview', { as: 'ed@x.com' });
   assert.equal(res.status, 200);
   assert.ok(!(await res.text()).includes('ana@example.com'));
   const adm = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
-  assert.equal(adm.orders.find(o => o.id === 1).customer_email, 'ana@example.com');
+  assert.equal(adm.orders, undefined); // orders moved to /api/admin/orders
 });
 
-test('overview: totals count paid orders only; events have no payload; no token hashes', async () => {
+test('overview: totals count paid orders only; no orders or payment events; no token hashes', async () => {
   db.orders[0].status = 'delivered';
   db.orders.push({ id: 3, product_id: 2, customer_email: 'z@x.com', amount_centavos: 7000, status: 'refunded', created_at: 't', paid_at: 't' });
   const res = await call('/api/admin/invitations/overview', { as: 'adm@x.com' });
@@ -200,8 +196,7 @@ test('overview: totals count paid orders only; events have no payload; no token 
   assert.equal(data.designs.length, 2);
   assert.deepEqual(data.designs[0].color_schemes, [scheme]);
   assert.equal(data.invitations.find(i => i.id === 1).rsvpCount, 1);
-  assert.deepEqual(data.orders.find(o => o.id === 1).payment_events, [{ type: 'checkout_session.payment.paid', received_at: 't' }]);
-  assert.deepEqual(data.orders.find(o => o.id === 2).payment_events, []);
+  assert.equal(data.orders, undefined);
   const text = JSON.stringify(data);
   assert.ok(!text.includes('SECRET-RAW') && !text.includes('manage_token_hash') && !text.includes(sha('old-token')));
 });
@@ -264,10 +259,9 @@ test('design update changing product_type → 409', async () => {
   assert.equal(db.designs[0].product_type, 'wedding_invitation');
 });
 
-test('overview: invitation and order rows carry the occasion title, not the raw details', async () => {
+test('overview: invitation rows carry the occasion title, not the raw details', async () => {
   const data = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
   assert.equal(data.invitations.find(i => i.id === 1).title, 'Ana & Ben');
-  assert.equal(data.orders.find(o => o.id === 1).title, 'Ana & Ben');
   assert.ok(!JSON.stringify(data.invitations).includes('Chapel'));
 });
 
@@ -407,12 +401,10 @@ test('cleanup: an R2 failure is logged and the row is retried on the next run', 
   assert.equal(r2.size, 0);
 });
 
-test('overview runs cleanup first; an expired order still lists without its invitation', async () => {
+test('overview runs cleanup first; the expired order loses its invitation', async () => {
   pendingOrder(10, 4 * DAY, new Date()); // the overview uses the real clock
   const data = await (await call('/api/admin/invitations/overview', { as: 'ed@x.com' })).json();
-  const o = data.orders.find(x => x.id === 10);
-  assert.equal(o.status, 'expired');
-  assert.equal(o.slug, null);
+  assert.equal(db.orders.find(x => x.id === 10).status, 'expired');
   assert.equal(data.invitations.find(i => i.id === 10), undefined);
   assert.equal(r2.size, 0);
 });
