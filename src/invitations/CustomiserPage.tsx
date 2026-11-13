@@ -1,8 +1,10 @@
-// /invitations/<design>: details form + live preview, then Pay → PayMongo checkout.
+// /invitations/<design>: details form + live preview, then Place order → the order page with GCash payment details.
 import React from 'react';
 import * as Icons from 'lucide-react';
 import InvitationView from './InvitationView';
-import { Alert, Field, Link, PaneToggle, PhotoPicker, inputCls, peso, useInvitationFonts, useTurnstile } from './kit';
+import { Alert, Field, Link, PaneToggle, PhotoPicker, go, inputCls, peso, useInvitationFonts, useTurnstile } from './kit';
+import { orderKey } from './TrackPage';
+import { LIMITS } from '../../shared/invitation-fields';
 import { formOf } from './forms';
 import { restoreDraft, savedFor } from './forms/restore';
 
@@ -18,10 +20,10 @@ export async function fetchDesigns(): Promise<Design[]> {
   return (await res.json()).designs;
 }
 
-// PayMongo's cancel link returns here; the form is restored from this (photos are too large to keep).
-// The success page clears every key with this prefix once the payment is confirmed.
-export const DRAFT_KEY = 'jlc_inv_draft:';
-type Saved = { slug: string; draft: any; scheme: string; email: string; hadPhotos: boolean };
+// Saved before placing the order so a failed or interrupted attempt keeps the form (photos are too large to keep).
+// Every key with this prefix is cleared once the order is placed.
+const DRAFT_KEY = 'jlc_inv_draft:';
+type Saved = { slug: string; draft: any; scheme: string; email: string; name?: string; phone?: string; hadPhotos: boolean };
 
 export default function CustomiserPage({ slug, btn }: { slug: string; btn: string }) {
   useInvitationFonts();
@@ -31,6 +33,8 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [scheme, setScheme] = React.useState('');
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [email, setEmail] = React.useState(saved?.email ?? '');
+  const [name, setName] = React.useState(saved?.name ?? '');
+  const [phone, setPhone] = React.useState(saved?.phone ?? '');
   const [terms, setTerms] = React.useState(false);
   const [error, setError] = React.useState('');
   const [paying, setPaying] = React.useState(false);
@@ -66,22 +70,25 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   async function pay(e: React.FormEvent) {
     e.preventDefault();
     if (check.ok === false) return setError(`Please fix this first: ${check.error}.`);
+    if (!name.trim()) return setError('Please enter your name.');
     if (!terms) return setError('Please agree to the Terms, Refund Policy and Privacy Notice.');
     if (!turnstile.token) return setError('Please wait for the anti-spam check to finish, then try again.');
     setPaying(true);
     setError('');
-    try { sessionStorage.setItem(DRAFT_KEY + slug, JSON.stringify({ slug, draft, scheme: chosen?.name ?? '', email, hadPhotos: photos.length > 0 } satisfies Saved)); } catch { /* private mode: nothing restored */ }
+    try { sessionStorage.setItem(DRAFT_KEY + slug, JSON.stringify({ slug, draft, scheme: chosen?.name ?? '', email, name, phone, hadPhotos: photos.length > 0 } satisfies Saved)); } catch { /* private mode: nothing restored */ }
     try {
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designSlug: slug, colorScheme: chosen?.name, details: draft, photos, email, termsAccepted: true, turnstileToken: turnstile.token }),
+        body: JSON.stringify({ designSlug: slug, colorScheme: chosen?.name, details: draft, photos, email, name, phone, termsAccepted: true, turnstileToken: turnstile.token }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.checkoutUrl) {
-        // The success page reads this to link the guest page (sessionStorage survives the PayMongo round trip in this tab).
-        try { sessionStorage.setItem('jlc_inv_slug', data.slug ?? ''); } catch { /* private mode: success page falls back to the email */ }
-        window.location.href = data.checkoutUrl;
+      if (res.ok && data.reference) {
+        try {
+          for (const k of Object.keys(sessionStorage)) if (k.startsWith(DRAFT_KEY)) sessionStorage.removeItem(k);
+          sessionStorage.setItem(orderKey(data.reference), data.trackingToken);
+        } catch { /* private mode: the order email has the tracking link */ }
+        go('/order/' + data.reference);
         return;
       }
       setError(data.error || 'Something went wrong. Please try again.');
@@ -128,8 +135,14 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
 
           <fieldset className="space-y-4 border-t border-slate-200 pt-6">
             <legend className="text-sm font-extrabold text-slate-900 font-display pr-3">Checkout</legend>
-            <Field label="Your email *" hint="We'll send your receipt, guest link and private manage link here.">
+            <Field label="Your name *">
+              <input className={inputCls} autoComplete="name" required maxLength={LIMITS.customerName} value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+            <Field label="Your email *" hint="We'll send your order updates, guest link and private manage link here.">
               <input className={inputCls} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
+            <Field label="Mobile number (optional)">
+              <input className={inputCls} type="tel" autoComplete="tel" maxLength={LIMITS.phone} value={phone} onChange={(e) => setPhone(e.target.value)} />
             </Field>
             <label className="flex items-start gap-3 text-sm text-slate-700">
               <input type="checkbox" className="mt-1 h-4 w-4" checked={terms} onChange={(e) => setTerms(e.target.checked)} required />
@@ -146,10 +159,9 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
             {error && <Alert>{error}</Alert>}
             <button type="submit" disabled={paying}
               className={`w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-sm font-bold uppercase tracking-wider font-display text-white shadow-lg cursor-pointer disabled:opacity-60 ${btn}`}>
-              {paying ? 'Starting secure payment…' : `Pay ${peso(design.priceCentavos)}`}
-              {!paying && <Icons.Lock className="ml-2 h-4 w-4" />}
+              {paying ? 'Placing order…' : `Place order · ${peso(design.priceCentavos)}`}
             </button>
-            <p className="text-[11px] text-slate-500 text-center">You'll be taken to PayMongo to pay securely by scanning a QR Ph code with GCash, Maya or your bank app.</p>
+            <p className="text-[11px] text-slate-500 text-center">Next you'll see the GCash details. Pay, then upload your receipt; we confirm your payment before starting your invitation.</p>
           </fieldset>
         </form>
 

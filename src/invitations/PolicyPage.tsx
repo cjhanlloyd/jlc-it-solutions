@@ -4,7 +4,7 @@ import React from 'react';
 
 export type PolicyKind = 'terms' | 'refund-policy' | 'privacy';
 
-const UPDATED = 'November 10, 2026';
+const UPDATED = 'November 13, 2026';
 
 function pages(company: string, email: string): Record<PolicyKind, { title: string; body: React.ReactNode }> {
   const mail = <a href={`mailto:${email}`} className="underline font-semibold">{email}</a>;
@@ -16,7 +16,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>What you get</h2>
         <p>One online invitation in the design you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, maps links, and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs.</p>
         <h2>Price and payment</h2>
-        <p>The price is shown in Philippine pesos on the design page and is a one-time payment. Payments are processed by PayMongo; payment is by QR Ph (GCash, Maya or your bank app), and we never see or store your bank or e-wallet details. Your invitation goes live once PayMongo confirms the payment.</p>
+        <p>The price is shown in Philippine pesos on the design page and is a one-time payment. Payment is by GCash: after you place your order, you send the amount to our GCash account using the details on your order page and upload a screenshot of your GCash receipt. Our team checks each payment by hand; your order moves ahead only after we confirm it. Unpaid orders are cancelled after the payment deadline shown on the order page.</p>
         <h2>How long it stays online</h2>
         <p>Your invitation stays online until 60 days after the event date. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
         <h2>Editing</h2>
@@ -40,9 +40,9 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>How refunds are decided</h2>
         <p>Each request is reviewed case by case. Requests after the invitation has been shared, or after 7 days, are usually not refundable, but tell us what happened and we will try to help, for example by fixing the problem.</p>
         <h2>How to ask</h2>
-        <p>Email {mail} from the address you used at checkout, with your order number (it is in your receipt email) and the reason.</p>
+        <p>Email {mail} from the address you used at checkout, with your order reference (it starts with JLC- and is in your order email) and the reason.</p>
         <h2>What happens next</h2>
-        <p>If approved, the refund goes back to the original payment method through PayMongo. Timing depends on your bank or e-wallet, usually 5 to 15 business days. A refunded invitation is taken offline.</p>
+        <p>If approved, we send the refund by GCash transfer to the account you paid from, usually within 5 business days. A refunded invitation is taken offline.</p>
       </>,
     },
     privacy: {
@@ -51,14 +51,14 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <p>This notice explains how {company} handles personal information for the digital invitation service, in line with the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
         <h2>What we collect</h2>
         <ul>
-          <li><strong>From the customer:</strong> your email address, the names, dates, venues, messages and photos you put on the invitation, and order records (amount, date, payment status). Card and e-wallet details are handled by PayMongo, not by us.</li>
+          <li><strong>From the customer:</strong> your name, email address and (if you give it) mobile number, the names, dates, venues, messages and photos you put on the invitation, and order records (amount, date, payment status), and the GCash receipt screenshots and reference numbers you upload to confirm payment. Receipts are kept with your order records and are seen only by {company} staff.</li>
           <li><strong>From guests who RSVP:</strong> name, whether they are attending, party size (and number of kids, for birthdays), and an optional message.</li>
           <li><strong>Technical data:</strong> an anti-spam check by Cloudflare Turnstile on forms, and standard server logs.</li>
         </ul>
         <h2>Why we use it</h2>
-        <p>To publish and run your invitation, process payment, send your receipt and links, show RSVPs to the customer, prevent spam and abuse, and keep financial records required by law.</p>
+        <p>To publish and run your invitation, verify your payment, send order updates and links, show RSVPs to the customer, prevent spam and abuse, and keep financial records required by law.</p>
         <h2>Who sees it</h2>
-        <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the customer who bought the invitation, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage), PayMongo (payments) and our email provider.</p>
+        <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the customer who bought the invitation, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage) and our email provider.</p>
         <h2>How long we keep it</h2>
         <p>Invitation details, photos and guest RSVPs are deleted 60 days after the event date, including for refunded invitations. Only the names (and, for birthdays, the age) shown on the "this celebration has passed" page are kept. Order and payment records are kept as long as required for accounting and tax purposes.</p>
         <h2>Your rights</h2>

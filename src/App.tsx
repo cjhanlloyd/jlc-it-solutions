@@ -40,7 +40,8 @@ import FaqAccordion from './components/FaqAccordion.tsx';
 import ProjectGallery from './components/ProjectGallery.tsx';
 import CatalogPage from './invitations/CatalogPage.tsx';
 import CustomiserPage from './invitations/CustomiserPage.tsx';
-import SuccessPage from './invitations/SuccessPage.tsx';
+import OrderPage from './invitations/OrderPage.tsx';
+import TrackPage from './invitations/TrackPage.tsx';
 import ManagePage from './invitations/ManagePage.tsx';
 import PolicyPage from './invitations/PolicyPage.tsx';
 import { tabFromHash } from './site-tabs.ts';
@@ -48,7 +49,7 @@ import { tabFromHash } from './site-tabs.ts';
 export default function App() {
   const [activeTab, setActiveTabState] = React.useState<string>(() => tabFromHash(window.location.hash) ?? 'shop');
 
-  // Real-path pages (/invitations, /manage, policies) render instead of the hash-routed site.
+  // Real-path pages (/invitations, /manage, /order, /track, policies) render instead of the hash-routed site.
   const [path, setPath] = React.useState(window.location.pathname);
 
   const setActiveTab = (tabName: string) => {
@@ -424,11 +425,13 @@ export default function App() {
   const btn = getButtonBgClass();
   const designSlug = path.match(/^\/invitations\/([^/]+)\/?$/)?.[1];
   const policy = path.match(/^\/(terms|refund-policy|privacy)\/?$/)?.[1] as 'terms' | 'refund-policy' | 'privacy' | undefined;
+  const orderRef = path.match(/^\/order\/([^/]+)\/?$/)?.[1]?.toUpperCase();
   const page =
     /^\/invitations\/?$/.test(path) ? <CatalogPage btn={btn} />
-    : designSlug === 'success' ? <SuccessPage btn={btn} email={content.contactEmail} />
     : designSlug ? <React.Fragment key={designSlug}><CustomiserPage slug={designSlug} btn={btn} /></React.Fragment>
     : /^\/manage\/?$/.test(path) ? <ManagePage btn={btn} />
+    : orderRef ? <React.Fragment key={orderRef}><OrderPage reference={orderRef} /></React.Fragment>
+    : /^\/track\/?$/.test(path) ? <TrackPage />
     : policy ? <PolicyPage kind={policy} company={branding.companyName || 'JLC IT Solutions'} email={content.contactEmail} />
     : null;
 

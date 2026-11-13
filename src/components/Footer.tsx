@@ -6,6 +6,7 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { BrandingSettings, ContentSettings, Service } from '../types.js';
+import { Link } from '../invitations/kit';
 
 interface FooterProps {
   branding: BrandingSettings;
@@ -114,6 +115,11 @@ export default function Footer({ branding, content, services, setActiveTab }: Fo
                 <button onClick={() => handleLinkClick('contact')} className="hover:text-white hover:translate-x-1 transition-all flex items-center cursor-pointer">
                   <Icons.ChevronRight className="h-3 w-3 mr-1 text-slate-600" /> Contact Us
                 </button>
+              </li>
+              <li>
+                <Link href="/track" className="hover:text-white hover:translate-x-1 transition-all flex items-center cursor-pointer">
+                  <Icons.ChevronRight className="h-3 w-3 mr-1 text-slate-600" /> Track order
+                </Link>
               </li>
             </ul>
           </div>

@@ -6,6 +6,7 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { BrandingSettings } from '../types.js';
+import { Link } from '../invitations/kit';
 
 interface NavbarProps {
   branding: BrandingSettings;
@@ -40,7 +41,8 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
 
   // Dynamic Icon retrieval from lucide-react
   const LogoIcon = (Icons as any)[branding.logoIcon] || Icons.Activity;
-  const shopActive = activeTab === 'shop' || window.location.pathname.startsWith('/invitations');
+  const trackActive = /^\/(track|order\/)/.test(window.location.pathname);
+  const shopActive = !trackActive && (activeTab === 'shop' || window.location.pathname.startsWith('/invitations'));
 
   const itItems = [
     { id: 'home', label: 'IT Services overview' },
@@ -195,6 +197,9 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
             <button onClick={() => handleNavClick('contact')} className={pill(activeTab === 'contact')} id="nav-item-contact">
               Contact Us
             </button>
+            <Link href="/track" onClick={() => setIsOpen(false)} className={pill(trackActive)} id="nav-item-track">
+              Track order
+            </Link>
           </div>
 
           {/* Desktop CTA & Admin */}
@@ -266,6 +271,9 @@ export default function Navbar({ branding, activeTab, setActiveTab, onAdminClick
             <button onClick={() => handleNavClick('contact')} className={mobileRow(activeTab === 'contact')} id="mobile-nav-contact">
               Contact Us
             </button>
+            <Link href="/track" onClick={() => setIsOpen(false)} className={mobileRow(trackActive)} id="mobile-nav-track">
+              Track order
+            </Link>
             <button
               onClick={() => handleNavClick('shop')}
               className={`w-full mt-4 inline-flex items-center justify-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white shadow-lg focus:outline-hidden ${getButtonBgClass()}`}
