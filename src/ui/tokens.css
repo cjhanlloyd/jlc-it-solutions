@@ -1,0 +1,16 @@
+@theme {
+  /* Brand green ramp, anchored on the logo green (#0b8a4f at 600). White text passes AA on 700+. */
+  --color-brand-50: #ecfdf3;
+  --color-brand-100: #d1fae1;
+  --color-brand-200: #a6f4c8;
+  --color-brand-300: #6ce6a6;
+  --color-brand-400: #34cf80;
+  --color-brand-500: #12a862;
+  --color-brand-600: #0b8a4f;
+  --color-brand-700: #087443;
+  --color-brand-800: #095c37;
+  --color-brand-900: #084b2e;
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 4px 12px rgb(15 23 42 / 0.06);
+}
