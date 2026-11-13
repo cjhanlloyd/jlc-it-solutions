@@ -53,7 +53,10 @@ async function save(env: Env, adminEmail: string, current: Awaited<ReturnType<ty
   }
   let saved = false;
   try {
-    await env.DB.prepare("UPDATE payment_settings SET gcash_account_name = ?, gcash_number = ?, instructions = ?, deadline_hours = ?, qr_key = ?, updated_at = ? WHERE id = 'default'")
+    // Upsert: a database without the 'default' row (production lost its seed) must still save
+    await env.DB.prepare(`INSERT INTO payment_settings (id, gcash_account_name, gcash_number, instructions, deadline_hours, qr_key, updated_at)
+      VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6)
+      ON CONFLICT(id) DO UPDATE SET gcash_account_name = ?1, gcash_number = ?2, instructions = ?3, deadline_hours = ?4, qr_key = ?5, updated_at = ?6`)
       .bind(next.gcashAccountName, next.gcashNumber, next.instructions, next.deadlineHours, newKey ?? current.qrKey, new Date().toISOString()).run();
     saved = true;
   } finally {

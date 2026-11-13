@@ -233,6 +233,18 @@ test('refund, assign, note', async () => {
   assert.equal((await act(w, 'adm', { action: 'bogus' })).status, 400);
 });
 
+test('payment-settings: save creates the settings row when it is missing (production had none)', async () => {
+  db.exec.exec('DELETE FROM payment_settings');
+  const res = await call(paymentSettings, '/api/admin/payment-settings', { as: 'boss', body: { gcashAccountName: 'JLC Solutions', gcashNumber: '09171234567', qrImage: dataUrl('png', PNG) } });
+  assert.equal(res.status, 200);
+  const rows = q('SELECT * FROM payment_settings');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].id, 'default');
+  assert.equal(rows[0].gcash_account_name, 'JLC Solutions');
+  assert.match(rows[0].qr_key, /^settings\/gcash-qr-\d+\.png$/);
+  assert.equal(rows[0].deadline_hours, 48);
+});
+
 test('payment-settings: GET, save fields, SVG-as-PNG → 400, PNG → qr_key set and old object deleted', async () => {
   db.exec.exec("UPDATE payment_settings SET qr_key = 'settings/old.png'");
   r2.map.set('settings/old.png', { body: 'old', bytes: new Uint8Array([1]), httpMetadata: { contentType: 'image/png' } });
