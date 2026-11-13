@@ -26,10 +26,12 @@ export function makeD1({ migrations = true } = {}) {
     bind: (...a) => stmt(sql, args(a)),
     first: async () => plain(db.prepare(sql).get(...params)),
     all: async () => ({ results: db.prepare(sql).all(...params).map(plain) }),
-    run: async () => {
+    // sync so batch() never yields to the event loop inside its transaction
+    runSync: () => {
       const r = db.prepare(sql).run(...params);
       return { success: true, meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) } };
     },
+    run: async () => stmt(sql, params).runSync(),
   });
   return {
     exec: db,
@@ -38,7 +40,7 @@ export function makeD1({ migrations = true } = {}) {
       const out = [];
       db.exec('BEGIN');
       try {
-        for (const s of stmts) out.push(await s.run());
+        for (const s of stmts) out.push(s.runSync());
         db.exec('COMMIT');
       } catch (e) {
         db.exec('ROLLBACK');
