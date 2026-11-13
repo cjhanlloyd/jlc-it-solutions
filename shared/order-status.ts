@@ -26,7 +26,7 @@ export const CUSTOMER_MESSAGE: Record<OrderStatus, string> = {
   payment_verification: 'We received your GCash receipt and are checking your payment.',
   payment_confirmed: 'Your GCash payment is confirmed and your order is queued for production.',
   in_production: 'We are now working on your order.',
-  for_review: 'Your design is ready for you to review.',
+  for_review: "Your payment is confirmed. We're doing a final check before your invitation goes live.",
   revision_requested: 'We received your revision request and are working on the changes.',
   completed: 'Your order is complete.',
   delivered: 'Your order has been delivered. Thank you!',

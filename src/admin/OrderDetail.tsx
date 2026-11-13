@@ -27,6 +27,7 @@ const label = (s: string | null) => (s ? STATUS_LABEL[s as OrderStatus] ?? s : '
 function Receipt({ session, url }: { session: Session; url: string }) {
   const [src, setSrc] = useState('');
   const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     let stale = false;
     session.image(url).then((s) => { if (!stale) setSrc(s); }, (e: Error) => { if (!stale) setError(e.message); });
@@ -34,7 +35,12 @@ function Receipt({ session, url }: { session: Session; url: string }) {
   }, [session, url]);
   if (error) return <p className="text-sm text-red-700">{error}</p>;
   if (!src) return <p className="flex items-center gap-2 text-sm text-slate-600"><Spinner /> Loading receipt…</p>;
-  return <a href={src} target="_blank" rel="noreferrer"><img src={src} alt="GCash receipt" className="max-h-[32rem] w-auto rounded-control border border-slate-200" /></a>;
+  return (
+    <div>
+      <img src={src} alt="GCash receipt" className={`${expanded ? '' : 'max-h-[32rem] '}w-auto max-w-full rounded-control border border-slate-200`} />
+      <button type="button" onClick={() => setExpanded(!expanded)} className="mt-1 text-xs font-semibold text-brand-800 underline">{expanded ? 'Shrink' : 'Expand'}</button>
+    </div>
+  );
 }
 
 type Confirm = { kind: 'reject'; paymentId: number } | { kind: 'refund' } | { kind: 'cancel' };
@@ -121,11 +127,11 @@ export default function OrderDetail({ session, id }: { session: Session; id: num
           <h2 className="font-display text-lg font-semibold">{confirm.kind === 'reject' ? 'Reject this payment?' : confirm.kind === 'refund' ? 'Refund this order?' : 'Cancel this order?'}</h2>
           <p className="mt-1 text-sm text-slate-600">
             {confirm.kind === 'reject' ? 'The order goes back to Pending Payment and the customer is emailed the reason.'
-              : confirm.kind === 'refund' ? 'Send the money back by GCash first. The invitation is taken down and its photos deleted. This cannot be undone.'
+              : confirm.kind === 'refund' ? 'The invitation goes offline. Refund the customer in GCash first. This cannot be undone.'
                 : 'The customer is emailed and the order cannot be reopened.'}
           </p>
           <div className="mt-3">
-            <TextArea label={confirm.kind === 'reject' ? 'Reason (shown to the customer)' : 'Note (optional)'} rows={3} required={confirm.kind === 'reject'}
+            <TextArea label={confirm.kind === 'reject' ? 'Reason (shown to the customer)' : 'Note (shown to the customer)'} rows={3} required={confirm.kind === 'reject'}
               maxLength={confirm.kind === 'reject' ? LIMITS.rejectReason : 1000} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">

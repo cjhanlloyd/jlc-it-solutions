@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // Public order page API: view an order, upload a GCash receipt, find an order by reference + email, the GCash QR.
 import { sha256 } from '../../../server/crypto';
+import { decodeSegment } from '../../../server/guest-invitation';
 import { decodeImage } from '../../../server/images';
 import { notify } from '../../../server/order-emails';
 import { verifyOrderView, signOrderView } from '../../../server/order-view';
@@ -39,7 +40,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     const m = route.match(/^(GET|POST) \/api\/orders\/([^/]+)(\/receipt)?$/);
     if (!m || (m[1] === 'GET') === !!m[3]) return json({ error: 'Not found.' }, 404);
-    const order = await authorized(request, env, decodeURIComponent(m[2]));
+    const order = await authorized(request, env, decodeSegment(m[2]) ?? '');
     if (!order) return NOT_FOUND();
     return m[3] ? await receipt(context, order) : await view(context, order);
   } catch (e) {
@@ -98,7 +99,7 @@ async function receipt(context: EventContext<Env, any, any>, order: any): Promis
   if (img === 'size') return json({ error: 'The receipt image is too large (max 5 MB).' }, 400);
   if (img === 'type') return json({ error: 'The receipt must be a JPEG, PNG or WebP image.' }, 400);
 
-  const key = `receipts/${order.id}/${now.getTime()}.${img.ext}`;
+  const key = `receipts/${order.id}/${now.getTime()}-${crypto.randomUUID().slice(0, 8)}.${img.ext}`;
   await env.PHOTOS.put(key, img.bytes, { httpMetadata: { contentType: `image/${img.type}` } });
   const at = now.toISOString();
   let moved = false;

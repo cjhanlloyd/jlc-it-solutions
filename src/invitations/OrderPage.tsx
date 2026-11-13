@@ -18,7 +18,8 @@ type Order = {
 };
 
 function takeToken(reference: string): string {
-  const fromHash = decodeURIComponent(window.location.hash.slice(1));
+  let fromHash = '';
+  try { fromHash = decodeURIComponent(window.location.hash.slice(1)); } catch { /* malformed hash: treat as no token */ }
   if (fromHash) {
     try { sessionStorage.setItem(orderKey(reference), fromHash); } catch { /* private mode: token kept in memory only */ }
     window.history.replaceState(null, '', window.location.pathname);

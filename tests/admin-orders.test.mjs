@@ -268,3 +268,11 @@ test('createdAt from SQLite CURRENT_TIMESTAMP comes back as ISO UTC (ends in Z) 
   const detail = await (await api(`/${id}`, { as: 'boss' })).json();
   assert.match(detail.order.createdAt, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
 });
+
+test('a JSON null body is a 400, not a 500', async () => {
+  const id = addOrder('in_production');
+  const headers = { Authorization: 'Bearer ' + await signAdminToken('adm@jlc.test', SECRET) };
+  const res = await orders({ request: new Request(`https://shop.test/api/admin/orders/${id}`, { method: 'POST', body: 'null', headers }),
+    env: { DB: db, PHOTOS: r2, JWT_SECRET: SECRET }, waitUntil(p) { background.push(p); } });
+  assert.equal(res.status, 400);
+});

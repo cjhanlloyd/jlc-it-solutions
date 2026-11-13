@@ -153,7 +153,7 @@ const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
 async function action(context: EventContext<Env, any, any>, me: Admin, id: number): Promise<Response> {
   const { request, env } = context;
-  const b: any = await request.json().catch(() => ({}));
+  const b: any = (await request.json().catch(() => null)) ?? {};
   const kind = String(b.action ?? '');
   const need = kind === 'status' ? own(STATUS_ACTION, b.to) : own(REQUIRES, kind);
   if (!need) return json({ error: kind === 'status' ? 'That status cannot be set directly.' : 'Unknown action.' }, 400);
@@ -162,8 +162,10 @@ async function action(context: EventContext<Env, any, any>, me: Admin, id: numbe
   if (!order) return NOT_FOUND();
   const actor = me.email;
   const later = (k: Parameters<typeof notify>[3], extra?: Parameters<typeof notify>[4]) => context.waitUntil(notify(env.DB, request, id, k, extra));
-  const audit = (what: string) => env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'order', ?)")
-    .bind(new Date().toISOString(), `${actor} ${what} on order ${order.reference}`).run();
+  // The change is already committed, so a failed audit row is logged, not surfaced
+  const audit = async (what: string) => {
+    try { await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'order', ?)").bind(new Date().toISOString(), `${actor} ${what} on order ${order.reference}`).run(); } catch (e) { console.error("audit log failed:", e); }
+  };
   // The payment must belong to this order
   const paymentOf = async () => Number.isInteger(b.paymentId)
     && !!await env.DB.prepare('SELECT 1 FROM payments WHERE id = ? AND order_id = ?').bind(b.paymentId, id).first();
@@ -175,8 +177,8 @@ async function action(context: EventContext<Env, any, any>, me: Admin, id: numbe
       if (!await paymentOf()) return json({ error: 'Payment not found.' }, 404);
       const r = await confirmPayment(env.DB, b.paymentId, { actor, adminReference: ref || undefined });
       if (!r.ok) return fail(r);
-      await audit(`approve payment ${b.paymentId}`);
       later('confirmed');
+      await audit(`approve payment ${b.paymentId}`);
       return json({ ok: true });
     }
     case 'reject': {
@@ -185,8 +187,8 @@ async function action(context: EventContext<Env, any, any>, me: Admin, id: numbe
       if (!await paymentOf()) return json({ error: 'Payment not found.' }, 404);
       const r = await rejectPayment(env.DB, b.paymentId, { actor, reason });
       if (!r.ok) return fail(r);
-      await audit(`reject payment ${b.paymentId}`);
       later('rejected', { reason });
+      await audit(`reject payment ${b.paymentId}`);
       return json({ ok: true });
     }
     case 'status': {
@@ -195,16 +197,16 @@ async function action(context: EventContext<Env, any, any>, me: Admin, id: numbe
       if (!canTransition(order.status, b.to)) return json({ error: `An order in ${label(order.status)} cannot move to ${label(b.to)}.` }, 400);
       const r = await transition(env.DB, id, b.to, { actor, note: note || undefined });
       if (!r.ok) return fail(r);
-      await audit(`status ${order.status} -> ${b.to}`);
       if (b.to === 'cancelled') later('cancelled');
+      await audit(`status ${order.status} -> ${b.to}`);
       return json({ ok: true });
     }
     case 'deliver': {
       const r = await deliver(env.DB, id, { actor });
       if (!r.ok) return fail(r);
-      await audit('deliver');
       const smtp = await env.DB.prepare("SELECT enabled FROM smtp_settings WHERE id = 'default'").first<any>();
       later('delivered');
+      await audit('deliver');
       return json({ ok: true, emailed: !!smtp?.enabled });
     }
     case 'refund': {
@@ -212,8 +214,8 @@ async function action(context: EventContext<Env, any, any>, me: Admin, id: numbe
       if (note.length > 1000) return json({ error: 'The note is too long (max 1000).' }, 400);
       const r = await refund(env.DB, env.PHOTOS, id, { actor, note: note || undefined });
       if (!r.ok) return fail(r);
-      await audit('refund');
       later('refunded');
+      await audit('refund');
       return json({ ok: true });
     }
     case 'assign': {
@@ -237,8 +239,8 @@ async function action(context: EventContext<Env, any, any>, me: Admin, id: numbe
       if (order.status !== 'delivered') return json({ error: 'Only a delivered order can be resent.' }, 409);
       const smtp = await env.DB.prepare("SELECT enabled FROM smtp_settings WHERE id = 'default'").first<any>();
       if (!smtp?.enabled) return json({ error: 'Email is not configured; enable SMTP first.' }, 409);
-      await audit('resend');
       later('delivered');
+      await audit('resend');
       return json({ ok: true });
     }
   }

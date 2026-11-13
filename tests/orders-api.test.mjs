@@ -237,3 +237,9 @@ test('customer GET: createdAt from SQLite CURRENT_TIMESTAMP comes back as ISO UT
   const o = await (await view(a.reference, a.trackingToken)).json();
   assert.match(o.createdAt, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
 });
+
+test('a malformed percent sequence in the reference is the same 404, not a 500', async () => {
+  const res = await orders(ctx(req('/api/orders/JLC-%E0%A4%A', { token: 'x' })));
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: 'Order not found.' });
+});
