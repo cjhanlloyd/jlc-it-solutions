@@ -3,7 +3,10 @@ import { randomToken, sha256 } from '../../../server/crypto';
 import { EMAIL_RE } from '../../../server/email';
 import { decodeSegment, findGuestInvitation, todayUtc } from '../../../server/guest-invitation';
 import { emailAndRotateToken } from '../../../server/invitation-links';
-import { createCheckoutSession } from '../../../server/paymongo';
+import { notify } from '../../../server/order-emails';
+import { newReference } from '../../../server/orders';
+import { activeProvider, loadPaymentSettings } from '../../../server/payments';
+import { turnstileError } from '../../../server/turnstile';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
 import { occasionOf } from '../../../shared/occasions';
 
@@ -11,8 +14,7 @@ interface Env {
   DB: D1Database;
   PHOTOS: R2Bucket;
   TURNSTILE_SECRET_KEY?: string;
-  PAYMONGO_SECRET_KEY?: string;
-  PAYMONGO_WEBHOOK_SECRET?: string;
+  PAYMONGO_SECRET_KEY?: string; // only when payment_settings.provider is 'paymongo'
 }
 
 const json = (data: unknown, status = 200) => Response.json(data, { status });
@@ -36,12 +38,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       })) });
     }
 
-    if (route === 'GET /api/invitations/order-status') {
-      const order = await env.DB.prepare('SELECT status FROM orders WHERE id = ?').bind(url.searchParams.get('order') ?? '').first<any>();
-      return order ? json({ status: order.status }) : json({ error: 'Order not found.' }, 404);
-    }
-
-    if (route === 'POST /api/invitations/checkout') return await checkout(request, env, url.origin);
+    if (route === 'POST /api/invitations/checkout') return await checkout(context, url.origin);
     if (route === 'POST /api/invitations/resend') return await resend(context, url.origin);
 
     const rsvpSlug = route.match(/^POST \/api\/invitations\/i\/([^/]+)\/rsvp$/)?.[1];
@@ -80,17 +77,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 };
 
-// Returns an error response, or null when the Turnstile token is valid.
-async function turnstileError(request: Request, env: Env, token: unknown): Promise<Response | null> {
-  if (!env.TURNSTILE_SECRET_KEY) return json({ error: 'Server misconfigured: the anti-spam key is not set.' }, 500);
-  if (typeof token !== 'string' || !token) return json({ error: 'Please complete the anti-spam check.' }, 400);
-  const verification: any = await (await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: request.headers.get('CF-Connecting-IP') || '127.0.0.1' }),
-  })).json();
-  return verification.success ? null : json({ error: 'The anti-spam check failed. Please try again.' }, 400);
-}
-
 const photoError = (p: unknown): string | null =>
   typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Photos must be JPEG, PNG or WebP images.'
     : p.length > LIMITS.photoChars ? 'A photo is too large.' : null;
@@ -104,13 +90,21 @@ async function putPhoto(env: Env, invitationId: number, n: number, p: string): P
   return key;
 }
 
-async function checkout(request: Request, env: Env, origin: string): Promise<Response> {
+async function checkout(context: EventContext<Env, any, any>, origin: string): Promise<Response> {
+  const { request, env } = context;
+  const settings = await loadPaymentSettings(env.DB);
+  const provider = activeProvider(settings);
+  if (provider.ready(settings)) return json({ error: 'Online ordering is paused while we update payment details. Please contact us.' }, 503);
+
   const body: any = await request.json().catch(() => ({}));
   const email = String(body.email ?? '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return json({ error: 'Please enter a valid email address.' }, 400);
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!name || name.length > LIMITS.customerName) return json({ error: `Please enter your name (up to ${LIMITS.customerName} characters).` }, 400);
+  const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+  if ((body.phone != null && typeof body.phone !== 'string') || phone.length > LIMITS.phone) return json({ error: `The phone number is too long (max ${LIMITS.phone}).` }, 400);
 
-  if (!env.TURNSTILE_SECRET_KEY || !env.PAYMONGO_SECRET_KEY) return json({ error: 'Server misconfigured: payment keys are not set.' }, 500);
-  const spam = await turnstileError(request, env, body.turnstileToken);
+  const spam = await turnstileError(request, env.TURNSTILE_SECRET_KEY, body.turnstileToken);
   if (spam) return spam;
 
   if (body.termsAccepted !== true) return json({ error: 'Please accept the terms to continue.' }, 400);
@@ -138,43 +132,47 @@ async function checkout(request: Request, env: Env, origin: string): Promise<Res
     if (err) return json({ error: err }, 400);
   }
 
-  const token = randomToken();
+  const trackingToken = randomToken();
+  const reference = newReference();
+  const now = new Date();
   const suffix = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('');
   const slug = makeSlug(occasion.slugBase(details), suffix);
-  // Rows first, so the R2 keys can use the real invitation id
-  const inv = await env.DB.prepare(
-    "INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?)",
-  ).bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(token)).run();
+  // One transaction for customer, invitation, order and its first event. Rows before photos, so the R2 keys
+  // can use the real invitation id. The manage token is random and unused: delivery emails a fresh one.
+  // shortcut: a reference collision (1 in ~887M per pair) fails the unique index → 500; retry if orders grow huge.
+  const [, inv, ord] = await env.DB.batch([
+    env.DB.prepare('INSERT INTO customers (email, name, phone) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET name = excluded.name, phone = COALESCE(excluded.phone, phone)')
+      .bind(email, name, phone || null),
+    env.DB.prepare("INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?)")
+      .bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(randomToken())),
+    env.DB.prepare("INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at, reference, customer_id, provider, payment_deadline, tracking_token_hash, updated_at) VALUES (last_insert_rowid(), ?, ?, 'pending_payment', ?, ?, (SELECT id FROM customers WHERE email = ?), ?, ?, ?, ?)")
+      .bind(email, design.price_centavos, now.toISOString(), reference, email, provider.key,
+        new Date(now.getTime() + settings.deadlineHours * 3_600_000).toISOString(), await sha256(trackingToken), now.toISOString()),
+    env.DB.prepare("INSERT INTO order_events (order_id, at, actor, kind, from_status, to_status, note, visible) VALUES (last_insert_rowid(), ?, 'customer', 'status', NULL, 'pending_payment', 'Order placed', 1)")
+      .bind(now.toISOString()),
+  ]);
   const invitationId = inv.meta.last_row_id;
-  const ord = await env.DB.prepare(
-    "INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at) VALUES (?, ?, ?, 'pending', ?)",
-  ).bind(invitationId, email, design.price_centavos, new Date().toISOString()).run();
   const orderId = ord.meta.last_row_id;
 
   const keys: string[] = [];
+  let start;
   try {
     for (const [n, p] of (photos as string[]).entries()) keys.push(await putPhoto(env, invitationId, n, p));
     await env.DB.prepare('UPDATE invitations SET photos = ? WHERE id = ?').bind(JSON.stringify(keys), invitationId).run();
-
-    const session = await createCheckoutSession(env.PAYMONGO_SECRET_KEY, {
-      amountCentavos: design.price_centavos,
-      itemName: `${occasion.label} invitation: ${design.name}`,
-      referenceNumber: String(orderId),
-      successUrl: `${origin}/invitations/success#${orderId}.${token}`,
-      cancelUrl: `${origin}/invitations/${design.slug}`,
-      customerEmail: email,
-      metadata: { order_id: String(orderId) },
-    });
-    await env.DB.prepare('UPDATE orders SET paymongo_checkout_id = ? WHERE id = ?').bind(session.id, orderId).run();
-    // slug lets the success page link the guest page; order-status can't return it (order ids are guessable)
-    return json({ checkoutUrl: session.checkoutUrl, slug });
+    start = await provider.start({ id: orderId, reference, amountCentavos: design.price_centavos, email, itemName: `${occasion.label} invitation: ${design.name}` }, { env, origin });
+    if (start.kind === 'redirect') await env.DB.prepare('UPDATE orders SET paymongo_checkout_id = ? WHERE id = ?').bind(start.providerRef, orderId).run();
   } catch (e) {
     console.error('checkout failed:', e instanceof Error ? e.message : e);
     if (keys.length) await env.PHOTOS.delete(keys);
-    await env.DB.prepare('DELETE FROM orders WHERE id = ?').bind(orderId).run();
-    await env.DB.prepare('DELETE FROM invitations WHERE id = ?').bind(invitationId).run();
-    return json({ error: 'We could not start the payment. Please try again in a moment.' }, 502);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM order_events WHERE order_id = ?').bind(orderId),
+      env.DB.prepare('DELETE FROM orders WHERE id = ?').bind(orderId),
+      env.DB.prepare('DELETE FROM invitations WHERE id = ?').bind(invitationId),
+    ]);
+    return json({ error: 'We could not place your order. Please try again in a moment.' }, 502);
   }
+  context.waitUntil(notify(env.DB, request, orderId, 'placed', { trackingToken }));
+  return json({ reference, trackingToken, ...(start.kind === 'redirect' ? { checkoutUrl: start.url } : {}) });
 }
 
 // Body: { details, photos }. photos is the full desired list; each entry is either one of this
@@ -256,7 +254,7 @@ async function guest(env: Env, slug: string | null): Promise<Response> {
 
 async function rsvp(request: Request, env: Env, slug: string): Promise<Response> {
   const body: any = await request.json().catch(() => ({}));
-  const spam = await turnstileError(request, env, body.turnstileToken);
+  const spam = await turnstileError(request, env.TURNSTILE_SECRET_KEY, body.turnstileToken);
   if (spam) return spam;
 
   const inv = await env.DB.prepare("SELECT i.id, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.slug = ? AND i.status = 'live'").bind(slug).first<any>();
@@ -280,7 +278,7 @@ async function rsvp(request: Request, env: Env, slug: string): Promise<Response>
 async function resend(context: EventContext<Env, any, any>, origin: string): Promise<Response> {
   const { request, env } = context;
   const body: any = await request.json().catch(() => ({}));
-  const spam = await turnstileError(request, env, body.turnstileToken);
+  const spam = await turnstileError(request, env.TURNSTILE_SECRET_KEY, body.turnstileToken);
   if (spam) return spam;
   const email = String(body.email ?? '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return json({ ok: true });
@@ -297,7 +295,7 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
   context.waitUntil((async () => {
     try {
       const { results } = await env.DB.prepare(
-        "SELECT i.id, i.slug FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.customer_email = ? AND o.status = 'paid' AND i.status = 'live'",
+        "SELECT i.id, i.slug FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.customer_email = ? AND o.status = 'delivered' AND i.status = 'live'",
       ).bind(email).all<any>();
       if (!results?.length) return;
       const smtp: any = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();

@@ -14,7 +14,7 @@ const AFTER_PREV = ' AND changes() = 1';
 const label = (s: string) => STATUS_LABEL[s as OrderStatus] ?? s;
 
 // [UPDATE orders, INSERT its status event]; the event is written only if the UPDATE matched.
-function move(db: D1Database, orderId: number, from: string, to: OrderStatus, o: Actor, at: string, guard = '', guardArgs: unknown[] = []) {
+export function move(db: D1Database, orderId: number, from: string, to: OrderStatus, o: Actor, at: string, guard = '', guardArgs: unknown[] = []) {
   return [
     db.prepare(`UPDATE orders SET status = ?1, updated_at = ?2, delivered_at = CASE WHEN ?1 = 'delivered' THEN ?2 ELSE delivered_at END WHERE id = ?3 AND status = ?4${guard}`)
       .bind(to, at, orderId, from, ...guardArgs),
