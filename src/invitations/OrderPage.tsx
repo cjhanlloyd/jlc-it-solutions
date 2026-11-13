@@ -33,10 +33,12 @@ export default function OrderPage({ reference }: { reference: string }) {
   const [token, setToken] = React.useState(() => takeToken(reference));
   const [order, setOrder] = React.useState<Order | null | 'missing' | 'offline'>(null);
   const [now, setNow] = React.useState(Date.now());
+  // Kept here, not in PaymentCard: a 409 usually means the reload drops the payment card.
+  const [notice, setNotice] = React.useState('');
 
-  const load = React.useCallback(() => {
+  const load = React.useCallback(async () => {
     if (!token) return;
-    fetch(`/api/orders/${encodeURIComponent(reference)}`, { headers: { 'X-Order-Token': token } })
+    return fetch(`/api/orders/${encodeURIComponent(reference)}`, { headers: { 'X-Order-Token': token } })
       .then(async (res) => {
         if (res.status === 404) {
           try { sessionStorage.removeItem(orderKey(reference)); } catch { /* private mode */ }
@@ -49,7 +51,7 @@ export default function OrderPage({ reference }: { reference: string }) {
       .catch(() => setOrder('offline'));
   }, [reference, token]);
 
-  React.useEffect(load, [load]);
+  React.useEffect(() => { load(); }, [load]);
 
   const pending = typeof order === 'object' && order?.status === 'pending_payment' ? order : null;
   React.useEffect(() => {
@@ -89,6 +91,7 @@ export default function OrderPage({ reference }: { reference: string }) {
   return (
     <div className="bg-slate-50 py-10 px-4 select-text">
       <div className="max-w-2xl mx-auto space-y-5">
+        {notice && <Alert>{notice}</Alert>}
         <Card className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-xl font-extrabold text-slate-900 font-display">Your order</h1>
@@ -105,7 +108,7 @@ export default function OrderPage({ reference }: { reference: string }) {
           </dl>
         </Card>
 
-        {order.payment && <PaymentCard order={order} payment={order.payment} token={token} now={now} reload={load} />}
+        {order.payment && <PaymentCard order={order} payment={order.payment} token={token} now={now} reload={load} setNotice={setNotice} />}
 
         {order.status === 'delivered' && (
           <Card className="space-y-3">
@@ -148,7 +151,9 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-function PaymentCard({ order, payment, token, now, reload }: { order: Order; payment: NonNullable<Order['payment']>; token: string; now: number; reload: () => void }) {
+function PaymentCard({ order, payment, token, now, reload, setNotice }: {
+  order: Order; payment: NonNullable<Order['payment']>; token: string; now: number; reload: () => Promise<void>; setNotice: (msg: string) => void;
+}) {
   const [image, setImage] = React.useState('');
   const [customerReference, setCustomerReference] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -173,9 +178,12 @@ function PaymentCard({ order, payment, token, now, reload }: { order: Order; pay
         body: JSON.stringify({ image, customerReference: customerReference.trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) return reload();
-      setError(data.error || 'Something went wrong. Please try again.');
-      if (res.status === 409) reload();
+      if (res.ok || res.status === 409) {
+        setNotice(res.ok ? '' : data.error || 'This order is no longer waiting for payment.');
+        await reload();
+      } else {
+        setError(data.error || 'Something went wrong. Please try again.');
+      }
     } catch {
       setError('We could not reach the server. Please check your connection and try again.');
     }

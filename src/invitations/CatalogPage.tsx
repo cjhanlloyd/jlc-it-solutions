@@ -9,7 +9,7 @@ import { occasionChips, occasionLabel } from './occasions';
 
 // Same normalising the customiser preview does, so layouts get a complete details object.
 const sampleOf = (d: { productType: string; sampleDetails: any }) => { const f = formOf(d.productType); return f ? f.preview(f.toDraft(d.sampleDetails), f.toDraft(d.sampleDetails)) : d.sampleDetails; };
-const STEPS = ['Choose a design', 'Add your details and photos', 'Pay by QR Ph and share one link'];
+const STEPS = ['Choose a design', 'Add your details and photos', 'Pay with GCash and share one link'];
 
 export default function CatalogPage({ btn }: { btn: string }) {
   useInvitationFonts();
@@ -39,7 +39,7 @@ export default function CatalogPage({ btn }: { btn: string }) {
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display">Find your invitation design</h1>
           <p className="text-sm sm:text-base text-slate-500 leading-relaxed">
-            Tap Preview to see a design exactly as your guests will. Add your details, pay by QR Ph, and share one link — guests RSVP right on the page.
+            Tap Preview to see a design exactly as your guests will. Add your details, pay with GCash, and share one link — guests RSVP right on the page.
           </p>
         </div>
 

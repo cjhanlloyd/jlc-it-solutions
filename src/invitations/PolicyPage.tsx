@@ -34,7 +34,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
     'refund-policy': {
       title: 'Refund Policy',
       body: <>
-        <p>We want you to be happy with your invitation. Because it is a digital product that goes live right after payment, refunds work as follows.</p>
+        <p>We want you to be happy with your invitation. Because it is a digital product that we deliver once we have verified your GCash payment, refunds work as follows.</p>
         <h2>When you can ask for a refund</h2>
         <p>You may request a refund within 7 days of payment, as long as you have not yet shared the invitation with your guests (for example, no RSVPs have been received). We may also refund if your invitation could not be published or did not work because of a problem on our side.</p>
         <h2>How refunds are decided</h2>
