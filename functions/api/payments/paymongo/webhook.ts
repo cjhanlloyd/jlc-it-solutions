@@ -46,16 +46,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
       return json({ ok: true });
     }
-    // Past verification already (repeat delivery): nothing to do
-    if (order.status !== 'pending_payment') return json({ ok: true });
-
-    const moved = await transition(env.DB, order.id, 'payment_verification', { actor: 'paymongo' });
-    if (!moved.ok) return json({ ok: true }); // changed meanwhile; a retry or the admin settles it
-    const paymentId = session.attributes?.payments?.[0]?.id ?? null;
-    const pay = await env.DB.prepare("INSERT INTO payments (order_id, provider, amount_centavos, status, customer_reference, submitted_at) VALUES (?, 'paymongo', ?, 'submitted', ?, ?)")
-      .bind(order.id, order.amount_centavos, paymentId, new Date().toISOString()).run();
-    const done = await confirmPayment(env.DB, pay.meta.last_row_id, { actor: 'paymongo' });
-    if (!done.ok) throw new Error(done.error);
+    // Every step below is resumable: a retry after a mid-processing failure continues where it stopped
+    if (order.status === 'payment_confirmed') {
+      const next = await transition(env.DB, order.id, 'for_review', { actor: 'system' });
+      if (!next.ok) throw new Error(next.error);
+    } else if (order.status === 'pending_payment' || order.status === 'payment_verification') {
+      if (order.status === 'pending_payment') {
+        const moved = await transition(env.DB, order.id, 'payment_verification', { actor: 'paymongo' });
+        if (!moved.ok) throw new Error(moved.error);
+      }
+      let pay = await env.DB.prepare("SELECT id FROM payments WHERE order_id = ? AND provider = 'paymongo' AND status = 'submitted' ORDER BY id LIMIT 1").bind(order.id).first<any>();
+      if (!pay) {
+        const ins2 = await env.DB.prepare("INSERT INTO payments (order_id, provider, amount_centavos, status, customer_reference, submitted_at) VALUES (?, 'paymongo', ?, 'submitted', ?, ?)")
+          .bind(order.id, order.amount_centavos, session.attributes?.payments?.[0]?.id ?? null, new Date().toISOString()).run();
+        pay = { id: ins2.meta.last_row_id };
+      }
+      const done = await confirmPayment(env.DB, pay.id, { actor: 'paymongo' });
+      if (!done.ok) throw new Error(done.error);
+    } else return json({ ok: true }); // past review already (repeat delivery)
     context.waitUntil(notify(env.DB, request, order.id, 'confirmed'));
     return json({ ok: true });
   } catch (e) {

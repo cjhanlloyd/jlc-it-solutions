@@ -93,3 +93,30 @@ test('webhook: other event types are stored and return 200', async () => {
   assert.equal((await hook(db, body)).status, 200);
   assert.equal(q(db, 'SELECT type FROM payment_events')[0].type, 'payment.failed');
 });
+
+test('webhook: failure after the transition → the retry still ends in for_review with one confirmed payment', async () => {
+  const db = seed();
+  let fail = true;
+  const flaky = { prepare: (sql) => { if (fail && /^INSERT INTO payments/.test(sql)) { fail = false; throw new Error('boom'); } return db.prepare(sql); }, batch: (s) => db.batch(s) };
+  const err = console.error; console.error = () => {};
+  const body = paid();
+  try { assert.equal((await hook(flaky, body)).status, 500); } finally { console.error = err; }
+  assert.equal(q(db, 'SELECT status FROM orders')[0].status, 'payment_verification');
+  assert.equal((await hook(flaky, body)).status, 200);
+  assert.equal(q(db, 'SELECT status FROM orders')[0].status, 'for_review');
+  assert.deepEqual(q(db, 'SELECT status FROM payments').map(p => p.status), ['confirmed']);
+});
+
+test('webhook: order in payment_verification with a submitted paymongo payment → for_review, one payment', async () => {
+  const db = seed('payment_verification');
+  db.exec.exec("INSERT INTO payments (order_id, provider, amount_centavos, status, submitted_at) VALUES (1, 'paymongo', 150000, 'submitted', '2026-11-11T00:00:00Z')");
+  assert.equal((await hook(db, paid())).status, 200);
+  assert.equal(q(db, 'SELECT status FROM orders')[0].status, 'for_review');
+  assert.deepEqual(q(db, 'SELECT status FROM payments').map(p => p.status), ['confirmed']);
+});
+
+test('webhook: order stuck in payment_confirmed → moved on to for_review', async () => {
+  const db = seed('payment_confirmed');
+  assert.equal((await hook(db, paid())).status, 200);
+  assert.equal(q(db, 'SELECT status FROM orders')[0].status, 'for_review');
+});
