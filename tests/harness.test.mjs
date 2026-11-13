@@ -49,3 +49,11 @@ test('undefined binds as null', async () => {
   await db.prepare('INSERT INTO admins (email, fullName, createdAt, passwordHash) VALUES (?, ?, ?, ?)').bind('u@x.com', 'U', 'now', undefined).run();
   assert.equal((await db.prepare('SELECT passwordHash FROM admins').first()).passwordHash, null);
 });
+
+test('concurrent batches and a racing run are serialised', async () => {
+  const db = makeD1();
+  const add = (e) => db.prepare('INSERT INTO admins (email, fullName, createdAt) VALUES (?, ?, ?)').bind(e, 'A', 'now');
+  await Promise.all([db.batch([add('a'), add('b')]), db.batch([add('c'), add('d')]), add('e').run()]);
+  const { results } = await db.prepare('SELECT email FROM admins ORDER BY email').all();
+  assert.deepEqual(results.map((r) => r.email), ['a', 'b', 'c', 'd', 'e']);
+});
