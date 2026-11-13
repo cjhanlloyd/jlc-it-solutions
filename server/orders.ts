@@ -14,10 +14,10 @@ const AFTER_PREV = ' AND changes() = 1';
 const label = (s: string) => STATUS_LABEL[s as OrderStatus] ?? s;
 
 // [UPDATE orders, INSERT its status event]; the event is written only if the UPDATE matched.
-function move(db: D1Database, orderId: number, from: string, to: OrderStatus, o: Actor, at: string, guard = '') {
+function move(db: D1Database, orderId: number, from: string, to: OrderStatus, o: Actor, at: string, guard = '', guardArgs: unknown[] = []) {
   return [
     db.prepare(`UPDATE orders SET status = ?1, updated_at = ?2, delivered_at = CASE WHEN ?1 = 'delivered' THEN ?2 ELSE delivered_at END WHERE id = ?3 AND status = ?4${guard}`)
-      .bind(to, at, orderId, from),
+      .bind(to, at, orderId, from, ...guardArgs),
     db.prepare("INSERT INTO order_events (order_id, at, actor, kind, from_status, to_status, note, visible) SELECT ?, ?, ?, 'status', ?, ?, ?, ? WHERE changes() = 1")
       .bind(orderId, at, o.actor, from, to, o.note ?? null, o.visible === false ? 0 : 1),
   ];
@@ -71,16 +71,19 @@ export async function confirmPayment(db: D1Database, paymentId: number, o: { act
   return { ok: true, orderId: p.order_id };
 }
 
-export async function rejectPayment(db: D1Database, paymentId: number, o: { actor: string; reason: string }): Promise<Result> {
+export async function rejectPayment(db: D1Database, paymentId: number, o: { actor: string; reason: string }, now = new Date()): Promise<Result> {
   const reason = String(o.reason ?? '').trim();
   if (!reason || reason.length > 300) return { ok: false, error: 'A reason of up to 300 characters is required.' };
   const p = await reviewable(db, paymentId);
   if (typeof p === 'string') return { ok: false, error: p };
-  const at = new Date().toISOString();
+  const at = now.toISOString();
   const [rejected] = await db.batch([
     db.prepare(`UPDATE payments SET status = 'rejected', note = ?, verified_by = ?, verified_at = ? ${PAYMENT_GUARD}`)
       .bind(reason, o.actor, at, paymentId, p.order_id),
     ...move(db, p.order_id, 'payment_verification', 'pending_payment', { actor: o.actor, note: reason, visible: true }, at, AFTER_PREV),
+    // At least 24 h from now to re-upload (ISO strings compare in time order); runs only if the event above was written
+    db.prepare("UPDATE orders SET payment_deadline = max(COALESCE(payment_deadline, ''), ?) WHERE id = ? AND changes() = 1")
+      .bind(new Date(now.getTime() + 24 * 3_600_000).toISOString(), p.order_id),
   ]);
   if (!rejected.meta.changes) return { ok: false, error: 'This payment was already reviewed, or the order changed meanwhile. Reload and try again.' };
   return { ok: true, orderId: p.order_id };
@@ -115,8 +118,10 @@ export async function refund(db: D1Database, _photos: R2Bucket, orderId: number,
 // payment_deadline is an ISO timestamp. Returns true if this call cancelled the order.
 export async function expireIfOverdue(db: D1Database, photos: R2Bucket, order: { id: number; status: string; payment_deadline: string | null; invitation_id: number }, now: Date): Promise<boolean> {
   if (order.status !== 'pending_payment' || !order.payment_deadline || !(Date.parse(order.payment_deadline) < now.getTime())) return false;
-  const r = await transition(db, order.id, 'cancelled', { actor: 'system', note: 'Payment deadline passed' }, now);
-  if (!r.ok) return false;
+  // Re-checked in SQL: a receipt upload or deadline extension since the caller's read wins
+  const at = now.toISOString();
+  const [upd] = await db.batch(move(db, order.id, 'pending_payment', 'cancelled', { actor: 'system', note: 'Payment deadline passed' }, at, ' AND payment_deadline < ?5', [at]));
+  if (!upd.meta.changes) return false;
   const inv = await db.prepare("SELECT photos FROM invitations WHERE id = ? AND status = 'pending'").bind(order.invitation_id).first<any>();
   // Photos first: if R2 fails the row stays, so its keys are not lost
   if (inv && await deletePhotos(photos, keysOf(inv.photos), `order ${order.id}`)) {

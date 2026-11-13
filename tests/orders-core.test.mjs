@@ -148,6 +148,37 @@ test('expireIfOverdue leaves an order in payment verification alone', async () =
   assert.ok(await photos.get('inv/1/a.jpg'));
 });
 
+test('expireIfOverdue re-checks status and deadline in the database', async () => {
+  const { db, photos } = await seed();
+  const snapshot = { id: 1, status: 'pending_payment', payment_deadline: '2026-11-12T00:00:00.000Z', invitation_id: 1 };
+  await toVerification(db); // receipt uploaded after cleanup's read
+  assert.equal(await O.expireIfOverdue(db, photos, snapshot, NOW), false);
+  assert.equal(one(db, 'SELECT status FROM orders').status, 'payment_verification');
+  assert.equal(one(db, 'SELECT COUNT(*) c FROM invitations').c, 1);
+  assert.ok(await photos.get('inv/1/a.jpg'));
+
+  const s2 = await seed();
+  s2.db.exec.exec("UPDATE orders SET payment_deadline = '2026-11-14T00:00:00.000Z'"); // extended after the read
+  assert.equal(await O.expireIfOverdue(s2.db, s2.photos, snapshot, NOW), false);
+  assert.equal(one(s2.db, 'SELECT status FROM orders').status, 'pending_payment');
+  assert.equal(one(s2.db, 'SELECT COUNT(*) c FROM invitations').c, 1);
+  assert.equal(events(s2.db).length, 0);
+});
+
+test('rejectPayment gives at least 24 hours to re-upload', async () => {
+  const { db } = await seed(); // deadline 2026-11-12T00:00Z
+  await toVerification(db);
+  await O.rejectPayment(db, 1, { actor: 'a', reason: 'Blurry' }, NOW);
+  assert.equal(one(db, 'SELECT payment_deadline d FROM orders').d, '2026-11-14T00:00:00.000Z');
+
+  const s2 = await seed();
+  s2.db.exec.exec("UPDATE orders SET payment_deadline = '2026-11-20T00:00:00.000Z'");
+  await toVerification(s2.db);
+  await O.rejectPayment(s2.db, 1, { actor: 'a', reason: 'Blurry' }, NOW);
+  assert.equal(one(s2.db, 'SELECT payment_deadline d FROM orders').d, '2026-11-20T00:00:00.000Z');
+  assert.equal(one(s2.db, 'SELECT status FROM orders').status, 'pending_payment');
+});
+
 test('newReference matches the format', () => {
   for (let i = 0; i < 1000; i++) assert.match(O.newReference(), /^JLC-[A-HJ-NP-Z2-9]{6}$/);
 });
