@@ -4,7 +4,7 @@ import { sha256 } from '../../../server/crypto';
 import { decodeImage } from '../../../server/images';
 import { notify } from '../../../server/order-emails';
 import { verifyOrderView, signOrderView } from '../../../server/order-view';
-import { expireIfOverdue, move } from '../../../server/orders';
+import { expireIfOverdue, move, sqlUtcToIso } from '../../../server/orders';
 import { loadPaymentSettings, paymentInstructions } from '../../../server/payments';
 import { SECURITY_HEADERS } from '../../../server/security-headers';
 import { turnstileError } from '../../../server/turnstile';
@@ -73,7 +73,7 @@ async function view(context: EventContext<Env, any, any>, order: any): Promise<R
   return json({
     reference: order.reference, status, statusLabel: STATUS_LABEL[status] ?? status, message: CUSTOMER_MESSAGE[status] ?? '',
     title: occasionOf(order.product_type)?.title(parse(order.details, {})) ?? '', designName: order.design_name ?? '',
-    amountCentavos: order.amount_centavos, deadline: order.payment_deadline, createdAt: order.created_at,
+    amountCentavos: order.amount_centavos, deadline: order.payment_deadline, createdAt: sqlUtcToIso(order.created_at),
     events: (events || []).map((e) => ({ at: e.at, label: e.kind === 'status' ? STATUS_LABEL[e.to_status as OrderStatus] ?? e.to_status : 'Update', note: e.note })),
     payment: status === 'pending_payment'
       ? paymentInstructions(await loadPaymentSettings(env.DB), { reference: order.reference, amountCentavos: order.amount_centavos, paymentDeadline: order.payment_deadline })

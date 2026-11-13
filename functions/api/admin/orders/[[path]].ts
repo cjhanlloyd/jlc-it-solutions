@@ -2,7 +2,7 @@
 // Admin orders: list, detail, receipt images and order actions. Every check is a role permission from server/permissions.
 import { verifyAdminToken } from '../../../../server/crypto';
 import { notify } from '../../../../server/order-emails';
-import { addEvent, confirmPayment, deliver, refund, rejectPayment, transition, type Result } from '../../../../server/orders';
+import { addEvent, confirmPayment, deliver, refund, rejectPayment, sqlUtcToIso, transition, type Result } from '../../../../server/orders';
 import { can, type Action } from '../../../../server/permissions';
 import { SECURITY_HEADERS } from '../../../../server/security-headers';
 import { LIMITS } from '../../../../shared/invitation-fields';
@@ -97,7 +97,7 @@ async function list(env: Env, me: Admin, params: URLSearchParams): Promise<Respo
     orders: (results || []).map((o) => ({
       id: o.id, reference: o.reference, status: o.status, statusLabel: label(o.status), title: titleOf(o.product_type, o.details),
       designName: o.design_name ?? '', customerName: o.customer_name ?? '', ...(contact ? { email: o.customer_email } : {}),
-      amountCentavos: o.amount_centavos, createdAt: o.created_at, assignedTo: o.assigned_to,
+      amountCentavos: o.amount_centavos, createdAt: sqlUtcToIso(o.created_at), assignedTo: o.assigned_to,
       // No receipt yet (or a rejected one): the customer must upload
       awaitingReceipt: o.status === 'pending_payment',
     })),
@@ -118,7 +118,7 @@ async function detail(env: Env, me: Admin, id: number): Promise<Response> {
   return json({
     order: {
       id: o.id, reference: o.reference, status: o.status, statusLabel: label(o.status), title: titleOf(o.design_type, o.details), designName: o.design_name ?? '',
-      amountCentavos: o.amount_centavos, provider: o.provider, createdAt: o.created_at, updatedAt: o.updated_at, paymentDeadline: o.payment_deadline,
+      amountCentavos: o.amount_centavos, provider: o.provider, createdAt: sqlUtcToIso(o.created_at), updatedAt: sqlUtcToIso(o.updated_at), paymentDeadline: o.payment_deadline,
       deliveredAt: o.delivered_at, assignedTo: o.assigned_to,
     },
     customer: { name: o.customer_name ?? '', ...(can(me.role, 'orders.contact') ? { email: o.customer_email, phone: o.customer_phone ?? '' } : {}) },

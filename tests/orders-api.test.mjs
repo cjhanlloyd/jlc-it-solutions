@@ -229,3 +229,11 @@ test('receipts are never served by the photo route', async () => {
   const res = await photos({ request: new Request('https://shop.test/photos/receipts/1/x.png'), env: env() });
   assert.equal(res.status, 404);
 });
+
+test('customer GET: createdAt from SQLite CURRENT_TIMESTAMP comes back as ISO UTC (ends in Z)', async () => {
+  gcashReady();
+  const a = await placed();
+  assert.match(q(`SELECT created_at FROM orders WHERE reference = '${a.reference}'`)[0].created_at, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
+  const o = await (await view(a.reference, a.trackingToken)).json();
+  assert.match(o.createdAt, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
+});

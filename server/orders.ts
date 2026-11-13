@@ -4,6 +4,9 @@
 import { canTransition, STATUS_LABEL, type OrderStatus } from '../shared/order-status';
 import { deletePhotos, keysOf } from './cleanup';
 
+// SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC, no zone) → ISO with Z for clients; other values pass through. Storage stays as is.
+export const sqlUtcToIso = (s: string | null) => (s && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(s) ? `${s.replace(' ', 'T')}Z` : s);
+
 export type Result = { ok: true; [k: string]: unknown } | { ok: false; error: string };
 type Actor = { actor: string; note?: string; visible?: boolean };
 

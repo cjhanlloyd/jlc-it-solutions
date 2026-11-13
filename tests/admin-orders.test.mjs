@@ -259,3 +259,12 @@ test('payment-settings: GET, save fields, SVG-as-PNG → 400, PNG → qr_key set
   assert.equal((await ps({ instructions: 'New text' })).status, 200);
   assert.equal(q('SELECT qr_key FROM payment_settings')[0].qr_key, row.qr_key);
 });
+
+test('createdAt from SQLite CURRENT_TIMESTAMP comes back as ISO UTC (ends in Z) in list and detail', async () => {
+  const id = addOrder('payment_verification');
+  assert.match(q(`SELECT created_at FROM orders WHERE id = ${id}`)[0].created_at, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/); // stored format unchanged
+  const list = await (await api('?status=payment_verification', { as: 'boss' })).json();
+  assert.match(list.orders.find((o) => o.id === id).createdAt, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
+  const detail = await (await api(`/${id}`, { as: 'boss' })).json();
+  assert.match(detail.order.createdAt, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
+});
