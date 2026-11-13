@@ -26,7 +26,8 @@ beforeEach(() => {
 const q = (sql) => db.exec.prepare(sql).all();
 let n = 0;
 // Order <status> with its pending invitation and customer; returns the order id
-const addOrder = (status, { email = `c${++n}@example.com`, name = 'Maria Cruz', partner1 = 'Maria' } = {}) => {
+const addOrder = (status, { email = `c${n + 1}@example.com`, name = 'Maria Cruz', partner1 = 'Maria' } = {}) => {
+  n++;
   const i = db.exec.prepare(`INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash)
     VALUES (1, ?, '{"name":"Blush"}', ?, '["inv/x/0.png"]', 'pending', '2027-06-12', ?)`)
     .run(`s-${n}-${Math.random()}`, JSON.stringify({ partner1, partner2: 'Juan', eventDate: '2027-06-12', ceremony: { name: 'St. Joseph' } }), `h${Math.random()}`);
@@ -95,32 +96,51 @@ test('list: counts by status, filters, search, contact only with orders.contact'
   assert.equal((await (await api('?assigned=none', { as: 'adm' })).json()).orders.length, 3);
   assert.equal((await (await api('?assigned=me', { as: 'adm' })).json()).orders.length, 0);
 
+});
+
+test('Editor scope (R7d): own orders plus unassigned paid work; others look unknown', async () => {
+  const unpaid = addOrder('payment_verification');
+  const theirs = addOrder('for_review');
+  db.exec.exec(`UPDATE orders SET assigned_to = 'adm@jlc.test' WHERE id = ${theirs}`);
+  const mine = addOrder('pending_payment');
+  db.exec.exec(`UPDATE orders SET assigned_to = 'ed@jlc.test' WHERE id = ${mine}`);
+  const open = addOrder('for_review', { email: 'ana@example.com' });
   const ed = await (await api('', { as: 'ed' })).json();
-  assert.equal(ed.orders.length, 3);
+  assert.deepEqual(ed.orders.map((o) => o.id).sort(), [mine, open].sort());
+  assert.deepEqual([ed.counts.pending_payment, ed.counts.for_review, ed.counts.payment_verification], [1, 1, 0]);
   assert.ok(ed.orders.every((o) => !('email' in o)));
   assert.equal((await (await api('?q=ana@example', { as: 'ed' })).json()).orders.length, 0, 'Editors cannot search by email');
+  for (const id of [unpaid, theirs]) {
+    assert.equal((await api(`/${id}`, { as: 'ed' })).status, 404);
+    assert.equal((await act(id, 'ed', { action: 'note', body: 'x' })).status, 404);
+  }
+  assert.equal((await api(`/${mine}`, { as: 'ed' })).status, 200);
+  assert.equal((await (await api('', { as: 'adm' })).json()).orders.length, 4, 'Administrators see all');
 });
 
 test('detail: Editor gets no contact fields or receipt URLs; Administrator does', async () => {
-  const id = addOrder('payment_verification', { email: 'ana@example.com' });
-  addPayment(id);
-  const ed = await (await api(`/${id}`, { as: 'ed' })).json();
+  const work = addOrder('for_review', { email: 'ana@example.com' });
+  addPayment(work);
+  const ed = await (await api(`/${work}`, { as: 'ed' })).json();
   assert.ok(!JSON.stringify(ed).includes('ana@example.com'));
   assert.ok(!JSON.stringify(ed).includes('0917'));
   assert.equal(ed.payments[0].receiptUrl, undefined);
-  assert.deepEqual(ed.allowedNext, []);
+  assert.deepEqual(ed.allowedNext, ['in_production', 'revision_requested', 'completed', 'delivered']);
   assert.equal(ed.invitation.layoutKey, 'classic');
   assert.deepEqual(ed.invitation.photos, ['inv/x/0.png']);
 
+  const id = addOrder('payment_verification', { email: 'ana2@example.com' });
+  addPayment(id);
+
   const adm = await (await api(`/${id}`, { as: 'adm' })).json();
-  assert.equal(adm.customer.email, 'ana@example.com');
+  assert.equal(adm.customer.email, 'ana2@example.com');
   assert.equal(adm.customer.phone, '0917');
   assert.equal(adm.payments[0].receiptUrl, `/api/admin/orders/${id}/receipts/${adm.payments[0].id}`);
   assert.deepEqual(adm.allowedNext, ['pending_payment', 'payment_confirmed', 'cancelled']);
 });
 
 test('Editor → 403 on receipt, approve, reject, refund, assign, cancel, resend, payment-settings', async () => {
-  const id = addOrder('payment_verification');
+  const id = addOrder('for_review');
   const pid = addPayment(id);
   assert.equal((await api(`/${id}/receipts/${pid}`, { as: 'ed' })).status, 403);
   for (const body of [{ action: 'approve', paymentId: pid }, { action: 'reject', paymentId: pid, reason: 'blurry' }, { action: 'refund', note: 'x' },
@@ -129,7 +149,7 @@ test('Editor → 403 on receipt, approve, reject, refund, assign, cancel, resend
   }
   assert.equal((await call(paymentSettings, '/api/admin/payment-settings', { as: 'ed' })).status, 403);
   assert.equal((await call(paymentSettings, '/api/admin/payment-settings', { as: 'adm' })).status, 403);
-  assert.equal(q("SELECT status FROM orders")[0].status, 'payment_verification');
+  assert.equal(q("SELECT status FROM orders")[0].status, 'for_review');
 });
 
 test('receipt: streams the image privately; a payment of another order → 404', async () => {

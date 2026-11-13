@@ -7,7 +7,7 @@ import { can, type Action } from '../../../../server/permissions';
 import { SECURITY_HEADERS } from '../../../../server/security-headers';
 import { LIMITS } from '../../../../shared/invitation-fields';
 import { occasionOf } from '../../../../shared/occasions';
-import { canTransition, STATUSES, STATUS_LABEL, type OrderStatus } from '../../../../shared/order-status';
+import { canTransition, PAID_STATUSES, STATUSES, STATUS_LABEL, type OrderStatus } from '../../../../shared/order-status';
 
 interface Env {
   DB: D1Database;
@@ -43,6 +43,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (!can(me.role, 'orders.view')) return FORBIDDEN();
     const route = `${request.method} ${path}`;
     if (route === 'GET ') return await list(env, me, new URL(request.url).searchParams);
+    // Out-of-scope orders look exactly like unknown ones
+    const id = path.match(/^\/(\d+)(\/|$)/)?.[1];
+    if (id && me.role === 'Editor' && !await env.DB.prepare(`SELECT 1 FROM orders o WHERE o.id = ?1 AND ${editorScope('?2')}`).bind(Number(id), me.email).first()) return NOT_FOUND();
     const receiptM = route.match(/^GET \/(\d+)\/receipts\/(\d+)$/);
     if (receiptM) return can(me.role, 'payments.review') ? await receipt(env, Number(receiptM[1]), Number(receiptM[2])) : FORBIDDEN();
     const m = route.match(/^(GET|POST) \/(\d+)$/);
@@ -54,6 +57,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 };
 
+// R7d: an Editor (Designer) sees orders assigned to them plus unassigned paid work; `p` is the placeholder for their email
+const editorScope = (p: string) => `(o.assigned_to = ${p} OR (o.assigned_to IS NULL AND o.status IN (${PAID_STATUSES.map((s) => `'${s}'`).join(', ')})))`;
 const FROM = 'FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id LEFT JOIN customers c ON c.id = o.customer_id';
 
 async function list(env: Env, me: Admin, params: URLSearchParams): Promise<Response> {
@@ -70,6 +75,7 @@ async function list(env: Env, me: Admin, params: URLSearchParams): Promise<Respo
   const assigned = params.get('assigned');
   if (assigned === 'none') where.push('o.assigned_to IS NULL');
   else if (assigned) { where.push(`o.assigned_to = ?${args.length + 1}`); args.push(assigned === 'me' ? me.email : assigned); }
+  if (me.role === 'Editor') { where.push(editorScope(`?${args.length + 1}`)); args.push(me.email); }
   const filter = where.length ? ` WHERE ${where.join(' AND ')}` : '';
   const status = params.get('status');
   const byStatus = status ? `${filter ? `${filter} AND` : ' WHERE'} o.status = ?${args.length + 1}` : filter;

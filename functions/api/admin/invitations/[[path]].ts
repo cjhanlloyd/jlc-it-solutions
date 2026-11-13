@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { runCleanup } from '../../../../server/cleanup';
 import { verifyAdminToken } from '../../../../server/crypto';
+import { can } from '../../../../server/permissions';
 import { occasionOf } from '../../../../shared/occasions';
 import { PAID_STATUSES } from '../../../../shared/order-status';
 
@@ -26,7 +27,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (request.method === 'POST' && !WRITERS.includes(me.role)) return json({ error: 'Your role cannot make changes.' }, 403);
 
     const route = `${request.method} ${path}`;
-    if (route === 'GET /overview') return await overview(env);
+    if (route === 'GET /overview') return await overview(env, can(me.role, 'orders.contact'));
     const rsvpsId = route.match(/^GET \/invitations\/(\d+)\/rsvps$/)?.[1];
     if (rsvpsId) return await rsvps(env, Number(rsvpsId));
 
@@ -44,7 +45,8 @@ function titleOf(productType: string, details: string | null): string {
   try { return o && details ? o.title(JSON.parse(details)) : ''; } catch { return ''; }
 }
 
-async function overview(env: Env): Promise<Response> {
+// contact: whether the caller may see customer emails (Editors may not)
+async function overview(env: Env, contact: boolean): Promise<Response> {
   // shortcut: cleanup runs when an admin opens the overview, because Pages has no cron; upgrade to a Worker cron trigger if orders grow.
   try {
     await runCleanup(env.DB, env.PHOTOS, new Date());
@@ -70,7 +72,7 @@ async function overview(env: Env): Promise<Response> {
     designs: (designs.results || []).map((d) => ({
       ...d, active: !!d.active, color_schemes: parse(d.color_schemes, []), preview_images: parse(d.preview_images, []), sample_details: parse(d.sample_details, {}),
     })),
-    orders: (orders.results || []).map(({ details, product_type, ...o }) => ({ ...o, title: titleOf(product_type, details), payment_events: trail.get(o.id) || [] })),
+    orders: (orders.results || []).map(({ details, product_type, customer_email, ...o }) => ({ ...o, ...(contact ? { customer_email } : {}), title: titleOf(product_type, details), payment_events: trail.get(o.id) || [] })),
     invitations: (invitations.results || []).map(({ details, product_type, ...i }) => ({ ...i, title: titleOf(product_type, details) })),
     totals: { paidCount: totals?.paidCount ?? 0, paidCentavos: totals?.paidCentavos ?? 0 },
   });

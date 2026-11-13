@@ -182,9 +182,13 @@ test('no token → 401', async () => {
   assert.equal((await call('/api/admin/invitations/designs', { body: goodDesign })).status, 401);
 });
 
-test('Editor: POST → 403, GET overview → 200', async () => {
+test('Editor: POST → 403, GET overview → 200 without customer emails', async () => {
   assert.equal((await designs({ action: 'add', ...goodDesign }, 'ed@x.com')).status, 403);
-  assert.equal((await call('/api/admin/invitations/overview', { as: 'ed@x.com' })).status, 200);
+  const res = await call('/api/admin/invitations/overview', { as: 'ed@x.com' });
+  assert.equal(res.status, 200);
+  assert.ok(!(await res.text()).includes('ana@example.com'));
+  const adm = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
+  assert.equal(adm.orders.find(o => o.id === 1).customer_email, 'ana@example.com');
 });
 
 test('overview: totals count paid orders only; events have no payload; no token hashes', async () => {
