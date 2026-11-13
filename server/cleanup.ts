@@ -3,6 +3,7 @@
 // Safe to run repeatedly or concurrently: every write is conditional, and R2 deletes of missing keys are no-ops.
 import { occasionOf } from '../shared/occasions';
 import { isPastExpiry } from './guest-invitation';
+import { expireIfOverdue } from './orders';
 
 export const keysOf = (photos: string) => { try { const k = JSON.parse(photos); return Array.isArray(k) ? k as string[] : []; } catch { return []; } };
 
@@ -17,22 +18,33 @@ export async function deletePhotos(photos: R2Bucket, keys: string[], what: strin
   }
 }
 
-export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): Promise<{ expiredOrders: number; purgedInvitations: number }> {
-  let expiredOrders = 0, purgedInvitations = 0;
+export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): Promise<{ expiredOrders: number; purgedInvitations: number; purgedReceipts: number }> {
+  let expiredOrders = 0, purgedInvitations = 0, purgedReceipts = 0;
 
-  // Pending for 72 h → expired: long enough that a slow PayMongo confirmation still lands on a pending order.
-  // created_at is CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC). 'expired' rows whose invitation
-  // still exists are retries after an R2 failure.
-  const cutoff = new Date(now.getTime() - 72 * 3_600_000).toISOString().replace('T', ' ').slice(0, 19);
-  const { results: stale } = await db.prepare(
-    "SELECT o.id, o.status, i.id AS invitation_id, i.photos FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.status IN ('pending', 'expired') AND i.status = 'pending' AND o.created_at < ?",
-  ).bind(cutoff).all<any>();
-  for (const o of stale || []) {
-    const r = await db.prepare("UPDATE orders SET status = 'expired' WHERE id = ? AND status = 'pending'").bind(o.id).run();
-    if (r.meta.changes) expiredOrders++;
-    else if (o.status === 'pending') continue; // paid by the webhook meanwhile
+  // Unpaid orders past their deadline → cancelled (expireIfOverdue deletes the pending invitation, photos first).
+  const { results: overdue } = await db.prepare(
+    "SELECT o.id, o.status, o.payment_deadline, o.product_id AS invitation_id FROM orders o WHERE o.status = 'pending_payment' AND o.payment_deadline < ?",
+  ).bind(now.toISOString()).all<any>();
+  for (const o of overdue || []) if (await expireIfOverdue(db, photos, o, now)) expiredOrders++;
+
+  // Cancelled orders whose invitation is still pending: an earlier R2 delete failed, or an admin cancelled.
+  const { results: stuck } = await db.prepare(
+    "SELECT o.id, i.id AS invitation_id, i.photos FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.status = 'cancelled' AND i.status = 'pending'",
+  ).all<any>();
+  for (const o of stuck || []) {
     if (!await deletePhotos(photos, keysOf(o.photos), `order ${o.id}`)) continue;
     await db.prepare("DELETE FROM invitations WHERE id = ? AND status = 'pending'").bind(o.invitation_id).run();
+  }
+
+  // Receipts of orders cancelled > 60 days ago (orders.updated_at is stamped by every status move). datetime()
+  // normalises both ISO values and legacy 'YYYY-MM-DD HH:MM:SS' ones. Receipts of other orders are kept (accounting).
+  const { results: old } = await db.prepare(
+    "SELECT id FROM orders WHERE status = 'cancelled' AND updated_at IS NOT NULL AND datetime(updated_at) < datetime(?)",
+  ).bind(new Date(now.getTime() - 60 * 86_400_000).toISOString()).all<any>();
+  for (const o of old || []) {
+    const { objects } = await photos.list({ prefix: `receipts/${o.id}/` });
+    if (!objects.length) continue;
+    if (await deletePhotos(photos, objects.map((x) => x.key), `receipts of order ${o.id}`)) purgedReceipts++;
   }
 
   // 'expired' rows are included because the guest page marks them lazily without purging; 'refunded' ones
@@ -59,5 +71,5 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
     ]);
     purgedInvitations++;
   }
-  return { expiredOrders, purgedInvitations };
+  return { expiredOrders, purgedInvitations, purgedReceipts };
 }
