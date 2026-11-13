@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // Public order page API: view an order, upload a GCash receipt, find an order by reference + email, the GCash QR.
 import { sha256 } from '../../../server/crypto';
+import { decodeImage } from '../../../server/images';
 import { notify } from '../../../server/order-emails';
 import { verifyOrderView, signOrderView } from '../../../server/order-view';
 import { expireIfOverdue, move } from '../../../server/orders';
@@ -22,7 +23,6 @@ const json = (data: unknown, status = 200) => Response.json(data, { status });
 const NOT_FOUND = () => json({ error: 'Order not found.' }, 404);
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
 const ORDER_SQL = 'SELECT o.*, i.slug, i.details, d.name AS design_name, d.product_type FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id WHERE o.reference = ?';
-const RECEIPT_RE = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
@@ -83,22 +83,6 @@ async function view(context: EventContext<Env, any, any>, order: any): Promise<R
   });
 }
 
-const MAGIC: Record<string, (b: Uint8Array) => boolean> = {
-  jpeg: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
-  png: (b) => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((x, i) => b[i] === x),
-  webp: (b) => String.fromCharCode(...b.subarray(0, 4)) === 'RIFF' && String.fromCharCode(...b.subarray(8, 12)) === 'WEBP',
-};
-
-function receiptBytes(image: unknown): { type: string; bytes: Uint8Array } | string {
-  const m = typeof image === 'string' ? RECEIPT_RE.exec(image) : null;
-  if (!m) return 'The receipt must be a JPEG, PNG or WebP image.';
-  // Checked before decoding so an oversized upload is not decoded at all
-  if (m[2].length * 3 / 4 > LIMITS.receiptBytes + 2) return 'The receipt image is too large (max 5 MB).';
-  const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
-  if (bytes.length > LIMITS.receiptBytes) return 'The receipt image is too large (max 5 MB).';
-  if (!MAGIC[m[1]](bytes)) return 'The receipt must be a JPEG, PNG or WebP image.';
-  return { type: m[1], bytes };
-}
 
 async function receipt(context: EventContext<Env, any, any>, order: any): Promise<Response> {
   const { request, env } = context;
@@ -110,10 +94,11 @@ async function receipt(context: EventContext<Env, any, any>, order: any): Promis
   const body: any = await request.json().catch(() => ({}));
   const ref = body.customerReference ?? '';
   if (typeof ref !== 'string' || ref.trim().length > LIMITS.paymentRef) return json({ error: `The GCash reference number is too long (max ${LIMITS.paymentRef}).` }, 400);
-  const img = receiptBytes(body.image);
-  if (typeof img === 'string') return json({ error: img }, 400);
+  const img = decodeImage(body.image, LIMITS.receiptBytes);
+  if (img === 'size') return json({ error: 'The receipt image is too large (max 5 MB).' }, 400);
+  if (img === 'type') return json({ error: 'The receipt must be a JPEG, PNG or WebP image.' }, 400);
 
-  const key = `receipts/${order.id}/${now.getTime()}.${img.type === 'jpeg' ? 'jpg' : img.type}`;
+  const key = `receipts/${order.id}/${now.getTime()}.${img.ext}`;
   await env.PHOTOS.put(key, img.bytes, { httpMetadata: { contentType: `image/${img.type}` } });
   const at = now.toISOString();
   let moved = false;

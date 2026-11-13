@@ -1,4 +1,4 @@
-// Tests for the admin invitations API (designs, orders, refunds, resend). Run: npm test
+// Tests for the admin invitations API (designs, overview, RSVPs, cleanup). Run: npm test
 // Handlers are bundled with esbuild; D1 and SMTP are in-memory fakes.
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -70,8 +70,8 @@ function exec(sql, a) {
   if (/^SELECT i\.id, i\.slug, .* FROM invitations i JOIN products_designs d/.test(sql)) {
     return { results: db.invitations.map(i => ({ ...i, manage_token_hash: undefined, product_type: db.designs.find(d => d.id === i.design_id).product_type, design_name: db.designs.find(d => d.id === i.design_id).name, rsvpCount: db.rsvps.filter(r => r.invitation_id === i.id).length })) };
   }
-  if (/^SELECT COUNT\(\*\) AS paidCount, COALESCE\(SUM\(amount_centavos\), 0\) AS paidCentavos FROM orders WHERE status = 'paid'/.test(sql)) {
-    const paid = db.orders.filter(o => o.status === 'paid');
+  if (/^SELECT COUNT\(\*\) AS paidCount, COALESCE\(SUM\(amount_centavos\), 0\) AS paidCentavos FROM orders WHERE status IN \(/.test(sql)) {
+    const paid = db.orders.filter(o => a.includes(o.status));
     return { paidCount: paid.length, paidCentavos: paid.reduce((s, o) => s + o.amount_centavos, 0) };
   }
   if (/^SELECT id FROM products_designs WHERE slug = \? AND id != \?/.test(sql)) return db.designs.find(d => d.slug === a[0] && d.id !== a[1]) ?? null;
@@ -184,11 +184,11 @@ test('no token → 401', async () => {
 
 test('Editor: POST → 403, GET overview → 200', async () => {
   assert.equal((await designs({ action: 'add', ...goodDesign }, 'ed@x.com')).status, 403);
-  assert.equal((await call('/api/admin/invitations/orders/refund', { as: 'ed@x.com', body: { orderId: 1 } })).status, 403);
   assert.equal((await call('/api/admin/invitations/overview', { as: 'ed@x.com' })).status, 200);
 });
 
 test('overview: totals count paid orders only; events have no payload; no token hashes', async () => {
+  db.orders[0].status = 'delivered';
   db.orders.push({ id: 3, product_id: 2, customer_email: 'z@x.com', amount_centavos: 7000, status: 'refunded', created_at: 't', paid_at: 't' });
   const res = await call('/api/admin/invitations/overview', { as: 'adm@x.com' });
   const data = await res.json();
@@ -285,58 +285,6 @@ test('design toggle and reorder', async () => {
   assert.deepEqual(db.designs.map(d => [d.id, d.sort_order]), [[1, 2], [2, 1]]);
   assert.equal((await designs({ action: 'reorder', ids: [1, 1] })).status, 400);
   assert.equal((await designs({ action: 'reorder', ids: [] })).status, 400);
-});
-
-test('refund: flips order and invitation, logs who, guest API then 404', async () => {
-  assert.equal((await guestGet('ana-ben-1')).status, 200);
-  const res = await call('/api/admin/invitations/orders/refund', { as: 'adm@x.com', body: { orderId: 1 } });
-  assert.equal(res.status, 200);
-  assert.equal(db.orders[0].status, 'refunded');
-  assert.equal(db.invitations[0].status, 'refunded');
-  assert.match(db.audit[0].message, /adm@x\.com.*order 1/);
-  assert.equal((await guestGet('ana-ben-1')).status, 404);
-});
-
-test('refund: only from paid (pending, already refunded, unknown) → 409/404', async () => {
-  const refund = (orderId) => call('/api/admin/invitations/orders/refund', { as: 'boss@x.com', body: { orderId } });
-  assert.equal((await refund(2)).status, 409);
-  assert.equal(db.orders[1].status, 'pending');
-  assert.equal((await refund(1)).status, 200);
-  assert.equal((await refund(1)).status, 409);
-  assert.equal((await refund(99)).status, 404);
-  assert.equal(db.audit.length, 1);
-});
-
-const resend = (orderId, as = 'boss@x.com') => call('/api/admin/invitations/orders/resend', { as, body: { orderId } });
-
-test('resend: emails both links, rotates the token after the send', async () => {
-  const res = await resend(1);
-  assert.equal(res.status, 200);
-  const mail = globalThis.SMTP_SENT.join('');
-  assert.match(mail, /ana@example\.com/);
-  assert.match(mail, /\/i\/ana-ben-1/);
-  const token = mail.match(/\/manage#([A-Za-z0-9_-]{43})/)?.[1];
-  assert.ok(token);
-  assert.equal(db.invitations[0].manage_token_hash, sha(token));
-});
-
-test('resend: SMTP disabled → 409, nothing changes', async () => {
-  smtpEnabled = false;
-  const res = await resend(1);
-  assert.equal(res.status, 409);
-  assert.deepEqual(await res.json(), { error: 'Email is not configured; enable SMTP first.' });
-  assert.equal(db.invitations[0].manage_token_hash, sha('old-token'));
-  assert.equal(globalThis.SMTP_SENT.length, 0);
-});
-
-test('resend: a failed send keeps the old token; non-paid order → 409', async () => {
-  globalThis.SMTP_FAIL = true;
-  assert.ok((await resend(1)).status >= 500);
-  assert.equal(db.invitations[0].manage_token_hash, sha('old-token'));
-  globalThis.SMTP_FAIL = false;
-  assert.equal((await resend(2)).status, 409);
-  assert.equal((await resend(99)).status, 404);
-  assert.equal((await resend(1, 'ed@x.com')).status, 403);
 });
 
 test('invitation RSVPs list', async () => {

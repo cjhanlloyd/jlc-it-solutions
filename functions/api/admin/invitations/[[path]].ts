@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 import { runCleanup } from '../../../../server/cleanup';
 import { verifyAdminToken } from '../../../../server/crypto';
-import { emailAndRotateToken } from '../../../../server/invitation-links';
 import { occasionOf } from '../../../../shared/occasions';
+import { PAID_STATUSES } from '../../../../shared/order-status';
 
 interface Env {
   DB: D1Database;
@@ -30,11 +30,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const rsvpsId = route.match(/^GET \/invitations\/(\d+)\/rsvps$/)?.[1];
     if (rsvpsId) return await rsvps(env, Number(rsvpsId));
 
-    if (request.method === 'POST' && ['/designs', '/orders/refund', '/orders/resend'].includes(path)) {
-      const body: any = await request.json().catch(() => ({}));
-      if (path === '/designs') return await designAction(env, body);
-      return path === '/orders/refund' ? await refund(env, me.email, body.orderId) : await resend(request, env, body.orderId, url.origin);
-    }
+    if (route === 'POST /designs') return await designAction(env, await request.json().catch(() => ({})));
     return json({ error: 'Not found.' }, 404);
   } catch (e) {
     console.error('admin invitations API error:', e instanceof Error ? e.message : e);
@@ -65,7 +61,8 @@ async function overview(env: Env): Promise<Response> {
     env.DB.prepare(
       'SELECT i.id, i.slug, i.status, i.event_date, i.created_at, i.details, d.product_type, d.name AS design_name, (SELECT COUNT(*) FROM rsvps r WHERE r.invitation_id = i.id) AS rsvpCount FROM invitations i JOIN products_designs d ON d.id = i.design_id ORDER BY i.id DESC',
     ).all<any>(),
-    env.DB.prepare("SELECT COUNT(*) AS paidCount, COALESCE(SUM(amount_centavos), 0) AS paidCentavos FROM orders WHERE status = 'paid'").first<any>(),
+    env.DB.prepare(`SELECT COUNT(*) AS paidCount, COALESCE(SUM(amount_centavos), 0) AS paidCentavos FROM orders WHERE status IN (${PAID_STATUSES.map(() => '?').join(', ')})`)
+      .bind(...PAID_STATUSES).first<any>(),
   ]);
   const trail = new Map<number, { type: string; received_at: string }[]>();
   for (const e of events.results || []) trail.set(e.order_id, [...(trail.get(e.order_id) || []), { type: e.type, received_at: e.received_at }]);
@@ -154,47 +151,4 @@ async function designAction(env: Env, b: any): Promise<Response> {
     if (/UNIQUE/i.test(String(e))) return SLUG_TAKEN(); // lost a race with another admin
     throw e;
   }
-}
-
-const ORDER_SQL = 'SELECT o.id, o.status, o.customer_email, o.product_id, i.slug, i.status AS invitation_status FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.id = ?';
-
-// Marks the order and its invitation refunded. The money itself is refunded in the PayMongo dashboard.
-async function refund(env: Env, adminEmail: string, orderId: unknown): Promise<Response> {
-  if (!isId(orderId)) return json({ error: 'An order id is required.' }, 400);
-  const order = await env.DB.prepare(ORDER_SQL).bind(orderId).first<any>();
-  if (!order) return json({ error: 'Order not found.' }, 404);
-  if (order.status !== 'paid') return json({ error: 'Only a paid order can be refunded.' }, 409);
-  const [flipped] = await env.DB.batch([
-    env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE id = ? AND status = 'paid'").bind(orderId),
-    env.DB.prepare("UPDATE invitations SET status = 'refunded' WHERE id = ?").bind(order.product_id),
-    env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'security', ?)")
-      .bind(new Date().toISOString(), `${adminEmail} refunded order ${orderId} (${order.customer_email})`),
-  ]);
-  return flipped.meta.changes ? json({ ok: true }) : json({ error: 'Only a paid order can be refunded.' }, 409);
-}
-
-async function resend(request: Request, env: Env, orderId: unknown, origin: string): Promise<Response> {
-  if (!isId(orderId)) return json({ error: 'An order id is required.' }, 400);
-  const order = await env.DB.prepare(ORDER_SQL).bind(orderId).first<any>();
-  if (!order) return json({ error: 'Order not found.' }, 404);
-  if (order.status !== 'paid' || order.invitation_status !== 'live') return json({ error: 'Only a paid, live invitation can be resent.' }, 409);
-  const smtp: any = await env.DB.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
-  if (!smtp?.enabled) return json({ error: 'Email is not configured; enable SMTP first.' }, 409);
-  try {
-    await emailAndRotateToken(env.DB, smtp, request, order.product_id, (token) => ({
-      to: order.customer_email,
-      subject: 'Your invitation links',
-      // "Key: value" lines: the HTML builder keeps every URL there (plain paragraphs keep only the first)
-      body: [
-        'Here are the links to your invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
-        '',
-        `Guest link: ${origin}/i/${order.slug}`,
-        `Manage link: ${origin}/manage#${token}`,
-      ].join('\n'),
-    }));
-  } catch (e) {
-    console.error('Admin resend failed:', e instanceof Error ? e.message : e);
-    return json({ error: 'The email could not be sent. The previous links still work.' }, 502);
-  }
-  return json({ ok: true });
 }
