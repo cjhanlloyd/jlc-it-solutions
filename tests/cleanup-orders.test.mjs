@@ -86,3 +86,16 @@ test('receipts of an order cancelled > 60 days ago are deleted; others are kept'
   for (const id of [3, 4, 5]) assert.equal(has(r2, `receipts/${id}/1.jpg`), true, `order ${id}`);
   assert.equal((await runCleanup(db, r2, NOW)).purgedReceipts, 0, 'idempotent');
 });
+
+test('receipt purge pages through R2: all old-cancelled keys go, others stay, second run deletes nothing', async () => {
+  const { db, r2 } = seed();
+  const store = makeR2({ pageSize: 3 });
+  await order(db, store, 1, 'cancelled', { updated: iso(61 * DAY), inv: 'expired' });
+  await order(db, store, 2, 'delivered', { updated: iso(200 * DAY), inv: 'live' });
+  for (let n = 2; n <= 8; n++) await store.put(`receipts/1/${n}.jpg`, 'r'); // 8 receipts for order 1
+  for (let n = 2; n <= 5; n++) await store.put(`receipts/2/${n}.jpg`, 'r');
+  assert.equal((await runCleanup(db, store, NOW)).purgedReceipts, 8);
+  assert.deepEqual([...store.map.keys()].filter((k) => k.startsWith('receipts/1/')), []);
+  assert.equal([...store.map.keys()].filter((k) => k.startsWith('receipts/2/')).length, 5);
+  assert.equal((await runCleanup(db, store, NOW)).purgedReceipts, 0);
+});

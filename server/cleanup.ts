@@ -38,13 +38,23 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
 
   // Receipts of orders cancelled > 60 days ago (orders.updated_at is stamped by every status move). datetime()
   // normalises both ISO values and legacy 'YYYY-MM-DD HH:MM:SS' ones. Receipts of other orders are kept (accounting).
+  // One paginated list of receipts/ instead of one list per order keeps the subrequest count bounded.
   const { results: old } = await db.prepare(
     "SELECT id FROM orders WHERE status = 'cancelled' AND updated_at IS NOT NULL AND datetime(updated_at) < datetime(?)",
   ).bind(new Date(now.getTime() - 60 * 86_400_000).toISOString()).all<any>();
-  for (const o of old || []) {
-    const { objects } = await photos.list({ prefix: `receipts/${o.id}/` });
-    if (!objects.length) continue;
-    if (await deletePhotos(photos, objects.map((x) => x.key), `receipts of order ${o.id}`)) purgedReceipts++;
+  const oldIds = new Set((old || []).map((o) => String(o.id)));
+  if (oldIds.size) {
+    const doomed: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await photos.list({ prefix: 'receipts/', cursor });
+      for (const x of page.objects) if (oldIds.has(x.key.split('/')[1])) doomed.push(x.key);
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+    for (let i = 0; i < doomed.length; i += 1000) {
+      const chunk = doomed.slice(i, i + 1000);
+      if (await deletePhotos(photos, chunk, 'old receipts')) purgedReceipts += chunk.length;
+    }
   }
 
   // 'expired' rows are included because the guest page marks them lazily without purging; 'refunded' ones

@@ -51,7 +51,7 @@ export function makeD1({ migrations = true } = {}) {
   };
 }
 
-export function makeR2() {
+export function makeR2({ pageSize = 1000 } = {}) {
   const m = new Map();
   const view = (key) => {
     const o = m.get(key);
@@ -67,8 +67,11 @@ export function makeR2() {
     async get(key) { return view(key) || null; },
     async head(key) { return view(key) || null; },
     async delete(k) { for (const key of [].concat(k)) m.delete(key); },
-    async list({ prefix = '' } = {}) {
-      return { objects: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ key: k, uploaded: m.get(k).uploaded })) };
+    async list({ prefix = '', limit = pageSize, cursor } = {}) {
+      const keys = [...m.keys()].filter((k) => k.startsWith(prefix)).sort().filter((k) => !cursor || k > cursor);
+      const page = keys.slice(0, Math.min(limit, pageSize));
+      const truncated = keys.length > page.length;
+      return { objects: page.map((k) => ({ key: k, uploaded: m.get(k).uploaded })), truncated, cursor: truncated ? page.at(-1) : undefined };
     },
   };
 }
