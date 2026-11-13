@@ -243,3 +243,5 @@ CREATE TABLE rsvps (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_rsvps_invitation_id ON rsvps(invitation_id);
+
+-- see migrations/0003_orders_gcash.sql (orders GCash columns, customers, payments, order_events, payment_settings)
