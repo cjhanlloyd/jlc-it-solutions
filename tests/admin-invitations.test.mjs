@@ -1,0 +1,283 @@
+// Tests for the admin invitations API (overview, RSVPs, cleanup). Run: npm test
+// Handlers are bundled with esbuild; D1 and SMTP are in-memory fakes.
+import { test, before, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { build } from 'esbuild';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+let admin, guestApi, signAdminToken, runCleanup;
+before(async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'jlc-adminv-'));
+  const bundle = async (entry, name) => {
+    const outfile = join(dir, name);
+    await build({ entryPoints: [join(root, entry)], bundle: true, platform: 'node', format: 'esm',
+      outfile, logLevel: 'warning', alias: { 'cloudflare:sockets': join(root, 'tests/smtp-stub.mjs') } });
+    return import(pathToFileURL(outfile).href);
+  };
+  admin = (await bundle('functions/api/admin/invitations/[[path]].ts', 'admin.mjs')).onRequest;
+  guestApi = (await bundle('functions/api/invitations/[[path]].ts', 'guest.mjs')).onRequest;
+  ({ signAdminToken } = await bundle('server/crypto.ts', 'crypto.mjs'));
+  ({ runCleanup } = await bundle('server/cleanup.ts', 'cleanup.mjs'));
+});
+
+const sha = (s) => createHash('sha256').update(s).digest('hex');
+const scheme = { name: 'Blush', primary: '#b76e79', accent: '#d4af37', background: '#fff8f6', text: '#3b2a2e' };
+const details = { partner1: 'Ana', partner2: 'Ben', eventDate: '2099-06-01', ceremony: { name: 'Chapel', address: '1 Main St', mapUrl: '' }, schedule: [] };
+
+let db, smtpEnabled;
+const ADMINS = { 'nobody@x.com': 'Unknown', 'boss@x.com': 'Super Admin', 'adm@x.com': 'Administrator', 'ed@x.com': 'Editor' };
+beforeEach(() => {
+  db = {
+    designs: [
+      { id: 1, product_type: 'wedding_invitation', slug: 'classic', name: 'Classic', layout_key: 'classic', price_centavos: 99900, color_schemes: JSON.stringify([scheme]), preview_images: '[]', sample_details: '{}', active: 1, sort_order: 1 },
+      { id: 2, product_type: 'wedding_invitation', slug: 'garden', name: 'Garden', layout_key: 'garden', price_centavos: 79900, color_schemes: JSON.stringify([scheme]), preview_images: '[]', sample_details: '{}', active: 1, sort_order: 2 },
+    ],
+    invitations: [
+      { id: 1, design_id: 1, slug: 'ana-ben-1', color_scheme: '{}', details: JSON.stringify(details), photos: '[]', status: 'live', event_date: '2099-06-01', manage_token_hash: sha('old-token'), created_at: 't' },
+      { id: 2, design_id: 1, slug: 'cy-di-2', color_scheme: '{}', details: JSON.stringify(details), photos: '[]', status: 'pending', event_date: '2099-06-01', manage_token_hash: sha('t2'), created_at: 't' },
+    ],
+    orders: [
+      { id: 1, product_id: 1, customer_email: 'ana@example.com', amount_centavos: 99900, status: 'paid', created_at: 't', paid_at: 't' },
+      { id: 2, product_id: 2, customer_email: 'cy@example.com', amount_centavos: 50000, status: 'pending', created_at: 't', paid_at: null },
+    ],
+    events: [{ paymongo_event_id: 'evt_1', type: 'checkout_session.payment.paid', order_id: 1, received_at: 't', payload: 'SECRET-RAW' }],
+    rsvps: [{ id: 1, invitation_id: 1, guest_name: 'Gus', attending: 1, party_size: 2, kids_count: 1, message: 'Yay', created_at: 't' }],
+    audit: [],
+  };
+  smtpEnabled = true;
+  r2.clear();
+  r2Fails = false;
+  globalThis.SMTP_SENT = [];
+  globalThis.SMTP_FAIL = false;
+});
+
+const PURGE_SELECT = `SELECT i.id, i.event_date, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))`;
+const PURGE_UPDATE = "UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')";
+function exec(sql, a) {
+  if (/FROM admins WHERE email/.test(sql)) return a[0] in ADMINS ? { email: a[0], fullName: a[0], role: ADMINS[a[0]] } : null;
+  if (/^SELECT i\.id, i\.slug, .* FROM invitations i JOIN products_designs d/.test(sql)) {
+    return { results: db.invitations.map(i => ({ ...i, manage_token_hash: undefined, product_type: db.designs.find(d => d.id === i.design_id).product_type, design_name: db.designs.find(d => d.id === i.design_id).name, rsvpCount: db.rsvps.filter(r => r.invitation_id === i.id).length })) };
+  }
+  if (/^SELECT COUNT\(\*\) AS paidCount, COALESCE\(SUM\(amount_centavos\), 0\) AS paidCentavos FROM orders WHERE status IN \(/.test(sql)) {
+    const paid = db.orders.filter(o => a.includes(o.status));
+    return { paidCount: paid.length, paidCentavos: paid.reduce((s, o) => s + o.amount_centavos, 0) };
+  }
+  if (/^SELECT o\.id, o\.status, o\.customer_email, o\.product_id, i\.slug, i\.status AS invitation_status FROM orders o JOIN invitations i ON i\.id = o\.product_id WHERE o\.id = \?/.test(sql)) {
+    const o = db.orders.find(x => x.id === a[0]);
+    if (!o) return null;
+    const i = db.invitations.find(x => x.id === o.product_id);
+    return { ...o, slug: i.slug, invitation_status: i.status };
+  }
+  if (/^UPDATE orders SET status = 'refunded' WHERE id = \? AND status = 'paid'/.test(sql)) {
+    const o = db.orders.find(x => x.id === a[0]);
+    if (o?.status !== 'paid') return { meta: { changes: 0 } };
+    o.status = 'refunded';
+    return { meta: { changes: 1 } };
+  }
+  if (/^UPDATE invitations SET status = 'refunded' WHERE id = \?/.test(sql)) { db.invitations.find(x => x.id === a[0]).status = 'refunded'; return { meta: { changes: 1 } }; }
+  if (/^INSERT INTO audit_logs \(timestamp, log_type, message\) VALUES \(\?, 'security', \?\)/.test(sql)) { db.audit.push({ log_type: 'security', message: a[1] }); return { meta: { changes: 1 } }; }
+  if (/^UPDATE invitations SET manage_token_hash = \? WHERE id = \? AND status = 'live'/.test(sql)) {
+    const i = db.invitations.find(x => x.id === a[1]);
+    if (i?.status !== 'live') return { meta: { changes: 0 } };
+    i.manage_token_hash = a[0];
+    return { meta: { changes: 1 } };
+  }
+  if (/^SELECT guest_name, attending, party_size, kids_count, message, created_at FROM rsvps WHERE invitation_id = \?/.test(sql)) return { results: db.rsvps.filter(r => r.invitation_id === a[0]) };
+  if (/^SELECT i\.\*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
+    const i = db.invitations.find(x => x.slug === a[0]);
+    return i ? { ...i, layout_key: db.designs.find(d => d.id === i.design_id).layout_key, product_type: 'wedding_invitation' } : null;
+  }
+  // --- Task 11: cleanup ---
+  // Order expiry/receipt purge runs on real SQL in cleanup-orders.test.mjs; here there is nothing to do
+  if (/^SELECT .* FROM orders .*status = '(pending_payment|cancelled)'/.test(sql)) return { results: [] };
+  // Purge: keeps only the names in details, like SQLite's json_object(json_extract(...)) (missing → null)
+  if (sql === PURGE_SELECT) {
+    return { results: db.invitations.filter(i => i.status === 'live' || (['expired', 'refunded'].includes(i.status)
+      && (i.photos !== '[]' || JSON.parse(i.details)._purged === undefined || db.rsvps.some(r => r.invitation_id === i.id))))
+      .map(i => ({ ...i, product_type: db.designs.find(d => d.id === i.design_id).product_type })) };
+  }
+  if (sql === PURGE_UPDATE) {
+    const i = db.invitations.find(x => x.id === a[1] && ['live', 'expired', 'refunded'].includes(x.status));
+    if (i) Object.assign(i, { status: i.status === 'refunded' ? 'refunded' : 'expired', photos: '[]', details: a[0] });
+    return { meta: { changes: i ? 1 : 0 } };
+  }
+  if (/^DELETE FROM rsvps WHERE invitation_id = \?$/.test(sql)) { db.rsvps = db.rsvps.filter(r => r.invitation_id !== a[0]); return { meta: { changes: 1 } }; }
+  if (/smtp_settings/.test(sql)) return { enabled: smtpEnabled ? 1 : 0, host: 'h', port: 587, senderName: 'JLC', senderEmail: 'co@x.com' };
+  if (/FROM (branding|content)/.test(sql)) return null;
+  throw new Error('Unexpected SQL: ' + sql);
+}
+const stmt = (sql) => {
+  const q = { args: [], bind(...a) { q.args = a; return q; },
+    async first() { return exec(sql, q.args); }, async all() { return exec(sql, q.args); }, async run() { return exec(sql, q.args); } };
+  return q;
+};
+const DB = { prepare: stmt, async batch(stmts) { const out = []; for (const s of stmts) out.push(await s.run()); return out; } };
+
+// --- Fake R2 ---
+const r2 = new Map();
+let r2Fails = false;
+const PHOTOS = { async delete(keys) { if (r2Fails) throw new Error('R2 down'); for (const k of [].concat(keys)) r2.delete(k); } };
+
+const SECRET = 'jwt-secret';
+const call = async (path, { as, body } = {}) => {
+  const headers = as ? { Authorization: 'Bearer ' + await signAdminToken(as, SECRET) } : {};
+  return admin({ request: new Request('https://shop.test' + path, { method: body ? 'POST' : 'GET', body: body && JSON.stringify(body), headers }),
+    env: { DB, PHOTOS, JWT_SECRET: SECRET }, waitUntil() {} });
+};
+const guestGet = (slug) => guestApi({ request: new Request('https://shop.test/api/invitations/i/' + slug), env: { DB }, waitUntil() {} });
+
+test('no token → 401', async () => {
+  assert.equal((await call('/api/admin/invitations/overview')).status, 401);
+});
+
+test('a role without orders.view → 403 on overview and RSVPs', async () => {
+  assert.equal((await call('/api/admin/invitations/overview', { as: 'nobody@x.com' })).status, 403);
+  assert.equal((await call('/api/admin/invitations/invitations/1/rsvps', { as: 'nobody@x.com' })).status, 403);
+});
+
+test('Editor: GET overview → 200 without customer emails or orders', async () => {
+  const res = await call('/api/admin/invitations/overview', { as: 'ed@x.com' });
+  assert.equal(res.status, 200);
+  assert.ok(!(await res.text()).includes('ana@example.com'));
+  const adm = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
+  assert.equal(adm.orders, undefined); // orders moved to /api/admin/orders
+});
+
+test('overview: money totals only for reports.view (Editor gets none, Administrator does)', async () => {
+  const ed = await (await call('/api/admin/invitations/overview', { as: 'ed@x.com' })).json();
+  assert.ok(!('totals' in ed));
+  assert.ok(Array.isArray(ed.invitations));
+  const adm = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
+  assert.deepEqual(Object.keys(adm.totals).sort(), ['paidCentavos', 'paidCount']);
+});
+
+test('overview: totals count paid orders only; no orders or payment events; no token hashes', async () => {
+  db.orders[0].status = 'delivered';
+  db.orders.push({ id: 3, product_id: 2, customer_email: 'z@x.com', amount_centavos: 7000, status: 'refunded', created_at: 't', paid_at: 't' });
+  const res = await call('/api/admin/invitations/overview', { as: 'adm@x.com' });
+  const data = await res.json();
+  assert.deepEqual(data.totals, { paidCount: 1, paidCentavos: 99900 });
+  assert.equal(data.designs, undefined); // designs moved to /api/admin/designs
+  assert.equal(data.invitations.find(i => i.id === 1).rsvpCount, 1);
+  assert.equal(data.orders, undefined);
+  const text = JSON.stringify(data);
+  assert.ok(!text.includes('SECRET-RAW') && !text.includes('manage_token_hash') && !text.includes(sha('old-token')));
+});
+
+test('overview: invitation rows carry the occasion title, not the raw details', async () => {
+  const data = await (await call('/api/admin/invitations/overview', { as: 'adm@x.com' })).json();
+  assert.equal(data.invitations.find(i => i.id === 1).title, 'Ana & Ben');
+  assert.ok(!JSON.stringify(data.invitations).includes('Chapel'));
+});
+
+test('invitation RSVPs list', async () => {
+  const res = await call('/api/admin/invitations/invitations/1/rsvps', { as: 'ed@x.com' });
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).rsvps, [{ guestName: 'Gus', attending: true, partySize: 2, kidsCount: 1, message: 'Yay', submitted: 't' }]);
+  assert.equal((await call('/api/admin/invitations/nope', { as: 'ed@x.com' })).status, 404);
+});
+
+// --- Cleanup (Task 11) ---
+const NOW = new Date('2026-11-10T12:00:00Z');
+const H = 3_600_000, DAY = 24 * H;
+const dateDaysAgo = (n) => new Date(Date.parse('2026-11-10T00:00:00Z') - n * DAY).toISOString().slice(0, 10);
+// Live invitation <id> whose event was <days> before NOW, with one photo and one RSVP
+const FULL_DETAILS = { partner1: 'Maria', partner2: 'Juan', eventDate: '2026-01-01', ceremony: { name: 'St. Joseph', address: '1 Main St' }, message: 'See you!', giftsNote: 'GCash 0917' };
+const liveInvitation = (id, days, status = 'live') => {
+  const key = `inv/${id}/0.png`;
+  r2.set(key, 'img');
+  db.invitations.push({ id, design_id: 1, slug: `l-${id}`, color_scheme: '{}', details: JSON.stringify(FULL_DETAILS), photos: JSON.stringify([key]), status, event_date: dateDaysAgo(days), manage_token_hash: sha('l' + id), created_at: 't' });
+  db.rsvps.push({ id: 100 + id, invitation_id: id, guest_name: 'G', attending: 1, party_size: 1, message: '', created_at: 't' });
+};
+
+test('cleanup: a live invitation 61 days after the event → expired, RSVPs and photos deleted, row kept', async () => {
+  liveInvitation(20, 61);
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1, purgedReceipts: 0 });
+  const i = db.invitations.find(x => x.id === 20);
+  assert.equal(i.status, 'expired');
+  assert.equal(i.photos, '[]');
+  assert.equal(i.slug, 'l-20');
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 0);
+  assert.equal(r2.has('inv/20/0.png'), false);
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 1).length, 1, 'other RSVPs kept');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0, purgedReceipts: 0 }, 'idempotent');
+});
+
+test('cleanup: a live invitation 59 days after the event → untouched', async () => {
+  liveInvitation(20, 59);
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0, purgedReceipts: 0 });
+  assert.equal(db.invitations.find(x => x.id === 20).status, 'live');
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 1);
+  assert.equal(r2.has('inv/20/0.png'), true);
+});
+
+test('cleanup: purges an invitation the guest page already marked expired', async () => {
+  liveInvitation(20, 61);
+  db.invitations.find(x => x.id === 20).status = 'expired';
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1, purgedReceipts: 0 });
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 0);
+  assert.equal(r2.has('inv/20/0.png'), false);
+});
+
+test('cleanup: an expired purge keeps only the two names in details', async () => {
+  liveInvitation(20, 61);
+  await runCleanup(DB, PHOTOS, NOW);
+  assert.deepEqual(JSON.parse(db.invitations.find(x => x.id === 20).details), { partner1: 'Maria', partner2: 'Juan', _purged: true });
+});
+
+test('cleanup: a refunded invitation 61 days after the event → photos, RSVPs and details purged, stays refunded', async () => {
+  liveInvitation(20, 61, 'refunded');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1, purgedReceipts: 0 });
+  const i = db.invitations.find(x => x.id === 20);
+  assert.equal(i.status, 'refunded');
+  assert.equal(i.photos, '[]');
+  assert.deepEqual(JSON.parse(i.details), { partner1: 'Maria', partner2: 'Juan', _purged: true });
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 0);
+  assert.equal(r2.has('inv/20/0.png'), false);
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0, purgedReceipts: 0 }, 'idempotent');
+});
+
+test('cleanup: a refunded invitation 59 days after the event → untouched', async () => {
+  liveInvitation(20, 59, 'refunded');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0, purgedReceipts: 0 });
+  const i = db.invitations.find(x => x.id === 20);
+  assert.deepEqual(JSON.parse(i.details), FULL_DETAILS);
+  assert.equal(r2.has('inv/20/0.png'), true);
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 20).length, 1);
+});
+
+test('cleanup: an R2 failure is logged and the row is retried on the next run', async () => {
+  liveInvitation(20, 61);
+  r2Fails = true;
+  const err = console.error; console.error = () => {};
+  try { await runCleanup(DB, PHOTOS, NOW); } finally { console.error = err; }
+  assert.equal(db.invitations.find(i => i.id === 20).status, 'live');
+  r2Fails = false;
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1, purgedReceipts: 0 });
+  assert.equal(r2.size, 0);
+});
+
+test('cleanup: a birthday row keeps celebrant and age plus _purged; RSVPs and photos go; not selected again', async () => {
+  db.designs.push({ id: 3, product_type: 'birthday_invitation', slug: 'party', name: 'Party', layout_key: 'confetti', price_centavos: 1000, color_schemes: '[]', preview_images: '[]', sample_details: '{}', active: 1, sort_order: 3 });
+  liveInvitation(30, 61);
+  Object.assign(db.invitations.find(x => x.id === 30), { design_id: 3, details: JSON.stringify({ celebrant: 'Mia', age: 7, message: 'Hi!', venue: { name: 'Hall' } }) });
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1, purgedReceipts: 0 });
+  assert.equal(db.invitations.find(x => x.id === 30).details, '{"celebrant":"Mia","age":7,"_purged":true}');
+  assert.equal(db.rsvps.filter(r => r.invitation_id === 30).length, 0);
+  assert.equal(r2.has('inv/30/0.png'), false);
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0, purgedReceipts: 0 });
+});
+
+test('cleanup: a legacy names-only wedding row gets _purged once, then is left alone; still titles "A & B"', async () => {
+  db.invitations.push({ id: 31, design_id: 1, slug: 'leg-31', color_scheme: '{}', details: '{"partner1":"A","partner2":"B"}', photos: '[]', status: 'expired', event_date: dateDaysAgo(90), manage_token_hash: sha('l31'), created_at: 't' });
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 1, purgedReceipts: 0 });
+  assert.equal(db.invitations.find(x => x.id === 31).details, '{"partner1":"A","partner2":"B","_purged":true}');
+  assert.deepEqual(await runCleanup(DB, PHOTOS, NOW), { expiredOrders: 0, purgedInvitations: 0, purgedReceipts: 0 });
+  const g = await (await guestGet('leg-31')).json();
+  assert.equal(g.title, 'A & B');
+});

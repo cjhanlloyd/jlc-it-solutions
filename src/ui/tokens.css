@@ -1,0 +1,22 @@
+@theme {
+  /* Deep green ramp, primary at 700 (#1f3d2b). White text passes AA on 600+. */
+  --color-brand-50: #f1f5ee;
+  --color-brand-100: #dde8d9;
+  --color-brand-200: #bad1b4;
+  --color-brand-300: #8fb088;
+  --color-brand-400: #5f8a5f;
+  --color-brand-500: #3f6b47;
+  --color-brand-600: #2f5239;
+  --color-brand-700: #1f3d2b;
+  --color-brand-800: #17301f;
+  --color-brand-900: #0f2216;
+  /* Editorial surfaces and accent */
+  --color-ivory: #fbf7f0;
+  --color-sand: #f3ece0;
+  --color-ink: #2b2420;
+  --color-gold: #a8843f;
+  --color-gold-light: #e7dcc7;
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+  --shadow-card: 0 1px 2px rgb(60 40 10 / 0.08), 0 4px 12px rgb(60 40 10 / 0.08);
+}

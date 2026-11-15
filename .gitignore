@@ -1,0 +1,45 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+.wrangler/
+
+# Environment and secrets (only the example is committed)
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+*.p12
+*.crt
+
+# Local databases, dumps and backups
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz
+*.dump
+*.bak
+backup*/
+dumps/
+
+# Logs and debugging
+*.log
+logs/
+npm-debug.log*
+*.tsbuildinfo
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local notes and scratch files (never published)
+.local-notes/
+*.local.md
+_*.mjs

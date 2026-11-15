@@ -1,0 +1,38 @@
+{
+  "name": "jlc-solutions",
+  "private": true,
+  "engines": {
+    "node": ">=22.18"
+  },
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build && wrangler pages dev --port 8788",
+    "dev:ui": "vite",
+    "build": "vite build",
+    "db:migrate:local": "wrangler d1 execute jlc_database --local --file=migrations/0003_orders_gcash.sql && wrangler d1 execute jlc_database --local --file=migrations/0004_remap_legacy.sql && wrangler d1 execute jlc_database --local --file=migrations/0005_design_marketing.sql && wrangler d1 execute jlc_database --local --file=migrations/0006_packages_content.sql && wrangler d1 execute jlc_database --local --file=migrations/0007_custom_orders.sql",
+    "db:reset:local": "wrangler d1 execute jlc_database --local --file=schema.sql && wrangler d1 execute jlc_database --local --file=seed.sql",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit && tsc --noEmit -p functions"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "bcryptjs": "^3.0.3",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261109.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.14.0",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3",
+    "wrangler": "^4.159.0"
+  }
+}
