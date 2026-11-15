@@ -10,7 +10,7 @@ export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot
   return (
     <main className="inv bl" style={schemeVars(scheme, style)}>
       <div className="bl-wrap">
-        <header {...heroAttrs('bl-hero', cover)}>
+        <header {...heroAttrs('bl-hero', cover, scheme.primary)}>
           {cover && <Cover {...cover} />}
           <p className="bl-kicker">{d.headline || 'Please join us to celebrate the debut of'}</p>
           <div className="bl-age" aria-hidden="true">18</div>

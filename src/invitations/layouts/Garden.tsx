@@ -21,7 +21,7 @@ export default function Garden({ details: d, scheme, photos: all, style, rsvpSlo
   return (
     <main className="inv gd" style={schemeVars(scheme, style)}>
       <div className="gd-wrap">
-        <header {...heroAttrs('gd-hero', cover)}>
+        <header {...heroAttrs('gd-hero', cover, scheme.primary)}>
           {cover && <Cover {...cover} />}
           <Sprig className="gd-sprig" />
           <p className="gd-kicker">You are warmly invited to the wedding of</p>

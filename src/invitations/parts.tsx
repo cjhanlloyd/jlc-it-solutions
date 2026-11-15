@@ -1,7 +1,7 @@
 // Small pieces shared by the layouts and the guest page. Text is rendered only through JSX.
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Venue } from '../../shared/invitation-fields';
-import { deriveScheme, type InvitationStyle } from '../../shared/invitation-style';
+import type { InvitationStyle } from '../../shared/invitation-style';
 import { ordinal } from '../../shared/occasions/birthday';
 import type { InvitationDetails } from '../../shared/occasions/wedding';
 import { coverOverlay, coverText, fontHref, fontPair, type CoverShown } from './style-render';
@@ -9,9 +9,8 @@ import { coverOverlay, coverText, fontHref, fontPair, type CoverShown } from './
 export type Scheme = { name?: string; primary: string; accent: string; background: string; text: string };
 
 // The scheme becomes CSS variables, so every rule in invitations.css follows the couple's colors.
-// A chosen font pair fills --serif/--sans (and Confetti's --round display face); 'Custom' colours come from style.colors.
-export const schemeVars = (scheme: Scheme, style: InvitationStyle = {}) => {
-  const s = scheme.name === 'Custom' && style.colors ? deriveScheme(style.colors.primary, style.colors.accent) : scheme;
+// A chosen font pair fills --serif/--sans (and Confetti's --round display face). InvitationView has already resolved 'Custom' colours.
+export const schemeVars = (s: Scheme, style: InvitationStyle = {}) => {
   const f = fontPair(style);
   const fonts = f && { '--serif': `'${f.serif}', Georgia, serif`, '--sans': `'${f.sans}', system-ui, sans-serif`, '--round': `'${f.serif}', system-ui, sans-serif` };
   return { '--p': s.primary, '--a': s.accent, '--bg': s.background, '--fg': s.text, ...fonts } as CSSProperties;
@@ -40,9 +39,9 @@ export function useStyleFonts(style?: InvitationStyle) {
 }
 
 // The hero element's attributes: inv-cover plus the text colour that reads over the chosen overlay.
-export const heroAttrs = (className: string, cover: CoverShown | null) => {
+export const heroAttrs = (className: string, cover: CoverShown | null, primary: string) => {
   if (!cover) return { className: className || undefined };
-  const t = coverText(cover.tone);
+  const t = coverText(cover.tone, primary);
   return {
     className: `${className} inv-cover${cover.fade ? ' inv-cover-faded' : ''}`.trim(),
     style: { '--cover-fg': t.color, '--cover-shadow': t.textShadow } as CSSProperties,

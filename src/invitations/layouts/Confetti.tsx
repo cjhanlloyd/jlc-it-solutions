@@ -8,7 +8,7 @@ export default function Confetti({ details: d, scheme, photos: all, style, rsvpS
   const { cover, gallery: photos } = coverFor(style, all);
   return (
     <main className="inv cf" style={schemeVars(scheme, style)}>
-      <header {...heroAttrs('cf-hero', cover)}>
+      <header {...heroAttrs('cf-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <span className="cf-dots" aria-hidden="true" />
         <p className="cf-kicker">You're invited to</p>

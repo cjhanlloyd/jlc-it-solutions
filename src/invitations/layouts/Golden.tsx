@@ -9,7 +9,7 @@ export default function Golden({ details: d, scheme, photos: all, style, rsvpSlo
   return (
     <main className="inv gl" style={schemeVars(scheme, style)}>
       <div className="gl-wrap">
-        <header {...heroAttrs('gl-hero', cover)}>
+        <header {...heroAttrs('gl-hero', cover, scheme.primary)}>
           {cover && <Cover {...cover} />}
           <p className="gl-kicker">You're invited to</p>
           <h1 className="gl-title">

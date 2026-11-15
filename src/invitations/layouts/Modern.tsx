@@ -8,7 +8,7 @@ export default function Modern({ details: d, scheme, photos: all, style, rsvpSlo
   const { cover, gallery: photos } = coverFor(style, all);
   return (
     <main className="inv md" style={schemeVars(scheme, style)}>
-      <header {...heroAttrs('md-hero', cover)}>
+      <header {...heroAttrs('md-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <p className="md-label">The wedding of</p>
         <h1 className="md-names">

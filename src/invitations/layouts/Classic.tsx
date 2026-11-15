@@ -10,7 +10,7 @@ export default function Classic({ details: d, scheme, photos: all, style, rsvpSl
   return (
     <main className="inv cl" style={schemeVars(scheme, style)}>
       <div className="cl-frame">
-        <header {...heroAttrs('', cover)}>
+        <header {...heroAttrs('', cover, scheme.primary)}>
           {cover && <Cover {...cover} />}
           <p className="cl-kicker">Together with their families</p>
           <h1 className="cl-names">
