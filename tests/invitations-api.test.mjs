@@ -159,6 +159,7 @@ test('manage with the correct token returns details and RSVPs', async () => {
   assert.equal(data.productType, 'wedding_invitation');
   assert.equal(data.status, 'live');
   assert.equal(data.design.slug, 'classic-elegance');
+  assert.ok(data.design.colorSchemes.some((s) => s.name === 'Blush'), 'the design schemes, so the manage page can switch colours');
   assert.equal(data.colorScheme.name, 'Blush');
   assert.equal(data.details.partner2, 'Juan');
   assert.equal(data.title, 'Maria & Juan');

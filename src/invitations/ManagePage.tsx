@@ -2,14 +2,17 @@
 import React from 'react';
 import { Copy, Download, ExternalLink, KeyRound } from 'lucide-react';
 import InvitationView from './InvitationView';
-import { Alert, Field, PaneToggle, PhotoPicker, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
+import { Alert, Field, PaneToggle, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
 import { formOf } from './forms';
 import type { Scheme } from './parts';
-import { resolveCoverIndex } from './style-render';
+import { effectiveScheme, resolveCoverIndex } from './style-render';
 import type { InvitationStyle } from '../../shared/invitation-style';
+import DesignTab from './studio/DesignTab';
+import PhotosTab from './studio/PhotosTab';
+import PreviewFrame from './studio/PreviewFrame';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
-type Manage = { slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; rsvps: Rsvp[] };
+type Manage = { slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -63,6 +66,9 @@ export default function ManagePage({ btn }: { btn: string }) {
   const [data, setData] = React.useState<Manage | null | 'missing' | 'offline'>(token ? null : 'missing');
   const [draft, setDraft] = React.useState<any>(null);
   const [photos, setPhotos] = React.useState<string[]>([]);
+  // style.cover.photo is kept as an index into photos while editing; the server stores it as the photo key.
+  const [style, setStyle] = React.useState<InvitationStyle>({});
+  const [scheme, setScheme] = React.useState('');
   const [msg, setMsg] = React.useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -79,6 +85,8 @@ export default function ManagePage({ btn }: { btn: string }) {
       setData(d);
       setDraft(formOf(d.productType)?.toDraft(d.details) ?? null);
       setPhotos(d.photos);
+      setStyle(resolveCoverIndex(d.style ?? {}, d.photos));
+      setScheme(d.colorScheme.name ?? '');
     }).catch(() => setData('offline'));
   }, []);
 
@@ -105,6 +113,8 @@ export default function ManagePage({ btn }: { btn: string }) {
   const check = form.check(draft);
   const kids = data.askKids;
   const yes = data.rsvps.filter((r) => r.attending);
+  const schemes = data.design.colorSchemes?.length ? data.design.colorSchemes : [data.colorScheme];
+  const chosen = scheme === 'Custom' && style.colors ? { ...data.colorScheme, name: 'Custom' } : schemes.find((s) => s.name === scheme) ?? data.colorScheme;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -112,11 +122,13 @@ export default function ManagePage({ btn }: { btn: string }) {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos }) });
+      const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos, style, ...(chosen.name !== data.colorScheme.name ? { colorScheme: chosen.name } : {}) }) });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
         setDraft(form!.toDraft(body.details));
         setPhotos(body.photos);
+        setStyle(resolveCoverIndex(body.style ?? {}, body.photos));
+        setData({ ...data, colorScheme: chosen, style: body.style });
         setMsg({ kind: 'success', text: 'Saved. Your guests see the changes right away.' });
       } else setMsg({ kind: 'error', text: res.status === 404 ? 'This manage link no longer works. Request fresh links from this page after reloading.' : body.error || 'Something went wrong. Please try again.' });
     } catch {
@@ -197,7 +209,12 @@ export default function ManagePage({ btn }: { btn: string }) {
         <form onSubmit={save} noValidate className={`${view === 'edit' ? 'block' : 'hidden'} lg:block bg-white lg:rounded-3xl lg:border lg:border-slate-200 p-5 sm:p-8 space-y-6`}>
           <h2 className="text-lg font-extrabold text-slate-900 font-display">Edit details</h2>
           <form.Form draft={draft} onChange={setDraft} lockNames />
-          <PhotoPicker photos={photos} onChange={setPhotos} />
+          <section aria-label="Design" className="border-t border-slate-200 pt-6">
+            <DesignTab schemes={schemes} scheme={chosen.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active />
+          </section>
+          <section aria-label="Photos and cover" className="border-t border-slate-200 pt-6">
+            <PhotosTab photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />
+          </section>
           {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
           <button type="submit" disabled={saving} className={`w-full px-6 py-3.5 rounded-full text-sm font-bold uppercase tracking-wider font-display text-white shadow-lg cursor-pointer disabled:opacity-60 ${btn}`}>
             {saving ? 'Saving…' : 'Save changes'}
@@ -205,7 +222,9 @@ export default function ManagePage({ btn }: { btn: string }) {
         </form>
         <section aria-label="Live preview" className={`${view === 'preview' ? 'block' : 'hidden'} lg:block`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 bg-white">
-            <InvitationView layoutKey={data.design.layoutKey} scheme={data.colorScheme} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} style={resolveCoverIndex(data.style ?? {}, photos)} />
+            <PreviewFrame cover={style.cover} onFocus={(f) => style.cover && setStyle({ ...style, cover: { ...style.cover, ...f } })}>
+              <InvitationView layoutKey={data.design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} style={style} />
+            </PreviewFrame>
           </div>
         </section>
       </div>

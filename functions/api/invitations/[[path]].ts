@@ -88,7 +88,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug, !!occasion?.askKids);
       return json({
         slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
-        title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
+        title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key, colorSchemes: parse(inv.design_color_schemes, []) },
         // style.cover.photo is one of the photos keys
         colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
       });
