@@ -1,7 +1,8 @@
 // Garden: soft and botanical, leafy sprigs, rounded cards, a vine timeline and arched photos.
 import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
-import { Countdown, MapLink, Photos, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, MapLink, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
+import { coverFor } from '../style-render';
 
 const LEAVES: [number, number, number][] = [[46, 37, -50], [70, 33, 35], [100, 24, -40], [126, 23, 40], [156, 13, -35], [176, 12, 30]];
 
@@ -15,11 +16,13 @@ const Sprig = ({ className }: { className: string }) => (
   </svg>
 );
 
-export default function Garden({ details: d, scheme, photos, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Garden({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+  const { cover, gallery: photos } = coverFor(style, all);
   return (
-    <main className="inv gd" style={schemeVars(scheme)}>
+    <main className="inv gd" style={schemeVars(scheme, style)}>
       <div className="gd-wrap">
-        <header className="gd-hero">
+        <header {...heroAttrs('gd-hero', cover)}>
+          {cover && <Cover {...cover} />}
           <Sprig className="gd-sprig" />
           <p className="gd-kicker">You are warmly invited to the wedding of</p>
           <h1 className="gd-names">

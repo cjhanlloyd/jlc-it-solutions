@@ -1,13 +1,16 @@
 // Golden: an elegant milestone look, dark scheme background, gold accent rules, serif type, centred, big age.
 import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
-import { Countdown, MapLink, Ordinal, Photos, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, MapLink, Ordinal, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
+import { coverFor } from '../style-render';
 
-export default function Golden({ details: d, scheme, photos, rsvpSlot }: LayoutProps<BirthdayDetails>) {
+export default function Golden({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<BirthdayDetails>) {
+  const { cover, gallery: photos } = coverFor(style, all);
   return (
-    <main className="inv gl" style={schemeVars(scheme)}>
+    <main className="inv gl" style={schemeVars(scheme, style)}>
       <div className="gl-wrap">
-        <header className="gl-hero">
+        <header {...heroAttrs('gl-hero', cover)}>
+          {cover && <Cover {...cover} />}
           <p className="gl-kicker">You're invited to</p>
           <h1 className="gl-title">
             <span className="gl-name">{d.celebrant}'s</span>{' '}

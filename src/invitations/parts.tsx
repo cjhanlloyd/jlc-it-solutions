@@ -1,13 +1,62 @@
 // Small pieces shared by the layouts and the guest page. Text is rendered only through JSX.
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Venue } from '../../shared/invitation-fields';
+import { deriveScheme, type InvitationStyle } from '../../shared/invitation-style';
 import { ordinal } from '../../shared/occasions/birthday';
 import type { InvitationDetails } from '../../shared/occasions/wedding';
+import { coverOverlay, coverText, fontHref, fontPair, type CoverShown } from './style-render';
 
-export type Scheme = { primary: string; accent: string; background: string; text: string };
+export type Scheme = { name?: string; primary: string; accent: string; background: string; text: string };
 
 // The scheme becomes CSS variables, so every rule in invitations.css follows the couple's colors.
-export const schemeVars = (s: Scheme) => ({ '--p': s.primary, '--a': s.accent, '--bg': s.background, '--fg': s.text }) as CSSProperties;
+// A chosen font pair fills --serif/--sans (and Confetti's --round display face); 'Custom' colours come from style.colors.
+export const schemeVars = (scheme: Scheme, style: InvitationStyle = {}) => {
+  const s = scheme.name === 'Custom' && style.colors ? deriveScheme(style.colors.primary, style.colors.accent) : scheme;
+  const f = fontPair(style);
+  const fonts = f && { '--serif': `'${f.serif}', Georgia, serif`, '--sans': `'${f.sans}', system-ui, sans-serif`, '--round': `'${f.serif}', system-ui, sans-serif` };
+  return { '--p': s.primary, '--a': s.accent, '--bg': s.background, '--fg': s.text, ...fonts } as CSSProperties;
+};
+
+// One stylesheet link per font pair in use, shared by every mounted invitation and removed with the last one.
+const fontLinks = new Map<string, { el: HTMLLinkElement; users: number }>();
+export function useStyleFonts(style?: InvitationStyle) {
+  const href = fontHref(style);
+  useEffect(() => {
+    if (!href) return;
+    let entry = fontLinks.get(href);
+    if (!entry) {
+      const el = document.createElement('link');
+      el.rel = 'stylesheet';
+      el.href = href;
+      document.head.appendChild(el);
+      fontLinks.set(href, (entry = { el, users: 0 }));
+    }
+    const e = entry;
+    e.users++;
+    return () => {
+      if (--e.users === 0) { e.el.remove(); fontLinks.delete(href); }
+    };
+  }, [href]);
+}
+
+// The hero element's attributes: inv-cover plus the text colour that reads over the chosen overlay.
+export const heroAttrs = (className: string, cover: CoverShown | null) => {
+  if (!cover) return { className: className || undefined };
+  const t = coverText(cover.tone);
+  return {
+    className: `${className} inv-cover${cover.fade ? ' inv-cover-faded' : ''}`.trim(),
+    style: { '--cover-fg': t.color, '--cover-shadow': t.textShadow } as CSSProperties,
+  };
+};
+
+// Decorative photo behind a hero: focal point (x%, y%), zoom around that point, a tone overlay and an optional fade.
+export const Cover = ({ url, x, y, zoom, tone, strength, fade }: CoverShown) => (
+  <div className="inv-cover-layer" aria-hidden="true">
+    <img src={url} alt="" decoding="async" style={{ objectPosition: `${x}% ${y}%`, transform: `scale(${zoom})`, transformOrigin: `${x}% ${y}%` }} />
+    <span style={{ background: coverOverlay(tone, strength) }} />
+    {fade && <span className="inv-cover-fade" />}
+  </div>
+);
 
 export const formatDate = (d: string, o: Intl.DateTimeFormatOptions) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', ...o });

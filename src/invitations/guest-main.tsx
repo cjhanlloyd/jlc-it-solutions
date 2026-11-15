@@ -2,6 +2,7 @@
 import { StrictMode, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LIMITS } from '../../shared/invitation-fields';
+import type { InvitationStyle } from '../../shared/invitation-style';
 import InvitationView from './InvitationView';
 import { Ornament, schemeVars, type Scheme } from './parts';
 
@@ -22,7 +23,7 @@ function loadTurnstile(): Promise<void> {
 }
 
 type Data =
-  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; rsvpOpen: boolean; askKids?: boolean; productType?: string }
+  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
@@ -161,7 +162,7 @@ function Guest() {
       return <main className="inv plain" style={schemeVars(NEUTRAL)}><p className="plain-loading" role="status">Opening your invitation…</p></main>;
     case 'live':
       return (
-        <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos}
+        <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} style={data.style}
           rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
       );
     case 'expired':

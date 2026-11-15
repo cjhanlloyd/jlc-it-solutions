@@ -178,7 +178,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
 
         <section aria-label="Live preview" className={`${view === 'preview' ? 'block' : 'hidden'} lg:block`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
-            {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} />}
+            {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={{}} />}
           </div>
         </section>
       </div>

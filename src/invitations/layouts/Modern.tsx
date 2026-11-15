@@ -1,12 +1,15 @@
 // Modern: minimal and asymmetric, bold sans type, a color bar, labelled rows and an offset feature photo.
 import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
-import { Countdown, MapLink, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, MapLink, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues, heroAttrs } from '../parts';
+import { coverFor } from '../style-render';
 
-export default function Modern({ details: d, scheme, photos, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Modern({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+  const { cover, gallery: photos } = coverFor(style, all);
   return (
-    <main className="inv md" style={schemeVars(scheme)}>
-      <header className="md-hero">
+    <main className="inv md" style={schemeVars(scheme, style)}>
+      <header {...heroAttrs('md-hero', cover)}>
+        {cover && <Cover {...cover} />}
         <p className="md-label">The wedding of</p>
         <h1 className="md-names">
           <span>{d.partner1}</span> <span className="md-amp">&amp;</span> <span>{d.partner2}</span>

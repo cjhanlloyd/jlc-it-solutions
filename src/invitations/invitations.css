@@ -286,3 +286,21 @@ body { margin: 0; }
 .cl-message, .gd-message, .md-lead, [aria-labelledby="cl-notes"] p, [aria-labelledby="gd-notes"] p, .md-row > p,
 .cf-message, .gl-message, [aria-labelledby="cf-notes"] p, [aria-labelledby="gl-notes"] p,
 .bl-message, [aria-labelledby="bl-notes"] p { white-space: pre-line; }
+
+/* ---------- Cover photo behind a layout's hero (kept last so it wins ties with the layout rules above) ----------
+   The photo layer sits under the hero's own content (z-index -1 inside an isolated hero); overflow clips the zoom.
+   --cover-fg / --cover-shadow are set inline from the overlay tone so the hero text stays readable. */
+.inv-cover { position: relative; isolation: isolate; overflow: hidden; }
+.inv .inv-cover-layer { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.inv .inv-cover-layer img { width: 100%; height: 100%; max-width: none; object-fit: cover; background: none; }
+.inv-cover-layer > span { position: absolute; inset: 0; }
+.inv-cover-layer > .inv-cover-fade { top: auto; height: 72px; background: linear-gradient(transparent, var(--bg)); }
+.inv-cover > :not(.inv-cover-layer), .inv-cover > :not(.inv-cover-layer) * { color: var(--cover-fg); text-shadow: var(--cover-shadow); }
+.inv-cover .md-day { color: var(--fg); text-shadow: none; }
+.inv-cover .cf-pill { background: transparent; border-color: currentColor; }
+/* Heroes without padding of their own get some, keeping each layout's shape. */
+.cl-frame > .inv-cover { padding: 36px 16px; }
+.gd-hero.inv-cover { padding: 24px 16px 36px; border-radius: 28px; }
+.gl-hero.inv-cover { padding: 40px 16px; border: 1px solid var(--a); border-radius: 2px; }
+.bl-hero.inv-cover { padding: 40px 16px; border-radius: 32px; }
+.inv .inv-cover.inv-cover-faded { padding-bottom: 88px; }

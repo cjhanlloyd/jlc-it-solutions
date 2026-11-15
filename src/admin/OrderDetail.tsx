@@ -3,10 +3,12 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from 'react';
 import { can } from '../../server/permissions';
 import { LIMITS } from '../../shared/invitation-fields';
+import type { InvitationStyle } from '../../shared/invitation-style';
 import { isSafeLink } from '../../shared/links';
 import { optimizeImage } from '../components/admin/images';
 import { STATUS_LABEL, type OrderStatus } from '../../shared/order-status';
 import { peso, photoSrc, useInvitationFonts } from '../invitations/kit';
+import { resolveCoverIndex } from '../invitations/style-render';
 import { Button, Card, Spinner, StatusPill, TextArea, TextField } from '../ui';
 import { fmtDate, type Session } from './api';
 
@@ -17,7 +19,7 @@ type Detail = {
   order: { id: number; reference: string; status: OrderStatus; title: string; designName: string; amountCentavos?: number; packageName?: string; packageKind?: string; designerNotes?: string | null; createdAt: string; paymentDeadline: string | null; deliveredAt: string | null; assignedTo: string | null };
   customerId?: number | null;
   customer: { name: string; email?: string; phone?: string };
-  invitation: { slug: string; status: string; layoutKey: string; colorScheme: any; details: any; photos: string[] } | null;
+  invitation: { slug: string; status: string; layoutKey: string; colorScheme: any; style?: InvitationStyle; details: any; photos: string[] } | null;
   payments: Payment[];
   proofs?: Proof[];
   events: { at: string; actor: string; kind: string; from: string | null; to: string | null; note: string | null; visible: boolean }[];
@@ -303,7 +305,7 @@ export default function OrderDetail({ session, id }: { session: Session; id: num
           <h2 className="font-display text-lg font-semibold">Invitation preview</h2>
           <div className="mt-3 max-h-[40rem] overflow-y-auto rounded-control border border-slate-200">
             <Suspense fallback={<p className="flex items-center gap-2 p-4 text-sm text-slate-600"><Spinner /> Loading preview…</p>}>
-              <InvitationView layoutKey={invitation.layoutKey} scheme={invitation.colorScheme} details={invitation.details} photos={invitation.photos.map(photoSrc)} />
+              <InvitationView layoutKey={invitation.layoutKey} scheme={invitation.colorScheme} details={invitation.details} photos={invitation.photos.map(photoSrc)} style={resolveCoverIndex(invitation.style ?? {}, invitation.photos)} />
             </Suspense>
           </div>
         </Card>

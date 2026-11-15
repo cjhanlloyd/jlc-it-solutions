@@ -1,14 +1,17 @@
 // Blush: an elegant debut look, soft scheme background, italic serif name under a big "18", named tradition lists.
 import type { LayoutProps } from '.';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
-import { Countdown, MapLink, Photos, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, MapLink, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
+import { coverFor } from '../style-render';
 
-export default function Blush({ details: d, scheme, photos, rsvpSlot }: LayoutProps<DebutDetails>) {
+export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<DebutDetails>) {
+  const { cover, gallery: photos } = coverFor(style, all);
   const traditions = TRADITIONS.filter((t) => d[t.key]?.length);
   return (
-    <main className="inv bl" style={schemeVars(scheme)}>
+    <main className="inv bl" style={schemeVars(scheme, style)}>
       <div className="bl-wrap">
-        <header className="bl-hero">
+        <header {...heroAttrs('bl-hero', cover)}>
+          {cover && <Cover {...cover} />}
           <p className="bl-kicker">{d.headline || 'Please join us to celebrate the debut of'}</p>
           <div className="bl-age" aria-hidden="true">18</div>
           <h1 className="bl-name">{d.debutante}</h1>

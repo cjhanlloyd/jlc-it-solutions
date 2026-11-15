@@ -4,14 +4,14 @@ export type Cover = { photo: number | string; x: number; y: number; zoom: number
 export type InvitationStyle = { v?: 1; font?: FontKey; colors?: { primary: string; accent: string }; cover?: Cover };
 export type FontKey = 'classic' | 'modern' | 'romantic' | 'playful' | 'elegant';
 
-const pair = (label: string, serif: string, sans: string, serifW = ':wght@400;600') => ({
+const pair = (label: string, serif: string, sans: string, serifW = ':wght@400;600', sansW = ':wght@400;600') => ({
   label, serif, sans,
-  googleFamilies: [serif.replace(/ /g, '+') + serifW, sans.replace(/ /g, '+') + ':wght@400;600'],
+  googleFamilies: [serif.replace(/ /g, '+') + serifW, sans.replace(/ /g, '+') + sansW],
 });
 export const FONT_PAIRS: Record<FontKey, { label: string; serif: string; sans: string; googleFamilies: string[] }> = {
   classic: pair('Classic', 'Cormorant Garamond', 'Jost'),
   modern: pair('Modern', 'DM Serif Display', 'Inter', ''),
-  romantic: pair('Romantic', 'Great Vibes', 'Lato', ''),
+  romantic: pair('Romantic', 'Great Vibes', 'Lato', '', ':wght@400;700'), // Lato has no 600
   playful: pair('Playful', 'Fredoka', 'Nunito'),
   elegant: pair('Elegant', 'Cinzel', 'Montserrat'),
 };

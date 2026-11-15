@@ -5,9 +5,11 @@ import InvitationView from './InvitationView';
 import { Alert, Field, PaneToggle, PhotoPicker, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
 import { formOf } from './forms';
 import type { Scheme } from './parts';
+import { resolveCoverIndex } from './style-render';
+import type { InvitationStyle } from '../../shared/invitation-style';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
-type Manage = { slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; details: any; photos: string[]; rsvps: Rsvp[] };
+type Manage = { slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -203,7 +205,7 @@ export default function ManagePage({ btn }: { btn: string }) {
         </form>
         <section aria-label="Live preview" className={`${view === 'preview' ? 'block' : 'hidden'} lg:block`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 bg-white">
-            <InvitationView layoutKey={data.design.layoutKey} scheme={data.colorScheme} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} />
+            <InvitationView layoutKey={data.design.layoutKey} scheme={data.colorScheme} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} style={resolveCoverIndex(data.style ?? {}, photos)} />
           </div>
         </section>
       </div>

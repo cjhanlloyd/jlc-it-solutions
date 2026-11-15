@@ -1,14 +1,17 @@
 // Classic: formal and centered, serif type, double-ruled frame and ornamental dividers.
 import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
-import { Countdown, MapLink, Ornament, Photos, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, MapLink, Ornament, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
+import { coverFor } from '../style-render';
 
-export default function Classic({ details: d, scheme, photos, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Classic({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+  const { cover, gallery: photos } = coverFor(style, all);
   const divider = <Ornament className="cl-orn" />;
   return (
-    <main className="inv cl" style={schemeVars(scheme)}>
+    <main className="inv cl" style={schemeVars(scheme, style)}>
       <div className="cl-frame">
-        <header>
+        <header {...heroAttrs('', cover)}>
+          {cover && <Cover {...cover} />}
           <p className="cl-kicker">Together with their families</p>
           <h1 className="cl-names">
             <span>{d.partner1}</span> <span className="cl-amp">&amp;</span> <span>{d.partner2}</span>

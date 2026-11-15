@@ -60,7 +60,7 @@ test('deriveScheme keeps text/background >= 4.5 and headings >= 3', () => {
 
 test('font pairs', () => {
   assert.deepEqual(Object.keys(FONT_PAIRS), ['classic', 'modern', 'romantic', 'playful', 'elegant']);
-  assert.deepEqual(FONT_PAIRS.romantic.googleFamilies, ['Great+Vibes', 'Lato:wght@400;600']);
+  assert.deepEqual(FONT_PAIRS.romantic.googleFamilies, ['Great+Vibes', 'Lato:wght@400;700']);
   assert.equal(FONT_PAIRS.classic.serif, 'Cormorant Garamond');
 });
 

@@ -1,12 +1,15 @@
 // Confetti: a bright kids' party look, gradient header with confetti dots, big age, theme pill, rounded heavy type and cards.
 import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
-import { Countdown, MapLink, Ordinal, Photos, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, MapLink, Ordinal, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
+import { coverFor } from '../style-render';
 
-export default function Confetti({ details: d, scheme, photos, rsvpSlot }: LayoutProps<BirthdayDetails>) {
+export default function Confetti({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<BirthdayDetails>) {
+  const { cover, gallery: photos } = coverFor(style, all);
   return (
-    <main className="inv cf" style={schemeVars(scheme)}>
-      <header className="cf-hero">
+    <main className="inv cf" style={schemeVars(scheme, style)}>
+      <header {...heroAttrs('cf-hero', cover)}>
+        {cover && <Cover {...cover} />}
         <span className="cf-dots" aria-hidden="true" />
         <p className="cf-kicker">You're invited to</p>
         <h1 className="cf-title">
