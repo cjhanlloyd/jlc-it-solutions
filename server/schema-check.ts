@@ -13,6 +13,7 @@ export const MIGRATION_MARKERS: Marker[] = [
   { migration: '0006_packages_content', table: 'orders', column: 'package_name' },
   { migration: '0007_custom_orders', table: 'orders', column: 'designer_notes' },
   { migration: '0007_custom_orders', table: 'order_proofs' },
+  { migration: '0008_invitation_style', table: 'invitations', column: 'style' },
 ];
 
 /** Names of migrations whose marker is missing, in order, without duplicates. */

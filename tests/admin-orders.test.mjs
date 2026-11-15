@@ -118,6 +118,15 @@ test('Editor scope (R7d): own orders plus unassigned paid work; others look unkn
   assert.equal((await (await api('', { as: 'adm' })).json()).orders.length, 4, 'Administrators see all');
 });
 
+test('detail: the invitation preview gets the stored style next to its scheme', async () => {
+  const id = addOrder('for_review');
+  const style = { v: 1, font: 'modern', colors: { primary: '#336699', accent: '#d4af37' }, cover: { photo: 'inv/x/0.png', x: 30, y: 70, zoom: 2, tone: 'scheme', strength: 0.5, fade: true } };
+  db.exec.prepare(`UPDATE invitations SET style = ?, color_scheme = '{"name":"Custom"}' WHERE id = (SELECT product_id FROM orders WHERE id = ?)`).run(JSON.stringify(style), id);
+  const { invitation } = await (await api(`/${id}`, { as: 'ed' })).json();
+  assert.deepEqual(invitation.style, style);
+  assert.equal(invitation.colorScheme.name, 'Custom');
+});
+
 test('detail: Editor gets no contact fields or receipt URLs; Administrator does', async () => {
   const work = addOrder('for_review', { email: 'ana@example.com' });
   addPayment(work);
@@ -128,6 +137,7 @@ test('detail: Editor gets no contact fields or receipt URLs; Administrator does'
   assert.deepEqual(ed.allowedNext, ['in_production', 'revision_requested', 'completed', 'delivered']);
   assert.equal(ed.invitation.layoutKey, 'classic');
   assert.deepEqual(ed.invitation.photos, ['inv/x/0.png']);
+  assert.deepEqual(ed.invitation.style, {}, 'an invitation without a style reads as {}');
 
   const id = addOrder('payment_verification', { email: 'ana2@example.com' });
   addPayment(id);

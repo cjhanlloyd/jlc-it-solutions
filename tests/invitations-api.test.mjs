@@ -207,7 +207,7 @@ test('manage: photos keep existing keys, add data URLs, delete removed ones, rej
   assert.ok(!r2.map.has('inv/1/0.png'), 'removed photo deleted');
   assert.ok(r2.map.has(keys[0]));
   assert.deepEqual((await res.json()).photos, keys);
-  for (const bad of [{ photos: ['inv/2/0.png'] }, { photos: Array(7).fill(PNG) }, { photos: ['data:text/html;base64,PGI+'] }, { colorScheme: 'Blush' }, { design: 'garden' }]) {
+  for (const bad of [{ photos: ['inv/2/0.png'] }, { photos: Array(7).fill(PNG) }, { photos: ['data:text/html;base64,PGI+'] }, { colorScheme: 'Neon' }, { design: 'garden' }]) {
     res = await call('POST', '/api/invitations/manage', { ...editBody({}, keys), ...bad }, TOKEN);
     assert.equal(res.status, 400, JSON.stringify(bad).slice(0, 80));
   }
@@ -365,4 +365,177 @@ test('guest: live adds productType/askKids; expired returns only the title', asy
   assert.deepEqual([g.productType, g.askKids], ['birthday_invitation', true]);
   sql("UPDATE invitations SET status = 'expired'");
   assert.deepEqual(await (await get(`/api/invitations/i/${b.slug}`)).json(), { state: 'expired', title: "Mia's 7th Birthday" });
+});
+
+// --- Invitation style (font, custom colours, cover) ---
+const JPG = 'data:image/jpeg;base64,' + Buffer.from('fake-jpg').toString('base64');
+const COVER = { x: 40, y: 60, zoom: 1.5, tone: 'dark', strength: 0.4, fade: true };
+const style = () => JSON.parse(inv().style);
+const nothingStored = () => {
+  assert.equal(q('SELECT * FROM invitations').length, 0);
+  assert.equal(q('SELECT * FROM orders').length, 0);
+  assert.equal(r2.map.size, 0);
+};
+
+test('checkout without a style stores {} and the named scheme, as before', async () => {
+  assert.equal((await post('/api/invitations/checkout', goodCheckout())).status, 200);
+  assert.deepEqual(style(), {});
+  assert.deepEqual(JSON.parse(inv().color_scheme), JSON.parse(SCHEMES)[0]);
+});
+
+test('checkout stores the style with the cover index turned into its R2 key', async () => {
+  const s = { v: 1, font: 'modern', cover: { photo: 1, ...COVER } };
+  assert.equal((await post('/api/invitations/checkout', goodCheckout({ photos: [PNG, JPG], style: s }))).status, 200);
+  assert.deepEqual(JSON.parse(inv().photos), ['inv/1/0.png', 'inv/1/1.jpg']);
+  assert.deepEqual(style(), { v: 1, font: 'modern', cover: { photo: 'inv/1/1.jpg', ...COVER } });
+});
+
+test("checkout with colorScheme 'Custom' stores 'Custom' with the derived colours and keeps style.colors", async () => {
+  const colors = { primary: '#336699', accent: '#d4af37' };
+  assert.equal((await post('/api/invitations/checkout', goodCheckout({ colorScheme: 'Custom', style: { v: 1, colors } }))).status, 200);
+  const scheme = JSON.parse(inv().color_scheme);
+  assert.equal(scheme.name, 'Custom');
+  assert.equal(scheme.accent, '#d4af37');
+  assert.match(scheme.background, /^#[0-9a-f]{6}$/);
+  assert.match(scheme.text, /^#[0-9a-f]{6}$/);
+  assert.deepEqual(style().colors, colors);
+});
+
+test('checkout: every invalid style → 400 and nothing stored', async () => {
+  const bad = [
+    { style: { cover: { photo: 1, ...COVER } } }, // index past the one photo
+    { style: { cover: { photo: -1, ...COVER } } },
+    { style: { cover: { photo: 'inv/1/0.png', ...COVER } } }, // a key is not valid at checkout
+    { style: { font: 'comic' } },
+    { style: { cover: { photo: 0, ...COVER, zoom: 4 } } },
+    { style: { cover: { photo: 0, ...COVER, x: -1 } } },
+    { style: { cover: { photo: 0, ...COVER, y: 101 } } },
+    { style: { cover: { photo: 0, ...COVER, strength: 0.9 } } },
+    { style: { cover: { photo: 0, ...COVER, tone: 'neon' } } },
+    { colorScheme: 'Custom', style: { colors: { primary: '#12345', accent: '#d4af37' } } },
+    { colorScheme: 'Custom', style: {} }, // Custom needs colours
+    { style: { colors: { primary: '#336699', accent: '#d4af37' } } }, // colours need Custom
+    { style: { v: 2 } },
+    { style: { layout: 'x' } },
+    { style: 'dark' },
+  ];
+  for (const extra of bad) {
+    const res = await post('/api/invitations/checkout', goodCheckout(extra));
+    assert.equal(res.status, 400, JSON.stringify(extra));
+    nothingStored();
+  }
+});
+
+// Live invitation with photos 0.png and 1.png and the given stored style
+const liveStyled = (s) => {
+  live();
+  sql(`UPDATE invitations SET photos = '["inv/1/0.png","inv/1/1.png"]', style = ? WHERE id = 1`, JSON.stringify(s));
+  r2.map.set('inv/1/1.png', { body: 'fake-png-1', bytes: Buffer.from('fake-png-1'), httpMetadata: { contentType: 'image/png' } });
+};
+const manageStyle = async () => (await (await call('GET', '/api/invitations/manage', undefined, TOKEN)).json()).style;
+
+test('manage GET returns style: {} for an old invitation, the stored style (cover as a key) otherwise', async () => {
+  live();
+  assert.deepEqual(await manageStyle(), {});
+  sql('DELETE FROM invitations'); sql('DELETE FROM orders');
+  const s = { v: 1, font: 'elegant', cover: { photo: 'inv/1/1.png', ...COVER } };
+  liveStyled(s);
+  assert.deepEqual(await manageStyle(), s);
+});
+
+test('manage edit of an old invitation without style keeps {} and the scheme exactly', async () => {
+  const before = live();
+  assert.equal((await call('POST', '/api/invitations/manage', editBody({ message: 'Hi' }), TOKEN)).status, 200);
+  assert.equal(inv().style, '{}');
+  assert.equal(inv().color_scheme, before.color_scheme);
+});
+
+test('manage edit with a style: an index points into the new photo list, an existing key is kept', async () => {
+  liveStyled({});
+  let res = await call('POST', '/api/invitations/manage', { ...editBody({}, ['inv/1/1.png', PNG]), style: { v: 1, font: 'playful', cover: { photo: 1, ...COVER } } }, TOKEN);
+  assert.equal(res.status, 200);
+  const keys = JSON.parse(inv().photos);
+  assert.equal(keys[0], 'inv/1/1.png');
+  assert.deepEqual(style(), { v: 1, font: 'playful', cover: { photo: keys[1], ...COVER } });
+  assert.deepEqual((await res.json()).style, style());
+  res = await call('POST', '/api/invitations/manage', { ...editBody({}, keys), style: { cover: { photo: 'inv/1/1.png', ...COVER } } }, TOKEN);
+  assert.equal(res.status, 200);
+  assert.deepEqual(style(), { cover: { photo: 'inv/1/1.png', ...COVER } });
+});
+
+test('manage edit: every invalid style → 400 and nothing stored', async () => {
+  const s = { v: 1, font: 'classic', cover: { photo: 'inv/1/1.png', ...COVER } };
+  liveStyled(s);
+  const bad = [
+    { photos: ['inv/1/0.png'], style: { cover: { photo: 'inv/1/1.png', ...COVER } } }, // key removed in this edit
+    { style: { cover: { photo: 'inv/9/9.png', ...COVER } } },
+    { style: { cover: { photo: 2, ...COVER } } },
+    { photos: ['inv/1/0.png', 'inv/1/1.png', PNG], style: { cover: { photo: 3, ...COVER } } },
+    { style: { font: 'comic' } },
+    { style: { cover: { photo: 0, ...COVER, zoom: 0.5 } } },
+    { style: { cover: { photo: 0, ...COVER, strength: -0.1 } } },
+    { style: { cover: { photo: 0, ...COVER, x: 100.5 } } },
+    { style: { colors: { primary: 'red', accent: '#d4af37' } }, colorScheme: 'Custom' },
+    { style: { colors: { primary: '#336699', accent: '#d4af37' } } }, // still the named Blush scheme
+  ];
+  for (const extra of bad) {
+    const res = await call('POST', '/api/invitations/manage', { ...editBody({}, ['inv/1/0.png', 'inv/1/1.png']), ...extra }, TOKEN);
+    assert.equal(res.status, 400, JSON.stringify(extra));
+    assert.deepEqual(style(), s);
+    assert.deepEqual(JSON.parse(inv().photos), ['inv/1/0.png', 'inv/1/1.png']);
+    assert.equal(r2.map.size, 2);
+    assert.equal(JSON.parse(inv().color_scheme).name, 'Blush');
+  }
+});
+
+test('manage edit without a style: reordering keeps the cover on its photo; removing it drops the cover', async () => {
+  const s = { v: 1, font: 'romantic', cover: { photo: 'inv/1/1.png', ...COVER } };
+  liveStyled(s);
+  assert.equal((await call('POST', '/api/invitations/manage', editBody({}, ['inv/1/1.png', 'inv/1/0.png']), TOKEN)).status, 200);
+  assert.deepEqual(style(), s);
+  assert.equal((await call('POST', '/api/invitations/manage', editBody({}, ['inv/1/1.png', PNG]), TOKEN)).status, 200);
+  assert.deepEqual(style(), s, 'removing another photo keeps the cover');
+  const res = await call('POST', '/api/invitations/manage', editBody({}, [JSON.parse(inv().photos)[1]]), TOKEN);
+  assert.equal(res.status, 200);
+  assert.deepEqual(style(), { v: 1, font: 'romantic' });
+  assert.deepEqual((await res.json()).style, { v: 1, font: 'romantic' });
+});
+
+test("manage edit switches between a named scheme and 'Custom' plus colours; design changes stay blocked", async () => {
+  live();
+  const colors = { primary: '#336699', accent: '#d4af37' };
+  let res = await call('POST', '/api/invitations/manage', { ...editBody(), colorScheme: 'Custom', style: { v: 1, colors } }, TOKEN);
+  assert.equal(res.status, 200);
+  assert.equal(JSON.parse(inv().color_scheme).name, 'Custom');
+  // New colours on a Custom invitation re-derive the scheme
+  res = await call('POST', '/api/invitations/manage', { ...editBody(), style: { v: 1, colors: { ...colors, primary: '#884422' } } }, TOKEN);
+  assert.equal(res.status, 200);
+  const custom = JSON.parse(inv().color_scheme);
+  assert.equal(custom.name, 'Custom');
+  assert.notEqual(custom.background, JSON.parse(SCHEMES)[0].background);
+  for (const bad of [{ colorScheme: 'Custom', style: {} }, { colorScheme: 'Neon', style: {} }, { style: {} }]) {
+    res = await call('POST', '/api/invitations/manage', { ...editBody(), ...bad }, TOKEN);
+    assert.equal(res.status, 400, JSON.stringify(bad));
+    assert.deepEqual(JSON.parse(inv().color_scheme), custom);
+  }
+  res = await call('POST', '/api/invitations/manage', { ...editBody(), colorScheme: 'Blush', style: { v: 1 } }, TOKEN);
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(inv().color_scheme), JSON.parse(SCHEMES)[0]);
+  assert.deepEqual(style(), { v: 1 });
+  for (const bad of [{ design: 'garden' }, { designSlug: 'confetti-pop' }]) {
+    assert.equal((await call('POST', '/api/invitations/manage', { ...editBody(), ...bad }, TOKEN)).status, 400);
+  }
+});
+
+test('guest API returns style with the cover as an index into its photos list; {} for an old invitation', async () => {
+  const w = live();
+  assert.deepEqual((await (await get(`/api/invitations/i/${w.slug}`)).json()).style, {});
+  sql('DELETE FROM invitations'); sql('DELETE FROM orders');
+  liveStyled({ v: 1, font: 'modern', cover: { photo: 'inv/1/1.png', ...COVER } });
+  const g = await (await get(`/api/invitations/i/${w.slug}`)).json();
+  assert.deepEqual(g.style, { v: 1, font: 'modern', cover: { photo: 1, ...COVER } });
+  assert.equal(g.photos[g.style.cover.photo], '/photos/inv/1/1.png');
+  // A stored cover key missing from the photo list is dropped, never pointed elsewhere
+  sql(`UPDATE invitations SET photos = '["inv/1/0.png"]'`);
+  assert.deepEqual((await (await get(`/api/invitations/i/${w.slug}`)).json()).style, { v: 1, font: 'modern' });
 });

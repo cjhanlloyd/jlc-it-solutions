@@ -20,8 +20,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const when = new Date(`${inv.event_date}T00:00:00Z`);
     title = `${name} — ${isNaN(when.getTime()) ? 'Invitation' : when.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' })}`;
     description = inv.product_type === 'wedding_invitation' ? `You're invited to the wedding of ${name}.` : `You're invited to ${name}.`;
-    const first = JSON.parse(inv.photos || '[]')[0];
-    if (first) image = `${url.origin}/photos/${first}`;
+    const keys: string[] = JSON.parse(inv.photos || '[]');
+    const cover = JSON.parse(inv.style || '{}').cover?.photo;
+    const shown = keys.includes(cover) ? cover : keys[0];
+    if (shown) image = `${url.origin}/photos/${shown}`;
   } else if (occasion) {
     title = `${name} — celebration has passed`;
     description = 'This celebration has already passed.';

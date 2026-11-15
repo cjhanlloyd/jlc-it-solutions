@@ -115,7 +115,7 @@ async function list(env: Env, me: Admin, params: URLSearchParams): Promise<Respo
 
 async function detail(env: Env, me: Admin, id: number): Promise<Response> {
   const o = await env.DB.prepare(
-    `SELECT o.*, i.slug, i.status AS invitation_status, i.color_scheme, i.details, i.photos, d.layout_key, d.product_type AS design_type, d.name AS design_name, c.name AS customer_name, c.phone AS customer_phone ${FROM} WHERE o.id = ?`,
+    `SELECT o.*, i.slug, i.status AS invitation_status, i.color_scheme, i.style, i.details, i.photos, d.layout_key, d.product_type AS design_type, d.name AS design_name, c.name AS customer_name, c.phone AS customer_phone ${FROM} WHERE o.id = ?`,
   ).bind(id).first<any>();
   if (!o) return NOT_FOUND();
   const [payments, events, proofs] = await Promise.all([
@@ -135,7 +135,7 @@ async function detail(env: Env, me: Admin, id: number): Promise<Response> {
     customerId: o.customer_id ?? null,
     customer: { name: o.customer_name ?? '', ...(can(me.role, 'orders.contact') ? { email: o.customer_email, phone: o.customer_phone ?? '' } : {}) },
     invitation: o.slug ? {
-      slug: o.slug, status: o.invitation_status, layoutKey: o.layout_key, colorScheme: parse(o.color_scheme, {}), details: parse(o.details, {}), photos: parse(o.photos, []),
+      slug: o.slug, status: o.invitation_status, layoutKey: o.layout_key, colorScheme: parse(o.color_scheme, {}), style: parse(o.style, {}), details: parse(o.details, {}), photos: parse(o.photos, []),
     } : null,
     // Payments (amounts, references, reviewers) are admin-only
     payments: !review ? [] : (payments.results || []).map((p) => ({

@@ -98,6 +98,16 @@ test('live slug: escaped names in og:title and <title>, absolute og:image of the
   assert.match(html, /<meta name="description" content="[^"]+">/);
 });
 
+test('og:image uses the cover photo when set; a cover key missing from the photos falls back to the first', async () => {
+  const cover = (photo) => JSON.stringify({ v: 1, cover: { photo, x: 50, y: 50, zoom: 1, tone: 'dark', strength: 0.3, fade: false } });
+  db[0].style = cover('inv/1/1.jpg');
+  assert.equal(og((await view('live-one')).html, 'image'), 'https://shop.test/photos/inv/1/1.jpg');
+  db[0].style = cover('inv/1/9.jpg');
+  assert.equal(og((await view('live-one')).html, 'image'), 'https://shop.test/photos/inv/1/0.png');
+  db[0].style = '{}';
+  assert.equal(og((await view('live-one')).html, 'image'), 'https://shop.test/photos/inv/1/0.png');
+});
+
 test('live slug: the wedding date is in og:title and <title>', async () => {
   const { html } = await view('live-one');
   const title = 'A&lt;b&gt; &amp; Juan &quot;J&quot; — June 12, 2099';
@@ -171,7 +181,8 @@ test('API: live → layout, colors, details, photo URLs, rsvpOpen', async () => 
   const res = await ctx(api, '/api/invitations/i/live-one');
   assert.equal(res.status, 200);
   const data = await res.json();
-  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'colorScheme', 'details', 'layoutKey', 'photos', 'productType', 'rsvpOpen', 'state']);
+  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'colorScheme', 'details', 'layoutKey', 'photos', 'productType', 'rsvpOpen', 'state', 'style']);
+  assert.deepEqual(data.style, {}, 'a row without a style reads as {}');
   assert.equal(data.state, 'live');
   assert.equal(data.layoutKey, 'classic');
   assert.deepEqual(data.colorScheme, SCHEME);

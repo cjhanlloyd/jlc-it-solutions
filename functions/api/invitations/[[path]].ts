@@ -8,6 +8,7 @@ import { newReference } from '../../../server/orders';
 import { activeProvider, loadPaymentSettings } from '../../../server/payments';
 import { turnstileError } from '../../../server/turnstile';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
+import { coverIndexToKey, deriveScheme, remapCover, validateStyle, type InvitationStyle } from '../../../shared/invitation-style';
 import { occasionOf } from '../../../shared/occasions';
 import { fromPrice, pickPackage, validatePackages, type Package } from '../../../shared/packages';
 
@@ -31,6 +32,13 @@ function packagesOf(d: { id: number; packages: string; price_centavos: number })
     return [{ key: 'standard', name: 'Standard', priceCentavos: d.price_centavos, inclusions: [], kind: 'template' }];
   }
   return v.packages;
+}
+// 'Custom' is the customer's own colours (style.colors); any other name must be one of the design's schemes.
+function schemeFor(designSchemes: string, name: unknown, style: InvitationStyle): { scheme: object } | { error: string } {
+  if (name === 'Custom') return style.colors ? { scheme: { name: 'Custom', ...deriveScheme(style.colors.primary, style.colors.accent) } } : { error: 'Please choose your custom colours.' };
+  if (style.colors) return { error: 'Custom colours need the Custom color scheme.' };
+  const scheme = (parse(designSchemes, []) as any[]).find((s) => s && s.name === name);
+  return scheme ? { scheme } : { error: 'Please choose one of the design\'s color schemes.' };
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -68,7 +76,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv') {
       const token = request.headers.get('X-Manage-Token');
       const inv = token && await env.DB.prepare(
-        "SELECT i.*, d.slug AS design_slug, d.name AS design_name, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = ? AND i.status = 'live'",
+        "SELECT i.*, d.slug AS design_slug, d.name AS design_name, d.layout_key, d.product_type, d.color_schemes AS design_color_schemes FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = ? AND i.status = 'live'",
       ).bind(await sha256(token)).first<any>();
       if (!inv) return NOT_FOUND();
       if (request.method === 'POST') return await manageEdit(request, env, inv);
@@ -81,7 +89,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return json({
         slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
         title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key },
-        colorScheme: parse(inv.color_scheme, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
+        // style.cover.photo is one of the photos keys
+        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
       });
     }
 
@@ -134,9 +143,6 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   const notes = custom && typeof body.designerNotes === 'string' ? body.designerNotes.trim() : '';
   if (custom && (!notes || notes.length > 1500)) return json({ error: "Please tell the designer what you'd like (up to 1,500 characters)." }, 400);
 
-  const scheme = (parse(design.color_schemes, []) as any[]).find((s) => s && s.name === body.colorScheme);
-  if (!scheme) return json({ error: 'Please choose one of the design\'s color schemes.' }, 400);
-
   const occasion = occasionOf(design.product_type);
   if (!occasion) return json({ error: 'That design is not available.' }, 400);
 
@@ -153,6 +159,12 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
     const err = photoError(p);
     if (err) return json({ error: err }, 400);
   }
+  // cover.photo is an index into photos here; it becomes the photo's R2 key once stored
+  const sv = validateStyle(body.style, { photoCount: photos.length });
+  if ('error' in sv) return json({ error: sv.error }, 400);
+  const sch = schemeFor(design.color_schemes, body.colorScheme, sv.style);
+  if ('error' in sch) return json({ error: sch.error }, 400);
+  const { scheme } = sch;
 
   const trackingToken = randomToken();
   const reference = newReference();
@@ -181,7 +193,8 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   let start;
   try {
     for (const [n, p] of (photos as string[]).entries()) keys.push(await putPhoto(env, invitationId, n, p));
-    await env.DB.prepare('UPDATE invitations SET photos = ? WHERE id = ?').bind(JSON.stringify(keys), invitationId).run();
+    await env.DB.prepare('UPDATE invitations SET photos = ?, style = ? WHERE id = ?')
+      .bind(JSON.stringify(keys), JSON.stringify(coverIndexToKey(sv.style, keys)), invitationId).run();
     start = await provider.start({ id: orderId, reference, amountCentavos: pkg.priceCentavos, email, itemName: `${occasion.label} invitation: ${design.name}` }, { env, origin });
     if (start.kind === 'redirect') await env.DB.prepare('UPDATE orders SET paymongo_checkout_id = ? WHERE id = ?').bind(start.providerRef, orderId).run();
   } catch (e) {
@@ -198,11 +211,13 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   return json({ reference, trackingToken, ...(start.kind === 'redirect' ? { checkoutUrl: start.url } : {}) });
 }
 
-// Body: { details, photos }. photos is the full desired list; each entry is either one of this
+// Body: { details, photos, style?, colorScheme? }. photos is the full desired list; each entry is either one of this
 // invitation's current R2 keys (kept) or a new image data URL (uploaded). Removed keys are deleted.
+// style.cover.photo is an index into the new photos list or a kept key; without a style the stored cover follows its photo.
+// colorScheme may switch between the design's schemes and 'Custom' (with style.colors); the design stays fixed.
 async function manageEdit(request: Request, env: Env, inv: any): Promise<Response> {
   const body: any = await request.json().catch(() => ({}));
-  if (['design', 'designSlug', 'colorScheme'].some((k) => k in body)) return json({ error: 'The design and color scheme cannot be changed after payment.' }, 400);
+  if (['design', 'designSlug'].some((k) => k in body)) return json({ error: 'The design cannot be changed after payment.' }, 400);
 
   const occasion = occasionOf(inv.product_type);
   if (!occasion) return NOT_FOUND();
@@ -224,6 +239,21 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
     if (err) return json({ error: err }, 400);
   }
 
+  const stored: InvitationStyle = parse(inv.style, {});
+  let style = stored;
+  if (body.style !== undefined) {
+    const sv = validateStyle(body.style, { photoCount: photos.length, photoKeys: current.filter((k) => photos.includes(k)) });
+    if ('error' in sv) return json({ error: sv.error }, 400);
+    style = sv.style;
+  }
+  let scheme: string = inv.color_scheme; // untouched unless the scheme name or custom colours change
+  const name = 'colorScheme' in body ? body.colorScheme : parse(inv.color_scheme, {}).name;
+  if ('colorScheme' in body || name === 'Custom' || style.colors) {
+    const sch = schemeFor(inv.design_color_schemes, name, style);
+    if ('error' in sch) return json({ error: sch.error }, 400);
+    scheme = JSON.stringify(sch.scheme);
+  }
+
   const added: string[] = [];
   const keys: string[] = [];
   try {
@@ -235,15 +265,16 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
       added.push(key);
       keys.push(key);
     }
-    await env.DB.prepare('UPDATE invitations SET details = ?, event_date = ?, photos = ? WHERE id = ?')
-      .bind(JSON.stringify(v.details), v.details.eventDate, JSON.stringify(keys), inv.id).run();
+    style = body.style !== undefined ? coverIndexToKey(style, keys) : remapCover(stored, current, keys);
+    await env.DB.prepare('UPDATE invitations SET details = ?, event_date = ?, photos = ?, style = ?, color_scheme = ? WHERE id = ?')
+      .bind(JSON.stringify(v.details), v.details.eventDate, JSON.stringify(keys), JSON.stringify(style), scheme, inv.id).run();
   } catch (e) {
     if (added.length) await env.PHOTOS.delete(added);
     throw e;
   }
   const removed = current.filter((k) => !keys.includes(k));
   if (removed.length) await env.PHOTOS.delete(removed);
-  return json({ ok: true, details: v.details, photos: keys });
+  return json({ ok: true, details: v.details, photos: keys, style });
 }
 
 // Quotes every cell; a leading = + - @ gets a ' so spreadsheets do not run it as a formula.
@@ -267,9 +298,14 @@ async function guest(env: Env, slug: string | null): Promise<Response> {
   if (!occasion) return NOT_FOUND();
   const details = parse(inv.details, {});
   if (inv.status === 'expired') return json({ state: 'expired', title: occasion.title(details) });
+  const keys: string[] = parse(inv.photos, []);
+  // Guests get the cover as an index into photos (the keys stay server-side); a missing key drops the cover
+  const { cover, ...style }: InvitationStyle = parse(inv.style, {});
+  const coverIndex = cover ? keys.indexOf(cover.photo as string) : -1;
   return json({
     state: 'live', productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
-    photos: (parse(inv.photos, []) as string[]).map((k) => `/photos/${k}`),
+    photos: keys.map((k) => `/photos/${k}`),
+    style: coverIndex < 0 ? style : { ...style, cover: { ...cover, photo: coverIndex } },
     // Same rule as the RSVP route below: open through the deadline day (UTC)
     rsvpOpen: !details.rsvpDeadline || todayUtc() <= details.rsvpDeadline,
   });
