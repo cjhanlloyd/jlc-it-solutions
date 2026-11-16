@@ -17,7 +17,7 @@ export const FONT_PAIRS: Record<FontKey, { label: string; serif: string; sans: s
 };
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
-const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+export const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const hex = (c: number[]) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
 const mix = (h: string, to: number, t: number) => hex(rgb(h).map((v) => v + (to - v) * t));
 const lum = (h: string) => {

@@ -71,6 +71,7 @@ export default function ManagePage({ btn }: { btn: string }) {
   const [scheme, setScheme] = React.useState('');
   const [msg, setMsg] = React.useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [positioning, setPositioning] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [view, setView] = React.useState<'edit' | 'preview'>('edit');
 
@@ -222,7 +223,16 @@ export default function ManagePage({ btn }: { btn: string }) {
         </form>
         <section aria-label="Live preview" className={`${view === 'preview' ? 'block' : 'hidden'} lg:block`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 bg-white">
-            <PreviewFrame cover={style.cover} onFocus={(f) => style.cover && setStyle({ ...style, cover: { ...style.cover, ...f } })}>
+            {style.cover && (
+              <div className="flex justify-center pt-3">
+                <button type="button" aria-pressed={positioning} onClick={() => setPositioning((p) => !p)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer ${positioning ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                  {positioning ? 'Done positioning' : 'Position cover'}
+                </button>
+              </div>
+            )}
+            {/* The drag handle blocks scrolling, so it is only there while positioning. */}
+            <PreviewFrame cover={style.cover} onFocus={positioning ? (f) => style.cover && setStyle({ ...style, cover: { ...style.cover, ...f } }) : undefined}>
               <InvitationView layoutKey={data.design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} style={style} />
             </PreviewFrame>
           </div>

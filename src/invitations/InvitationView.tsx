@@ -15,5 +15,5 @@ export default function InvitationView({ layoutKey, scheme, style, ...rest }: Pr
   // Unknown keys get a placeholder instead of feeding details to a layout of another occasion.
   if (!Object.prototype.hasOwnProperty.call(LAYOUTS, layoutKey)) return <p className="p-10 text-center text-sm text-slate-500">Preview available soon</p>;
   const Layout = LAYOUTS[layoutKey as LayoutKey];
-  return <Layout scheme={effectiveScheme(scheme, s)} style={s} {...rest} />;
+  return <div className="inv-root"><Layout scheme={effectiveScheme(scheme, s)} style={s} {...rest} /></div>;
 }

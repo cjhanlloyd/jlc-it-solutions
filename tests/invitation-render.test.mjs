@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { contrast } from '../shared/invitation-style.ts';
 import { fontHref, coverText, coverOverlay, resolveCoverIndex, coverFor, effectiveScheme, MIN_OVERLAY } from '../src/invitations/style-render.ts';
 
@@ -41,10 +42,18 @@ test('coverText: dark and light tones are fixed; scheme follows the primary; hal
 
 test('coverOverlay per tone, with a 30% floor', () => {
   assert.equal(MIN_OVERLAY, 0.3);
-  assert.equal(coverOverlay('dark', 0.4), 'rgba(0,0,0,0.4)');
-  assert.equal(coverOverlay('dark', 0), 'rgba(0,0,0,0.3)');
-  assert.equal(coverOverlay('light', 0.1), 'rgba(255,255,255,0.3)');
-  assert.equal(coverOverlay('scheme', 0.5), 'color-mix(in srgb, var(--p) 50%, transparent)');
+  assert.equal(coverOverlay('dark', 0.4, '#123456'), 'rgba(0,0,0,0.4)');
+  assert.equal(coverOverlay('dark', 0, '#123456'), 'rgba(0,0,0,0.3)');
+  assert.equal(coverOverlay('light', 0.1, '#123456'), 'rgba(255,255,255,0.3)');
+  assert.equal(coverOverlay('scheme', 0.5, '#8b1e3f'), 'rgba(139,30,63,0.5)');
+  assert.equal(coverOverlay('scheme', 0.1, '#ffffff'), 'rgba(255,255,255,0.3)');
+});
+
+test('invitation layouts size against their container, not the viewport', () => {
+  const css = readFileSync(new URL('../src/invitations/invitations.css', import.meta.url), 'utf8');
+  assert.match(css, /\.inv-root \{ container-type: inline-size; \}/);
+  assert.doesNotMatch(css, /\d(d|s|l)?vw\b/);
+  assert.doesNotMatch(css, /@media[^{]*width/);
 });
 
 test('effectiveScheme derives Custom colours, keeps others, and accepts a null style', () => {

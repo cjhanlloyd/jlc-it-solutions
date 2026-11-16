@@ -1,5 +1,5 @@
 // Pure rules for rendering an invitation style: font link, cover overlay and text colours, cover photo lookup.
-import { FONT_PAIRS, contrast, deriveScheme, type Cover, type InvitationStyle, type Scheme } from '../../shared/invitation-style.ts';
+import { FONT_PAIRS, contrast, deriveScheme, rgb, type Cover, type InvitationStyle, type Scheme } from '../../shared/invitation-style.ts';
 
 type Style = InvitationStyle | null | undefined;
 
@@ -27,9 +27,9 @@ export function coverText(tone: Cover['tone'], primary: string) {
   return light ? { color: '#ffffff', textShadow: DARK_HALO } : { color: '#111111', textShadow: LIGHT_HALO };
 }
 
-export const coverOverlay = (tone: Cover['tone'], s: number) =>
-  tone === 'dark' ? `rgba(0,0,0,${strength(s)})` : tone === 'light' ? `rgba(255,255,255,${strength(s)})`
-    : `color-mix(in srgb, var(--p) ${Math.round(strength(s) * 100)}%, transparent)`;
+// Plain rgba, not color-mix(), so older iOS Safari still draws the scheme overlay.
+export const coverOverlay = (tone: Cover['tone'], s: number, primary: string) =>
+  `rgba(${tone === 'dark' ? '0,0,0' : tone === 'light' ? '255,255,255' : rgb(primary).join(',')},${strength(s)})`;
 
 // Manage and admin responses store the cover as a photo key; the renderer wants its index in the current photo list.
 export function resolveCoverIndex(style: InvitationStyle, keys: string[]): InvitationStyle {

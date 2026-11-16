@@ -274,7 +274,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
 
         <section aria-label={review ? 'Preview of your invitation' : 'Live preview'} className={`${view === 'preview' ? 'block' : 'hidden'} lg:block min-w-0`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
-            <PreviewFrame cover={style.cover} onFocus={review ? undefined : (f) => setStyle((s) => (s.cover ? { ...s, cover: { ...s.cover, ...f } } : s))}>
+            <PreviewFrame cover={style.cover} onFocus={review || tab !== 'photos' ? undefined : (f) => setStyle((s) => (s.cover ? { ...s, cover: { ...s.cover, ...f } } : s))}>
               {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={style} />}
             </PreviewFrame>
           </div>

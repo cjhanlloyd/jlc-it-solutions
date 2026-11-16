@@ -15,6 +15,8 @@ export function resizePhoto(file: File): Promise<string> {
         canvas.height = Math.round(img.height * k);
         const ctx = canvas.getContext('2d');
         if (!ctx) return reject(new Error('No canvas'));
+        ctx.fillStyle = '#fff'; // JPEG has no alpha: transparent PNG pixels would otherwise turn black
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', 0.82));
       };

@@ -44,15 +44,15 @@ export const heroAttrs = (className: string, cover: CoverShown | null, primary: 
   const t = coverText(cover.tone, primary);
   return {
     className: `${className} inv-cover${cover.fade ? ' inv-cover-faded' : ''}`.trim(),
-    style: { '--cover-fg': t.color, '--cover-shadow': t.textShadow } as CSSProperties,
+    style: { '--cover-fg': t.color, '--cover-shadow': t.textShadow, '--cover-overlay': coverOverlay(cover.tone, cover.strength, primary) } as CSSProperties,
   };
 };
 
 // Decorative photo behind a hero: focal point (x%, y%), zoom around that point, a tone overlay and an optional fade.
-export const Cover = ({ url, x, y, zoom, tone, strength, fade }: CoverShown) => (
+export const Cover = ({ url, x, y, zoom, fade }: CoverShown) => (
   <div className="inv-cover-layer" aria-hidden="true">
     <img src={url} alt="" decoding="async" style={{ objectPosition: `${x}% ${y}%`, transform: `scale(${zoom})`, transformOrigin: `${x}% ${y}%` }} />
-    <span style={{ background: coverOverlay(tone, strength) }} />
+    <span style={{ background: 'var(--cover-overlay)' }} />
     {fade && <span className="inv-cover-fade" />}
   </div>
 );
