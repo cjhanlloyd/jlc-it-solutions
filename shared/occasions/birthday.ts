@@ -48,7 +48,7 @@ export const ordinal = (n: number): string => {
 
 export const birthday: Occasion<BirthdayDetails> = {
   productType: 'birthday_invitation', label: 'Birthday', noun: 'birthday', dateNoun: 'party',
-  layouts: ['confetti', 'golden', 'portrait'], askKids: true,
+  layouts: ['confetti', 'golden', 'portrait', 'pastel'], askKids: true,
   validateDetails,
   lockedFieldsChanged: (a, b) => a.celebrant !== b.celebrant,
   lockedMessage: "The celebrant's name cannot be changed after payment.",

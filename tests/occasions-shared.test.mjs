@@ -75,8 +75,8 @@ test('registry', () => {
   assert.equal(occasionOf(undefined), null);
   assert.equal(occasionOf('constructor'), null);
   assert.equal(occasionOf('__proto__'), null);
-  assert.deepEqual([...birthday.layouts], ['confetti', 'golden', 'portrait']);
-  assert.deepEqual([...wedding.layouts], ['classic', 'garden', 'modern', 'portrait']);
+  assert.deepEqual([...birthday.layouts], ['confetti', 'golden', 'portrait', 'pastel']);
+  assert.deepEqual([...wedding.layouts], ['classic', 'garden', 'modern', 'portrait', 'editorial', 'minimal']);
   assert.equal(birthday.askKids, true);
   assert.equal(wedding.askKids, false);
 });

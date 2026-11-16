@@ -57,7 +57,7 @@ function validateDetails(input: unknown): Result<'details', DebutDetails> {
 
 export const debut: Occasion<DebutDetails> = {
   productType: 'debut_invitation', label: 'Debut', noun: 'debut', dateNoun: 'debut',
-  layouts: ['blush', 'portrait'], askKids: false,
+  layouts: ['blush', 'portrait', 'starlight'], askKids: false,
   validateDetails,
   lockedFieldsChanged: (a, b) => a.debutante !== b.debutante,
   lockedMessage: "The debutante's name cannot be changed after payment.",
