@@ -38,7 +38,7 @@ function useCoverAverage(src: string | null, c: Cover | undefined) {
   return avg;
 }
 
-type Props = { photos: string[]; onPhotos: (p: string[]) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; primary: string };
+type Props = { photos: string[]; onPhotos: React.Dispatch<React.SetStateAction<string[]>>; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; primary: string };
 
 export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }: Props) {
   const [busy, setBusy] = React.useState(false);
@@ -74,7 +74,8 @@ export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }:
       }
     }
     if (files.length > LIMITS.photos - photos.length) setError(`You can add up to ${LIMITS.photos} photos.`);
-    change([...photos, ...added]);
+    // Appending never moves the cover, so only photos change: style edits made while resizing are kept.
+    onPhotos((cur) => [...cur, ...added].slice(0, LIMITS.photos));
     setBusy(false);
   };
 

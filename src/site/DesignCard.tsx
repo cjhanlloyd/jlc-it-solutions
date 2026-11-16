@@ -20,7 +20,7 @@ export const hasFrom = (d: Design) => d.packages.filter((p) => p.kind === 'templ
 
 const RENDER_WIDTH = 400; // the layout renders at phone width, then scales to the frame
 
-function LivePreview({ design }: { design: Design }) {
+export function LivePreview({ design }: { design: Design }) {
   useInvitationFonts();
   const ref = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(0);

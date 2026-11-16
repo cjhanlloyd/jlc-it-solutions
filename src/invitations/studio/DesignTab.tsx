@@ -1,7 +1,11 @@
-// Design tab: font pair (radio cards, each sampled in its own font) and colours (the design's schemes or Custom).
+// Design tab: the design itself (other designs of the same occasion), font pair (radio cards, each sampled in its own font) and colours (the design's schemes or Custom).
 import React from 'react';
 import { FONT_PAIRS, contrast, deriveScheme, type FontKey, type InvitationStyle } from '../../../shared/invitation-style';
 import { useStyleFonts, type Scheme } from '../parts';
+import { resolveOrderPackage } from '../../../shared/packages';
+import { peso } from '../kit';
+import { LivePreview } from '../../site/DesignCard';
+import type { Design } from '../../site/designs-api';
 
 const legendCls = 'text-sm font-extrabold text-slate-900 font-display pr-3';
 const cardCls = 'relative block rounded-2xl border border-slate-200 p-3 cursor-pointer hover:border-slate-400 has-[:checked]:border-slate-900 has-[:checked]:ring-1 has-[:checked]:ring-slate-900 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-slate-900';
@@ -17,9 +21,10 @@ function FontCard({ value, label, serif, sans, checked, load, onPick }: { key?: 
   );
 }
 
-type Props = { schemes: Scheme[]; scheme: string; onScheme: (name: string) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active: boolean };
+// Without designs (the manage page), there is no switcher: switching design after payment changes the product.
+type Props = { designs?: Design[]; slug?: string; packageKey?: string; onSwitch?: (d: Design) => void; schemes: Scheme[]; scheme: string; onScheme: (name: string) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active: boolean };
 
-export default function DesignTab({ schemes, scheme, onScheme, style, onStyle, active }: Props) {
+export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes, scheme, onScheme, style, onStyle, active }: Props) {
   // Sample fonts load the first time the tab is shown, not on every page view.
   const [load, setLoad] = React.useState(active);
   React.useEffect(() => { if (active) setLoad(true); }, [active]);
@@ -38,6 +43,29 @@ export default function DesignTab({ schemes, scheme, onScheme, style, onStyle, a
 
   return (
     <div className="space-y-6">
+      {designs && designs.length > 1 && onSwitch && (
+        <fieldset className="space-y-3">
+          <legend className={legendCls}>Design</legend>
+          <p className="text-xs text-slate-600">Switch designs any time: your details, photos and style stay.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {designs.map((d) => {
+              const on = d.slug === slug;
+              const price = resolveOrderPackage(d.packages, packageKey)?.priceCentavos;
+              return (
+                <button key={d.slug} type="button" aria-pressed={on} onClick={() => !on && onSwitch(d)}
+                  className={`text-left rounded-2xl border p-2 cursor-pointer ${on ? 'border-slate-900 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-400'}`}>
+                  <span className="relative block aspect-[4/5] overflow-hidden rounded-xl bg-slate-100">
+                    {d.previewImages[0] ? <img src={d.previewImages[0]} alt="" loading="lazy" className="h-full w-full object-cover" /> : <LivePreview design={d} />}
+                  </span>
+                  <span className="block mt-1.5 text-xs font-bold text-slate-900 truncate">{d.name}</span>
+                  {price !== undefined && <span className="block text-xs text-slate-600">{peso(price)}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+
       <fieldset className="space-y-3">
         <legend className={legendCls}>Fonts</legend>
         <div className="grid grid-cols-2 gap-2">

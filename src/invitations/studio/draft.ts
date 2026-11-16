@@ -4,8 +4,9 @@ import { savedFor } from '../forms/restore.ts';
 
 export type Saved = { slug: string; draft: any; scheme: string; style: InvitationStyle; email: string; name?: string; phone?: string; hadPhotos: boolean };
 
-export const serializeDraft = ({ photos, ...rest }: Omit<Saved, 'hadPhotos'> & { photos: string[] }): string =>
-  JSON.stringify({ ...rest, hadPhotos: photos.length > 0 } satisfies Saved);
+// hadPhotos stays set after a restore until photos are added again, so the re-add notice survives further refreshes.
+export const serializeDraft = ({ photos, hadPhotos, ...rest }: Omit<Saved, 'hadPhotos'> & { photos: string[]; hadPhotos?: boolean }): string =>
+  JSON.stringify({ ...rest, hadPhotos: photos.length > 0 || !!hadPhotos } satisfies Saved);
 
 // Photos are never restored, so neither is the cover; a style that no longer validates restores as layout defaults.
 export function parseDraft(raw: string | null, slug: string): Saved | null {
