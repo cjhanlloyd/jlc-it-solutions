@@ -39,6 +39,17 @@ export function deriveScheme(primary: string, accent: string): Scheme {
   return { primary: heading, accent, background, text: '#1a1a1a' };
 }
 
+// fg nudged darker or lighter, whichever reaches `min` first, until it reads on bg. For display type and ornaments.
+// Bounded: at full strength it is black or white, and one of those is always above 4.5:1 on any background.
+export function displaySafe(fg: string, bg: string, min = 3): string {
+  if (!HEX_RE.test(fg) || !HEX_RE.test(bg) || contrast(fg, bg) >= min) return fg;
+  for (let i = 1; i <= 20; i++) for (const to of [0, 255]) {
+    const c = mix(fg, to, i / 20);
+    if (contrast(c, bg) >= min) return c;
+  }
+  return fg;
+}
+
 const TONES = ['dark', 'light', 'scheme'];
 const inRange = (n: unknown, lo: number, hi: number) => typeof n === 'number' && Number.isFinite(n) && n >= lo && n <= hi;
 const extra = (o: object, allowed: string[]) => Object.keys(o).find((k) => !allowed.includes(k));

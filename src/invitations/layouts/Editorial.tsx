@@ -2,14 +2,14 @@
 // a date and venue band, then numbered sections between thin rules.
 import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, MapLink, Photos, formatDate, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, Photos, formatDate, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
 
 export default function Editorial({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const places = venues(d);
   return (
-    <main className="inv ed" style={schemeVars(scheme, style)}>
+    <main className="inv ed" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
       <header {...heroAttrs('ed-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <p className="ed-kicker ed-top"><span>The wedding issue</span><span>{formatDate(d.eventDate, { month: 'long', year: 'numeric' })}</span></p>

@@ -2,13 +2,13 @@
 // All text sits on the scheme background inside the cards, so it keeps the scheme's contrast.
 import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
-import { Cover, Countdown, MapLink, Ordinal, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, Ordinal, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
 
 export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<BirthdayDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   return (
-    <main className="inv ps" style={schemeVars(scheme, style)}>
+    <main className="inv ps" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
       <header {...heroAttrs('ps-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <p className="ps-kicker">{d.headline || "You're invited"}</p>

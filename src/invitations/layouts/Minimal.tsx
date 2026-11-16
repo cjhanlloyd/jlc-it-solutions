@@ -2,14 +2,14 @@
 // a cover photo sits as an inset framed hero rather than full-bleed.
 import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, MapLink, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
 
 export default function Minimal({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const places = venues(d);
   return (
-    <main className="inv mn" style={schemeVars(scheme, style)}>
+    <main className="inv mn" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
       <header {...heroAttrs('mn-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <p className="mn-kicker">Together with their families</p>

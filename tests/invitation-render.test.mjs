@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { contrast } from '../shared/invitation-style.ts';
+import { contrast, displaySafe } from '../shared/invitation-style.ts';
 import { fontHref, coverText, coverOverlay, resolveCoverIndex, coverFor, effectiveScheme, MIN_OVERLAY } from '../src/invitations/style-render.ts';
 
 const COVER = { x: 30, y: 60, zoom: 1.5, tone: 'dark', strength: 0.4, fade: true };
@@ -87,4 +87,18 @@ test('an empty or null style produces no cover', () => {
   assert.deepEqual(coverFor({}, ['a']), { cover: null, gallery: ['a'] });
   assert.deepEqual(coverFor(null, ['a']), { cover: null, gallery: ['a'] });
   assert.equal(fontHref(null), null);
+});
+
+test('displaySafe reaches 3:1 on light and dark backgrounds, keeps passing colours, and stops', () => {
+  // Extremes, mid-greys, yellow, and the seeded, sample and admin default scheme colours.
+  const colours = ['#000000', '#ffffff', '#ffff00', '#777777', '#808080', '#949494', '#b76e79', '#d4af37', '#5f7a61', '#c9a66b',
+    '#3b2a2e', '#2b3a2d', '#fff8f6', '#f7f9f4', '#1f2937', '#b8860b', '#fffaf3', '#7a5752', '#b8955a', '#faf7f2', '#3a3330'];
+  const backgrounds = ['#ffffff', '#fff8f6', '#f7f9f4', '#fffaf3', '#faf7f2', '#808080', '#3b2a2e', '#2b3a2d', '#1f2937', '#3a3330', '#000000'];
+  for (const fg of colours) for (const bg of backgrounds) {
+    const c = displaySafe(fg, bg);
+    assert.ok(contrast(c, bg) >= 3, `${fg} on ${bg} -> ${c} = ${contrast(c, bg).toFixed(2)}`);
+    if (contrast(fg, bg) >= 3) assert.equal(c, fg);
+  }
+  assert.ok(contrast(displaySafe('#777777', '#ffffff', 4.5), '#ffffff') >= 4.5);
+  assert.equal(displaySafe('red', '#ffffff'), 'red'); // non-hex is passed through, not looped on
 });

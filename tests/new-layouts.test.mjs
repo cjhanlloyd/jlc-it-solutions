@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
+import { contrast } from '../shared/invitation-style.ts';
 
 const NAMES = ['Editorial', 'Minimal', 'Starlight', 'Pastel'];
 // Written inside node_modules so the external react import resolves to the project's copy.
@@ -77,4 +78,14 @@ test('Pastel without an age still renders', () => {
 test('each new layout has its own CSS block', () => {
   const css = readFileSync(new URL('../src/invitations/invitations.css', import.meta.url), 'utf8');
   for (const p of ['ed', 'mn', 'st', 'ps']) assert.match(css, new RegExp(`\\.${p}-hero[ .,{:]`), p);
+});
+
+test('Starlight: a dark accent is lifted for the night sky; older vars stay as given', () => {
+  const dark = { primary: '#1f2937', accent: '#2b2b2b', background: '#fbf7f2', text: '#1a1a1a' };
+  const html = renderToStaticMarkup(createElement(L.Starlight, { details: DEBUT, scheme: dark, photos: [], style: {} }));
+  const sky = html.match(/--ad-sky:(#[0-9a-f]{6})/)[1];
+  assert.notEqual(sky, '#2b2b2b');
+  assert.ok(contrast(sky, '#1a1a1a') >= 3, sky);
+  assert.match(html, /--a:#2b2b2b/);
+  assert.match(html, /--pd:#1f2937/); // already readable on the background, so unchanged
 });

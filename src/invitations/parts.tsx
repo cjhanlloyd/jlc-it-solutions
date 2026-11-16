@@ -1,7 +1,7 @@
 // Small pieces shared by the layouts and the guest page. Text is rendered only through JSX.
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Venue } from '../../shared/invitation-fields';
-import type { InvitationStyle } from '../../shared/invitation-style';
+import { displaySafe, type InvitationStyle } from '../../shared/invitation-style';
 import { ordinal } from '../../shared/occasions/birthday';
 import type { InvitationDetails } from '../../shared/occasions/wedding';
 import { coverOverlay, coverText, fontHref, fontPair, type CoverShown } from './style-render';
@@ -15,6 +15,13 @@ export const schemeVars = (s: Scheme, style: InvitationStyle = {}) => {
   const fonts = f && { '--serif': `'${f.serif}', Georgia, serif`, '--sans': `'${f.sans}', system-ui, sans-serif`, '--round': `'${f.serif}', system-ui, sans-serif` };
   return { '--p': s.primary, '--a': s.accent, '--bg': s.background, '--fg': s.text, ...fonts } as CSSProperties;
 };
+
+// Display colours for the newer layouts only (older layouts keep --p/--a so their markup is unchanged):
+// primary and accent nudged to 3:1 on the background, and on the text colour for Starlight's swapped sky.
+export const displayVars = (s: Scheme) => ({
+  '--pd': displaySafe(s.primary, s.background), '--ad': displaySafe(s.accent, s.background),
+  '--pd-sky': displaySafe(s.primary, s.text), '--ad-sky': displaySafe(s.accent, s.text),
+}) as CSSProperties;
 
 // One stylesheet link per font pair in use, shared by every mounted invitation and removed with the last one.
 const fontLinks = new Map<string, { el: HTMLLinkElement; users: number }>();

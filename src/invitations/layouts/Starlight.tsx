@@ -2,14 +2,14 @@
 // with a CSS star field, a glowing serif name, an elegant "18" and gold accents from the scheme accent.
 import type { LayoutProps } from '.';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
-import { Cover, Countdown, MapLink, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
 
 export default function Starlight({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<DebutDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const traditions = TRADITIONS.filter((t) => d[t.key]?.length);
   return (
-    <main className="inv st" style={schemeVars(scheme, style)}>
+    <main className="inv st" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
       <div className="st-sky">
         <header {...heroAttrs('st-hero', cover, scheme.primary)}>
           {cover && <Cover {...cover} />}
