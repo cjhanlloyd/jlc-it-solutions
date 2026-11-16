@@ -14,6 +14,7 @@ export const MIGRATION_MARKERS: Marker[] = [
   { migration: '0007_custom_orders', table: 'orders', column: 'designer_notes' },
   { migration: '0007_custom_orders', table: 'order_proofs' },
   { migration: '0008_invitation_style', table: 'invitations', column: 'style' },
+  { migration: '0009_new_designs', dataOnly: true }, // data only: five inactive designs
 ];
 
 /** Names of migrations whose marker is missing, in order, without duplicates. */
