@@ -1,4 +1,5 @@
 import { Bad, LIMITS, isoDate, obj, schedule, str, time, venue, type Result, type Venue } from '../invitation-fields.ts';
+import { dateLine, joinNames } from './card.ts';
 import type { Occasion } from './index.ts';
 
 export type InvitationDetails = {
@@ -38,10 +39,14 @@ export const lockedFieldsChanged = (before: InvitationDetails, after: Invitation
 
 export const wedding: Occasion<WeddingDetails> = {
   productType: 'wedding_invitation', label: 'Wedding', noun: 'wedding', dateNoun: 'wedding',
-  layouts: ['classic', 'garden', 'modern'], askKids: false,
+  layouts: ['classic', 'garden', 'modern', 'portrait'], askKids: false,
   validateDetails, lockedFieldsChanged,
   lockedMessage: 'Names cannot be changed after payment.',
   title: (d) => `${d.partner1} & ${d.partner2}`,
   slugBase: (d) => `${d.partner1} and ${d.partner2}`,
   expiredSummary: (d) => ({ partner1: d.partner1, partner2: d.partner2, _purged: true }),
+  card: (d) => ({
+    kicker: 'Together with their families', headline: joinNames([d.partner1, d.partner2], ' & '), subline: 'invite you to celebrate their wedding',
+    dateLine: dateLine(d), venueLine: joinNames([d.ceremony?.name, d.reception?.name], ' · '),
+  }),
 };

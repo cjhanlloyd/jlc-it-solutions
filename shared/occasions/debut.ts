@@ -1,4 +1,5 @@
 import { Bad, LIMITS, fail, isoDate, obj, schedule, str, time, venue, type Result, type Venue } from '../invitation-fields.ts';
+import { dateLine } from './card.ts';
 import type { Occasion } from './index.ts';
 
 // The named debut traditions; each is optional and holds up to 18 names.
@@ -56,11 +57,15 @@ function validateDetails(input: unknown): Result<'details', DebutDetails> {
 
 export const debut: Occasion<DebutDetails> = {
   productType: 'debut_invitation', label: 'Debut', noun: 'debut', dateNoun: 'debut',
-  layouts: ['blush'], askKids: false,
+  layouts: ['blush', 'portrait'], askKids: false,
   validateDetails,
   lockedFieldsChanged: (a, b) => a.debutante !== b.debutante,
   lockedMessage: "The debutante's name cannot be changed after payment.",
   title: (d) => `${d.debutante}'s Debut`,
   slugBase: (d) => `${d.debutante} debut`,
   expiredSummary: (d) => ({ debutante: d.debutante, _purged: true }),
+  card: (d) => ({
+    kicker: d.headline || 'Please join us to celebrate', headline: d.debutante ?? '', subline: 'her 18th birthday',
+    dateLine: dateLine(d), venueLine: d.venue?.name ?? '',
+  }),
 };

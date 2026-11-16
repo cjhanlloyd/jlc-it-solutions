@@ -7,8 +7,9 @@ import Garden from './Garden';
 import Blush from './Blush';
 import Golden from './Golden';
 import Modern from './Modern';
+import Portrait from './Portrait';
 
 export type LayoutProps<D = any> = { details: D; scheme: Scheme; photos: string[]; style: InvitationStyle; rsvpSlot?: ReactNode };
-export type LayoutKey = 'classic' | 'garden' | 'modern' | 'confetti' | 'golden' | 'blush';
+export type LayoutKey = 'classic' | 'garden' | 'modern' | 'confetti' | 'golden' | 'blush' | 'portrait';
 
-export const LAYOUTS: Record<LayoutKey, ComponentType<LayoutProps>> = { classic: Classic, garden: Garden, modern: Modern, confetti: Confetti, golden: Golden, blush: Blush };
+export const LAYOUTS: Record<LayoutKey, ComponentType<LayoutProps>> = { classic: Classic, garden: Garden, modern: Modern, confetti: Confetti, golden: Golden, blush: Blush, portrait: Portrait };

@@ -1,4 +1,5 @@
 import { Bad, LIMITS, isoDate, obj, schedule, str, time, venue, type Result, type Venue } from '../invitation-fields.ts';
+import { dateLine } from './card.ts';
 import type { Occasion } from './index.ts';
 
 export type BirthdayDetails = {
@@ -47,11 +48,15 @@ export const ordinal = (n: number): string => {
 
 export const birthday: Occasion<BirthdayDetails> = {
   productType: 'birthday_invitation', label: 'Birthday', noun: 'birthday', dateNoun: 'party',
-  layouts: ['confetti', 'golden'], askKids: true,
+  layouts: ['confetti', 'golden', 'portrait'], askKids: true,
   validateDetails,
   lockedFieldsChanged: (a, b) => a.celebrant !== b.celebrant,
   lockedMessage: "The celebrant's name cannot be changed after payment.",
   title: (d) => (d.age ? `${d.celebrant}'s ${ordinal(d.age)} Birthday` : `${d.celebrant}'s Birthday`),
   slugBase: (d) => (d.age ? `${d.celebrant} ${ordinal(d.age)} birthday` : `${d.celebrant} birthday`),
   expiredSummary: (d) => ({ celebrant: d.celebrant, ...(d.age ? { age: d.age } : {}), _purged: true }),
+  card: (d) => ({
+    kicker: d.headline || "You're invited", headline: d.celebrant ?? '', subline: d.age ? `${ordinal(d.age)} birthday` : 'birthday celebration',
+    dateLine: dateLine(d), venueLine: d.venue?.name ?? '',
+  }),
 };

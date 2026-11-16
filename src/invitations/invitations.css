@@ -253,6 +253,32 @@ body { margin: 0; }
 .bl-photos img:first-child { grid-column: 1 / -1; aspect-ratio: 3 / 2; }
 @container (min-width: 560px) { .bl { padding: 72px 24px 88px; } }
 
+/* ---------- Portrait (any occasion): a full-bleed hero, a tall photo with a cover, a framed typographic card without one. ---------- */
+.pt { font-family: var(--serif); font-size: 1.2rem; line-height: 1.6; text-align: center; padding-bottom: 64px; }
+.pt-hero { display: flex; flex-direction: column; justify-content: center; min-height: min(70dvh, 130cqw); padding: 48px 16px; }
+.pt-hero:not(.inv-cover) .pt-front { width: 100%; max-width: 620px; margin: 0 auto; padding: 44px 20px; border: 1px solid var(--a); outline: 1px solid color-mix(in srgb, var(--a) 55%, transparent); outline-offset: 6px; }
+.pt-kicker, .pt h2 { display: block; font-family: var(--sans); font-size: .76rem; font-weight: 500; letter-spacing: .3em; text-transform: uppercase; }
+.pt h2 { margin-bottom: 14px; }
+.pt h3.pt-kicker { margin-top: 18px; }
+.pt-headline { font-size: clamp(2.8rem, 14cqw, 5.5rem); font-weight: 500; line-height: 1.05; color: var(--p); margin: 14px 0; }
+.pt-subline { font-size: 1.35rem; font-style: italic; }
+.pt-wrap { max-width: 620px; margin: 0 auto; padding: 48px 16px 0; }
+.pt-wrap > * + * { margin-top: 40px; padding-top: 40px; border-top: 1px solid color-mix(in srgb, var(--a) 55%, transparent); }
+.pt-date { font-size: 1.45rem; font-weight: 500; }
+.pt-countdown { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 6px 22px; margin-top: 14px; }
+.pt-countdown .cd-num { font-size: 2.1rem; font-weight: 500; color: var(--p); }
+.pt-countdown .cd-label { font-family: var(--sans); font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; }
+.pt-message { font-size: 1.3rem; font-style: italic; max-width: 26em; margin-inline: auto; }
+.pt-venue + .pt-venue { margin-top: 28px; }
+.pt-venue h3 { font-size: 1.65rem; font-weight: 500; line-height: 1.2; color: var(--p); margin: 2px 0 4px; }
+.pt-schedule { max-width: 380px; margin: 0 auto; padding: 0; list-style: none; text-align: left; }
+.pt-schedule li { display: grid; grid-template-columns: 5.6em 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--a) 40%, transparent); }
+.pt-schedule li > span:first-child { font-weight: 600; }
+.pt-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pt-photos img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.pt-photos img:first-child { grid-column: 1 / -1; aspect-ratio: 3 / 2; }
+@container (min-width: 560px) { .pt-hero { padding: 72px 32px; } .pt-wrap { padding-top: 64px; } }
+
 /* ---------- RSVP form (inherits the layout's font and colors) ---------- */
 .rsvp { display: grid; gap: 18px; max-width: 460px; margin: 22px auto 0; text-align: left; font-family: var(--sans); font-size: 1rem; font-weight: 400; line-height: 1.5; }
 .md .rsvp { margin-left: 0; }
@@ -288,7 +314,7 @@ body { margin: 0; }
 /* Keep the couple's line breaks in free-text fields (message, dress code, gifts note). */
 .cl-message, .gd-message, .md-lead, [aria-labelledby="cl-notes"] p, [aria-labelledby="gd-notes"] p, .md-row > p,
 .cf-message, .gl-message, [aria-labelledby="cf-notes"] p, [aria-labelledby="gl-notes"] p,
-.bl-message, [aria-labelledby="bl-notes"] p { white-space: pre-line; }
+.bl-message, [aria-labelledby="bl-notes"] p, .pt-message, [aria-labelledby="pt-notes"] p { white-space: pre-line; }
 
 /* ---------- Cover photo behind a layout's hero (kept last so it wins ties with the layout rules above) ----------
    The photo layer sits under the hero's own content (z-index -1 inside an isolated hero); overflow clips the zoom.
@@ -307,3 +333,8 @@ body { margin: 0; }
 .gl-hero.inv-cover { padding: 40px 16px; border: 1px solid var(--a); border-radius: 2px; }
 .bl-hero.inv-cover { padding: 40px 16px; border-radius: 32px; }
 .inv .inv-cover.inv-cover-faded { padding-bottom: 88px; }
+/* Portrait's photo hero: tall and full-bleed, text at the bottom over the overlay, deepened by a gradient (not with the fade, which owns the bottom edge). */
+.pt-hero.inv-cover { justify-content: flex-end; min-height: min(85dvh, 160cqw); padding: 48px 16px 40px; }
+.pt-hero.inv-cover::after { content: ''; position: absolute; inset: 40% 0 0; z-index: -1; background: linear-gradient(transparent, var(--cover-overlay)); pointer-events: none; }
+.pt-hero.inv-cover-faded::after { content: none; }
+.pt-hero.inv-cover .pt-headline { font-size: clamp(3rem, 16cqw, 6.5rem); }

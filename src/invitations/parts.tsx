@@ -57,13 +57,7 @@ export const Cover = ({ url, x, y, zoom, fade }: CoverShown) => (
   </div>
 );
 
-export const formatDate = (d: string, o: Intl.DateTimeFormatOptions) =>
-  new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', ...o });
-export const longDate = (d: string) => formatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-export function time12(t: string): string {
-  const [h, m] = t.split(':').map(Number);
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
-}
+export { formatDate, longDate, time12 } from '../../shared/occasions/card';
 
 export const venues = (d: InvitationDetails) =>
   ([['Ceremony', d.ceremony], ['Reception', d.reception]] as [string, Venue | undefined][]).filter((x): x is [string, Venue] => !!x[1]?.name);
