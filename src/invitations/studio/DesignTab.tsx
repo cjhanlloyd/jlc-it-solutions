@@ -52,7 +52,7 @@ export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes
               const on = d.slug === slug;
               const price = resolveOrderPackage(d.packages, packageKey)?.priceCentavos;
               return (
-                <button key={d.slug} type="button" aria-pressed={on} onClick={() => !on && onSwitch(d)}
+                <button key={d.slug} type="button" aria-pressed={on} aria-label={price !== undefined ? `${d.name}, ${peso(price)}` : d.name} onClick={() => !on && onSwitch(d)}
                   className={`text-left rounded-2xl border p-2 cursor-pointer ${on ? 'border-slate-900 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-400'}`}>
                   <span className="relative block aspect-[4/5] overflow-hidden rounded-xl bg-slate-100">
                     {d.previewImages[0] ? <img src={d.previewImages[0]} alt="" loading="lazy" className="h-full w-full object-cover" /> : <LivePreview design={d} />}

@@ -11,7 +11,7 @@ import { formOf } from './forms';
 import { restoreDraft } from './forms/restore';
 import { effectiveScheme } from './style-render';
 import type { InvitationStyle } from '../../shared/invitation-style';
-import { parseDraft, serializeDraft } from './studio/draft';
+import { draftEntries, parseDraft } from './studio/draft';
 import { reviewRows, switchTo } from './studio/review';
 import StudioTabs, { type StudioTab } from './studio/StudioTabs';
 import DesignTab from './studio/DesignTab';
@@ -26,6 +26,7 @@ export { fetchDesigns, type Design };
 // The studio autosaves here so a refresh or failed attempt keeps the work (photos are too large to keep).
 // Every key with this prefix is cleared once the order is placed.
 const DRAFT_KEY = 'jlc_inv_draft:';
+const TAB_NAMES = { details: 'Details', design: 'Design', photos: 'Photos & cover' };
 
 // Switching designs only replaces the URL (no popstate), so App keeps this page mounted and the studio state lives on;
 // `slug` is the design the page opened with, `cur` the one shown now.
@@ -52,6 +53,11 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [paying, setPaying] = React.useState(false);
   const [view, setView] = React.useState<'edit' | 'preview'>('edit');
   const turnstile = useTurnstile();
+  const visited = React.useRef([slug]); // every design shown here; each keeps the latest draft (state is per occasion)
+  const focusNext = React.useRef<string | null>(null); // element to focus after the next render (entering or leaving Review)
+  const saveDraft = (state: Parameters<typeof draftEntries>[2]) => {
+    try { for (const [k, v] of draftEntries(DRAFT_KEY, visited.current, state)) sessionStorage.setItem(k, v); } catch { /* private mode: nothing restored */ }
+  };
 
   React.useEffect(() => {
     let alive = true;
@@ -74,10 +80,16 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   React.useEffect(() => {
     if (!draft) return;
     const t = setTimeout(() => {
-      try { sessionStorage.setItem(DRAFT_KEY + cur, serializeDraft({ slug: cur, draft, scheme, style, email, name, phone, photos, hadPhotos: awaitPhotos })); } catch { /* private mode: nothing restored */ }
+      saveDraft({ draft, scheme, style, email, name, phone, photos, hadPhotos: awaitPhotos });
     }, 500);
     return () => clearTimeout(t);
   }, [cur, draft, scheme, style, email, name, phone, photos.length > 0, awaitPhotos]);
+
+  React.useEffect(() => {
+    if (!focusNext.current) return;
+    document.getElementById(focusNext.current)?.focus();
+    focusNext.current = null;
+  });
 
   if (designs === null) return <p className="py-24 text-center text-sm text-slate-500">Loading design…</p>;
   const design = designs === 'offline' ? 'offline' : designs.find((x) => x.slug === cur) ?? 'missing';
@@ -103,6 +115,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const switchDesign = (d: Design) => {
     const next = switchTo(d, { packageKey: pkg.key, scheme: chosen?.name ?? '', style });
     window.history.replaceState(window.history.state, '', next.url);
+    if (!visited.current.includes(d.slug)) visited.current.push(d.slug);
     setCur(d.slug);
     setPackageKey(next.packageKey);
     setScheme(next.scheme);
@@ -112,16 +125,17 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   // Details (and designer notes) must be valid before Review; any problem sends the customer to the Details tab.
   const detailsProblem = () =>
     check.ok === false ? `Please fix this first: ${check.error}.` : pkg.kind === 'custom' && !notes.trim() ? 'Please add notes for the designer.' : '';
-  const toDetails = (msg: string) => { setReview(false); setTab('details'); setView('edit'); setError(msg); window.scrollTo({ top: 0 }); };
+  const toDetails = (msg: string) => { focusNext.current = 'studio-details'; setReview(false); setTab('details'); setView('edit'); setError(msg); window.scrollTo({ top: 0 }); };
   const enterReview = () => {
     const p = detailsProblem();
     if (p) return toDetails(p);
     setError('');
+    focusNext.current = 'review-heading';
     setReview(true);
     setReviewed(true);
     window.scrollTo({ top: 0 });
   };
-  const edit = (t: StudioTab) => { setReview(false); setTab(t); setError(''); window.scrollTo({ top: 0 }); };
+  const edit = (t: StudioTab) => { focusNext.current = `studio-${t}`; setReview(false); setTab(t); setError(''); window.scrollTo({ top: 0 }); };
 
   async function pay(e: React.FormEvent) {
     e.preventDefault();
@@ -133,7 +147,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     if (!turnstile.token) return setError('Please wait for the anti-spam check to finish, then try again.');
     setPaying(true);
     setError('');
-    try { sessionStorage.setItem(DRAFT_KEY + cur, serializeDraft({ slug: cur, draft, scheme: chosen?.name ?? '', style, email, name, phone, photos, hadPhotos: awaitPhotos })); } catch { /* private mode: nothing restored */ }
+    saveDraft({ draft, scheme: chosen?.name ?? '', style, email, name, phone, photos, hadPhotos: awaitPhotos });
     try {
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
@@ -181,7 +195,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
             {awaitPhotos && <Alert kind="info">Your details were restored. Please re-add your photos.</Alert>}
             <StudioTabs tab={tab} setTab={(t) => { setTab(t); setError(''); }} />
             {!review && error && <Alert>{error}</Alert>}
-            <div id="studio-details" hidden={tab !== 'details'} className="space-y-6">
+            <div id="studio-details" tabIndex={-1} role="region" aria-label={TAB_NAMES.details} className="focus:outline-none space-y-6" hidden={tab !== 'details'}>
               <form.Form draft={draft} onChange={setDraft} />
               {pkg.kind === 'custom' && (
                 <div className="space-y-1 border-t border-slate-200 pt-6">
@@ -193,11 +207,11 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                 </div>
               )}
             </div>
-            <div id="studio-design" hidden={tab !== 'design'}>
+            <div id="studio-design" tabIndex={-1} role="region" aria-label={TAB_NAMES.design} className="focus:outline-none" hidden={tab !== 'design'}>
               <DesignTab designs={siblings} slug={cur} packageKey={pkg.key} onSwitch={switchDesign}
                 schemes={design.colorSchemes} scheme={chosen?.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active={tab === 'design'} />
             </div>
-            <div id="studio-photos" hidden={tab !== 'photos'}>
+            <div id="studio-photos" tabIndex={-1} role="region" aria-label={TAB_NAMES.photos} className="focus:outline-none" hidden={tab !== 'photos'}>
               {chosen && <PhotosTab photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />}
             </div>
             <div className="space-y-2 border-t border-slate-200 pt-6">
@@ -209,7 +223,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
           {reviewed && (
             <div hidden={!review} className="space-y-6">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-extrabold text-slate-900 font-display">Review &amp; checkout</h2>
+                <h2 id="review-heading" tabIndex={-1} className="focus:outline-none text-lg font-extrabold text-slate-900 font-display">Review &amp; checkout</h2>
                 <button type="button" onClick={() => edit(tab)} className="text-xs font-bold text-slate-700 underline cursor-pointer">Back to editing</button>
               </div>
               <dl className="divide-y divide-slate-200 rounded-2xl border border-slate-200">
@@ -220,7 +234,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                       <dd className="text-sm text-slate-900 break-words whitespace-pre-line">{r.value}</dd>
                     </div>
                     <button type="button" onClick={() => edit(r.tab)} className="shrink-0 px-3 py-1 rounded-full border border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer">
-                      Edit<span className="sr-only"> {r.label.toLowerCase()}</span>
+                      {r.edit ?? <>Edit<span className="sr-only"> {r.label.toLowerCase()}</span></>}
                     </button>
                   </div>
                 ))}

@@ -50,6 +50,7 @@ test('the review summary lists every choice with the tab that edits it', () => {
   ]);
   assert.equal(row(rows, 'Design').value, 'Garden');
   assert.equal(row(rows, 'Package').value, 'Premium · ₱1,499');
+  assert.equal(row(rows, 'Package').edit, 'Edit design');
   assert.equal(row(rows, 'Font').value, 'Design default');
   assert.equal(row(rows, 'Colours').value, 'Sage');
   assert.equal(row(rows, 'Cover').value, 'Off');
@@ -68,4 +69,12 @@ test('the review summary describes custom colours, the cover settings and design
   assert.equal(row(rows, 'Photos').value, '3');
   assert.equal(row(rows, 'Details').value, 'Anna & Ben · Sunday, March 14, 2027');
   assert.deepEqual(row(rows, 'Designer notes'), { label: 'Designer notes', value: 'Gold foil please', tab: 'details' });
+});
+
+test('the draft is saved under every design visited, so Back after a switch restores the latest details', async () => {
+  const { draftEntries } = await import('../src/invitations/studio/draft.ts');
+  const state = { draft: { partner1: 'Latest' }, scheme: 'Sage', style: {}, email: '', photos: [] };
+  const entries = draftEntries('k:', ['classic', 'garden'], state);
+  assert.deepEqual(entries.map(([k]) => k), ['k:classic', 'k:garden']);
+  for (const [k, raw] of entries) assert.equal(parseDraft(raw, k.slice(2)).draft.partner1, 'Latest');
 });

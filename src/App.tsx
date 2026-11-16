@@ -200,6 +200,7 @@ export default function App() {
       case 'design':
         return <React.Fragment key={r.slug}><DesignPage slug={r.slug} /></React.Fragment>;
       case 'customise':
+        // shortcut: a design switch only replaces the URL; a later popstate or hashchange remounts on the new slug and photos are lost (details come back from the draft). Lift photos above the route if that matters.
         return <React.Fragment key={r.slug}><CustomiserPage slug={r.slug} btn={btn} /></React.Fragment>;
       case 'services':
         return <ServicesPage branding={branding} content={content} services={services} faqs={faqs} processSteps={processSteps} projectGallery={projectGallery} onInquireService={handlePreselectServiceInquiry} onInquireClick={handleDirectInquiryClick} />;

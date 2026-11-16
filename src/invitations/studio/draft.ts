@@ -17,3 +17,8 @@ export function parseDraft(raw: string | null, slug: string): Saved | null {
   const v = validateStyle(style);
   return { ...saved, style: 'error' in v ? {} : v.style };
 }
+
+// One entry per design visited in this studio: the state is kept per occasion, so Back to an earlier design's URL
+// restores the latest work rather than what was there before the switch.
+export const draftEntries = (prefix: string, slugs: string[], state: Omit<Saved, 'slug' | 'hadPhotos'> & { photos: string[]; hadPhotos?: boolean }): [string, string][] =>
+  slugs.map((slug) => [prefix + slug, serializeDraft({ ...state, slug })]);

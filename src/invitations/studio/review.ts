@@ -16,7 +16,8 @@ export function switchTo(to: Target, cur: { packageKey?: string; scheme: string;
   };
 }
 
-export type ReviewRow = { label: string; value: string; tab: StudioTab };
+// edit: visible text of the Edit button when it opens something other than the row itself.
+export type ReviewRow = { label: string; value: string; tab: StudioTab; edit?: string };
 type ReviewInput = {
   design: string; pkg: { name: string; kind: Package['kind'] }; price: string; scheme: string; style: InvitationStyle; photos: number;
   title: string; date: string; venue: string; notes: string;
@@ -29,7 +30,7 @@ export function reviewRows(i: ReviewInput): ReviewRow[] {
   const c = i.style.cover;
   const rows: ReviewRow[] = [
     { label: 'Design', value: i.design, tab: 'design' },
-    { label: 'Package', value: `${i.pkg.name} · ${i.price}`, tab: 'design' },
+    { label: 'Package', value: `${i.pkg.name} · ${i.price}`, tab: 'design', edit: 'Edit design' }, // the studio has no package control
     { label: 'Font', value: i.style.font ? FONT_PAIRS[i.style.font].label : 'Design default', tab: 'design' },
     { label: 'Colours', value: i.scheme === 'Custom' && i.style.colors ? `Custom (${i.style.colors.primary}, ${i.style.colors.accent})` : i.scheme, tab: 'design' },
     {
