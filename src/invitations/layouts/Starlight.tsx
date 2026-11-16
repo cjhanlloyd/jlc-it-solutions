@@ -1,15 +1,22 @@
-// Starlight: an evening debut. The scheme is turned to night (text colour as the sky, background as the ink),
+// Starlight: an evening debut. The darker of the scheme's background and text is the sky, the lighter its type,
 // with a CSS star field, a glowing serif name, an elegant "18" and gold accents from the scheme accent.
 import type { LayoutProps } from '.';
+import type { CSSProperties } from 'react';
+import { displaySafe, isDark } from '../../../shared/invitation-style';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
-import { Cover, Countdown, displayVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, fieldVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
 
 export default function Starlight({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<DebutDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const traditions = TRADITIONS.filter((t) => d[t.key]?.length);
+  // A dark scheme keeps its sky; a light one is turned to night.
+  const [sky, ink] = isDark(scheme.background, scheme.text) ? [scheme.background, scheme.text] : [scheme.text, scheme.background];
+  const night = {
+    '--ink': sky, '--paper': ink, '--pd-sky': displaySafe(scheme.primary, sky), '--ad-sky': displaySafe(scheme.accent, sky), ...fieldVars(sky, ink),
+  } as CSSProperties;
   return (
-    <main className="inv st" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
+    <main className="inv st" style={{ ...schemeVars(scheme, style), ...night }}>
       <div className="st-sky">
         <header {...heroAttrs('st-hero', cover, scheme.primary)}>
           {cover && <Cover {...cover} />}

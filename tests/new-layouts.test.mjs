@@ -1,4 +1,4 @@
-// Renders the release B layouts (Editorial, Minimal, Starlight, Pastel), with and without a cover photo and a font.
+// Renders the release B layouts (Editorial, Minimal, Starlight, Pastel; Portrait for the RSVP field colours), with and without a cover photo and a font.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { contrast } from '../shared/invitation-style.ts';
 
-const NAMES = ['Editorial', 'Minimal', 'Starlight', 'Pastel'];
+const NAMES = ['Editorial', 'Minimal', 'Starlight', 'Pastel', 'Portrait'];
 // Written inside node_modules so the external react import resolves to the project's copy.
 const outdir = fileURLToPath(new URL('../node_modules/.cache/jlc-tests/new-layouts', import.meta.url));
 await build({
@@ -87,5 +87,37 @@ test('Starlight: a dark accent is lifted for the night sky; older vars stay as g
   assert.notEqual(sky, '#2b2b2b');
   assert.ok(contrast(sky, '#1a1a1a') >= 3, sky);
   assert.match(html, /--a:#2b2b2b/);
-  assert.match(html, /--pd:#1f2937/); // already readable on the background, so unchanged
+  assert.match(html, /--pd-sky:#[0-9a-f]{6}/);
+});
+
+const vars = (html) => Object.fromEntries([...html.matchAll(/(--[a-z-]+):(#[0-9a-f]{6})/g)].map((m) => [m[1], m[2]]));
+const lum = (h) => contrast(h, '#000000');
+
+test('Starlight: a dark scheme keeps its dark sky; a light scheme becomes a dark sky', () => {
+  const midnightBlush = { primary: '#f0c4d0', accent: '#e6c98f', background: '#1b1830', text: '#f6f1f5' }; // 0009
+  const dark = vars(renderToStaticMarkup(createElement(L.Starlight, { details: DEBUT, scheme: midnightBlush, photos: [], style: {} })));
+  assert.equal(dark['--ink'], '#1b1830');
+  assert.equal(dark['--paper'], '#f6f1f5');
+  const light = vars(render('Starlight', DEBUT));
+  assert.equal(light['--ink'], scheme.text);
+  assert.equal(light['--paper'], scheme.background);
+  for (const v of [dark, light]) {
+    assert.ok(lum(v['--ink']) < lum(v['--paper']), 'sky is the darker colour');
+    assert.ok(contrast(v['--ad-sky'], v['--ink']) >= 3 && contrast(v['--pd-sky'], v['--ink']) >= 3);
+  }
+});
+
+test('RSVP field colours reach 4.5:1 in the new layouts, on dark grounds too', () => {
+  const midnightGold = { primary: '#e0be86', accent: '#9fb4d9', background: '#1c2130', text: '#f4f0ea' }; // 0009 Portrait
+  const cottonCandy = { primary: '#a8326b', accent: '#3d7fa6', background: '#fff4f8', text: '#3a2430' }; // 0009, light
+  for (const [name, details, sch] of [['Portrait', WEDDING, midnightGold], ['Starlight', DEBUT, cottonCandy], ['Pastel', BIRTHDAY, cottonCandy]]) {
+    const v = vars(renderToStaticMarkup(createElement(L[name], { details, scheme: sch, photos: [], style: {}, rsvpSlot: createElement('form') })));
+    assert.ok(contrast(v['--field-fg'], v['--field-bg']) >= 4.5, `${name}: ${v['--field-fg']} on ${v['--field-bg']}`);
+  }
+  const css = readFileSync(new URL('../src/invitations/invitations.css', import.meta.url), 'utf8');
+  assert.ok(css.includes(":is(.pt, .ed, .mn, .st, .ps) .rsvp :is(input[type='text'], select, textarea, .rsvp-choice) { color: var(--field-fg); background: var(--field-bg); }"));
+});
+
+test('Pastel: the ordinal stays on one line in the age badge', () => {
+  assert.ok(render('Pastel', BIRTHDAY).includes('<p class="ps-age"><span>7<sup>th</sup></span></p>'));
 });

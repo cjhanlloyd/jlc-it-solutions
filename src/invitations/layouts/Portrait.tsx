@@ -3,7 +3,7 @@
 import type { LayoutProps } from '.';
 import type { Venue } from '../../../shared/invitation-fields';
 import { occasionForDetails } from '../../../shared/occasions';
-import { Cover, Countdown, MapLink, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
 
 export default function Portrait({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps) {
@@ -13,7 +13,7 @@ export default function Portrait({ details: d, scheme, photos: all, style, rsvpS
   // Weddings label their ceremony and reception; the other occasions have one venue.
   const places: [string, Venue][] = 'ceremony' in d ? venues(d) : d.venue?.name ? [['', d.venue]] : [];
   return (
-    <main className="inv pt" style={schemeVars(scheme, style)}>
+    <main className="inv pt" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
       <header {...heroAttrs('pt-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <div className="pt-front">

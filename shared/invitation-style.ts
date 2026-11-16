@@ -50,6 +50,17 @@ export function displaySafe(fg: string, bg: string, min = 3): string {
   return fg;
 }
 
+// RSVP field colours: the page background moved 8% toward the text, with the text kept at >= 4.5:1 on it.
+// Computed here rather than with color-mix(), which older iOS cannot render.
+export function fieldColors(bg: string, fg: string): { bg: string; fg: string } {
+  if (!HEX_RE.test(bg) || !HEX_RE.test(fg)) return { bg, fg };
+  const field = hex(rgb(bg).map((v, i) => v + (rgb(fg)[i] - v) * 0.08));
+  return { bg: field, fg: displaySafe(fg, field, 4.5) };
+}
+
+// True when a is the darker colour of the pair (Starlight keeps a dark scheme's sky).
+export const isDark = (a: string, b: string) => lum(a) <= lum(b);
+
 const TONES = ['dark', 'light', 'scheme'];
 const inRange = (n: unknown, lo: number, hi: number) => typeof n === 'number' && Number.isFinite(n) && n >= lo && n <= hi;
 const extra = (o: object, allowed: string[]) => Object.keys(o).find((k) => !allowed.includes(k));

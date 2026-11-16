@@ -298,6 +298,8 @@ body { margin: 0; }
 .rsvp-choice:has(input:checked) { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
 .rsvp-choice input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--fg); }
 .rsvp-turnstile { min-height: 65px; }
+/* Newer layouts: field colours computed in JS (displayVars/fieldVars), so field text stays >= 4.5:1 on dark grounds. */
+:is(.pt, .ed, .mn, .st, .ps) .rsvp :is(input[type='text'], select, textarea, .rsvp-choice) { color: var(--field-fg); background: var(--field-bg); }
 .rsvp-error { padding-left: 10px; border-left: 3px solid #c0392b; font-weight: 500; }
 .rsvp .btn { width: 100%; margin-top: 0; }
 .rsvp-done, .rsvp-closed { margin-top: 16px; font-weight: 500; }
@@ -412,8 +414,8 @@ body { margin: 0; }
 @container (min-width: 560px) { .mn-hero { padding: 120px 0 80px; } .mn-hero.inv-cover { margin-top: 56px; padding: 72px 48px; } }
 
 /* ---------- Starlight (debut): the scheme turned to night, a CSS star field, a glowing name, an elegant "18" in --a. ---------- */
-/* .st-sky swaps background and text through --ink/--paper, so the night sky keeps the scheme's own text contrast. */
-.st { --ink: var(--fg); --paper: var(--bg); background-color: var(--fg); }
+/* .st-sky draws on --ink (the darker scheme colour) with --paper type, both set in Starlight.tsx, so the sky keeps the scheme's contrast. */
+.st { background-color: var(--ink); }
 .st-sky {
   --bg: var(--ink); --fg: var(--paper); --line: color-mix(in srgb, var(--fg) 30%, transparent); --r: 999px;
   min-height: inherit; padding: 0 16px 72px; background-color: var(--bg); color: var(--fg);

@@ -12,7 +12,7 @@ export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlo
       <header {...heroAttrs('ps-hero', cover, scheme.primary)}>
         {cover && <Cover {...cover} />}
         <p className="ps-kicker">{d.headline || "You're invited"}</p>
-        {d.age && <p className="ps-age"><Ordinal n={d.age} /></p>}
+        {d.age && <p className="ps-age"><span><Ordinal n={d.age} /></span></p>}
         <h1 className="ps-name">{d.celebrant}</h1>
         <p className="ps-sub">{d.age ? 'birthday party' : 'birthday celebration'}</p>
         {d.theme && <p className="ps-pill">Theme: {d.theme}</p>}
