@@ -2,7 +2,7 @@
 import type { Tier } from './tiers.ts';
 export type Scheme = { primary: string; accent: string; background: string; text: string };
 export type Cover = { photo: number | string; x: number; y: number; zoom: number; tone: 'dark' | 'light' | 'scheme'; strength: number; fade: boolean };
-export type InvitationStyle = { v?: 1; font?: FontKey; colors?: { primary: string; accent: string }; cover?: Cover; intro?: boolean; music?: number };
+export type InvitationStyle = { v?: 1; font?: FontKey; colors?: { primary: string; accent: string }; cover?: Cover; intro?: boolean; music?: number | 'custom' };
 export type FontKey = 'classic' | 'modern' | 'romantic' | 'playful' | 'elegant';
 
 // Shop previews: a design's first sample photo becomes the cover, under a soft dark overlay so the names stay readable.
@@ -71,7 +71,7 @@ const inRange = (n: unknown, lo: number, hi: number) => typeof n === 'number' &&
 const extra = (o: object, allowed: string[]) => Object.keys(o).find((k) => !allowed.includes(k));
 
 // photoCount checks an index (checkout); photoKeys checks a stored key (manage page).
-export function validateStyle(input: unknown, opts: { photoCount?: number; photoKeys?: string[]; tier?: Tier; trackIds?: number[] } = {}): { style: InvitationStyle } | { error: string } {
+export function validateStyle(input: unknown, opts: { photoCount?: number; photoKeys?: string[]; tier?: Tier; trackIds?: number[]; hasCustomMusic?: boolean } = {}): { style: InvitationStyle } | { error: string } {
   if (input == null) return { style: {} };
   if (typeof input !== 'object' || Array.isArray(input)) return { error: 'Style must be an object.' };
   const s = input as Record<string, any>;
@@ -79,7 +79,7 @@ export function validateStyle(input: unknown, opts: { photoCount?: number; photo
   if (bad) return { error: `Unknown style field: ${bad}.` };
   if ((s.intro !== undefined || s.music !== undefined) && opts.tier !== 'premium') return { error: 'Opening animation and music are Premium features.' };
   if (s.intro !== undefined && typeof s.intro !== 'boolean') return { error: 'Intro must be true or false.' };
-  if (s.music !== undefined && !(Number.isInteger(s.music) && opts.trackIds?.includes(s.music))) return { error: 'Unknown music track.' };
+  if (s.music !== undefined && !(s.music === 'custom' ? opts.hasCustomMusic : Number.isInteger(s.music) && opts.trackIds?.includes(s.music))) return { error: 'Unknown music track.' };
   if (s.v !== undefined && s.v !== 1) return { error: 'Style version must be 1.' };
   if (s.font !== undefined && !(typeof s.font === 'string' && Object.prototype.hasOwnProperty.call(FONT_PAIRS, s.font))) return { error: 'Unknown font.' };
   if (s.colors !== undefined) {

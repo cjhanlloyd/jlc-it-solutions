@@ -16,10 +16,11 @@ import PhotosTab from './studio/PhotosTab';
 import GiftQrField from './studio/GiftQrField';
 import PreviewFrame from './studio/PreviewFrame';
 import { useTracks } from './studio/PremiumExtras';
+import OwnMusic, { type CustomMusic } from './studio/OwnMusic';
 import { photoLimit, type Tier } from '../../shared/tiers';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string; guestId?: number | null };
-type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; giftQr?: string | null; rsvps: Rsvp[] };
+type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; giftQr?: string | null; customMusic?: CustomMusic | null; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -84,6 +85,7 @@ export default function ManagePage({ btn }: { btn: string }) {
   // style.cover.photo is kept as an index into photos while editing; the server stores it as the photo key.
   const [style, setStyle] = React.useState<InvitationStyle>({});
   const [scheme, setScheme] = React.useState('');
+  const [customMusic, setCustomMusic] = React.useState<CustomMusic | null>(null);
   const [msg, setMsg] = React.useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [positioning, setPositioning] = React.useState(false);
@@ -102,6 +104,7 @@ export default function ManagePage({ btn }: { btn: string }) {
       setDraft(formOf(d.productType)?.toDraft(d.details) ?? null);
       setPhotos(d.photos);
       setGiftQr(d.giftQr ?? null);
+      setCustomMusic(d.customMusic ?? null);
       setStyle(resolveCoverIndex(d.style ?? {}, d.photos));
       setScheme(d.colorScheme.name ?? '');
     }).catch(() => setData('offline'));
@@ -236,7 +239,9 @@ export default function ManagePage({ btn }: { btn: string }) {
           <form.Form draft={draft} onChange={setDraft} lockNames />
           <GiftQrField value={giftQr} onChange={setGiftQr} />
           <section aria-label="Design" className="border-t border-slate-200 pt-6">
-            <DesignTab schemes={schemes} scheme={chosen.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active tier={data.tier === 'premium' ? 'premium' : undefined} tracks={tracks} />
+            <DesignTab schemes={schemes} scheme={chosen.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active tier={data.tier === 'premium' ? 'premium' : undefined} tracks={tracks}
+              customMusic={customMusic && { title: customMusic.title, url: `/photos/${customMusic.key}` }}
+              ownMusic={data.tier === 'premium' ? <OwnMusic api={api} current={customMusic} onChange={(m) => { setCustomMusic(m); if (!m) setStyle((st) => { const { music, ...rest } = st; return music === 'custom' ? rest : st; }); }} /> : undefined} />
           </section>
           <section aria-label="Photos and cover" className="border-t border-slate-200 pt-6">
             <PhotosTab limit={photoLimit(data.tier ?? 'standard')} photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />

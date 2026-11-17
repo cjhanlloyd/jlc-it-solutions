@@ -23,7 +23,7 @@ export function useTracks(enabled: boolean): Tracks {
 
 const focusCls = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900';
 
-export default function PremiumExtras({ tracks, style, onStyle, active = true }: { tracks: Tracks; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active?: boolean }) {
+export default function PremiumExtras({ tracks, style, onStyle, active = true, custom, ownMusic }: { tracks: Tracks; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active?: boolean; custom?: { title: string; url: string } | null; ownMusic?: React.ReactNode }) {
   const audio = React.useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = React.useState<number | null>(null);
   const stop = React.useCallback(() => { audio.current?.pause(); setPlaying(null); }, []);
@@ -68,6 +68,18 @@ export default function PremiumExtras({ tracks, style, onStyle, active = true }:
                 Current track (no longer available)
               </label>
             )}
+            {custom && (
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-2">
+                <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">
+                  <input type="radio" name="studio-music" className={radio} checked={style.music === 'custom'} onChange={() => onStyle({ ...style, music: 'custom' })} />
+                  <span className="min-w-0 truncate font-semibold">Your song: {custom.title}</span>
+                </label>
+                <button type="button" onClick={() => preview({ id: 0, title: custom.title, credit: '', url: custom.url })} aria-label={playing === 0 ? 'Pause preview' : `Play preview of ${custom.title}`}
+                  className={`shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-full border border-slate-300 text-slate-800 hover:bg-slate-100 cursor-pointer ${focusCls}`}>
+                  {playing === 0 ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </button>
+              </div>
+            )}
             {tracks.map((t) => (
               <div key={t.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2">
                 <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">
@@ -83,6 +95,7 @@ export default function PremiumExtras({ tracks, style, onStyle, active = true }:
             {!tracks.length && <p className="text-xs text-slate-600">No music is available yet.</p>}
           </>
         )}
+        {ownMusic ?? <p className="text-xs text-slate-600">Want your own song? Upload it from your manage page after payment.</p>}
       </div>
     </fieldset>
   );

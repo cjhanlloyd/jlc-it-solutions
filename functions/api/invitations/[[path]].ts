@@ -10,7 +10,7 @@ import { activeProvider, loadPaymentSettings } from '../../../server/payments';
 import { turnstileError } from '../../../server/turnstile';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
 import { coverIndexToKey, deriveScheme, remapCover, validateStyle, type InvitationStyle } from '../../../shared/invitation-style';
-import { mediaUrl } from '../../../server/media';
+import { audioType, mediaUrl } from '../../../server/media';
 import { occasionOf } from '../../../shared/occasions';
 import { applyPromo, MESSAGE as PROMO_MESSAGE, normalizeCode, promoLabel } from '../../../shared/promo';
 import { fromPrice, pickPackage, validatePackages, type Package } from '../../../shared/packages';
@@ -88,9 +88,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (guestSlug) return await guest(env, decodeSegment(guestSlug), url.searchParams.get('g'));
 
     if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv'
-      || route === 'GET /api/invitations/manage/guests' || route === 'POST /api/invitations/manage/guests') {
+      || route === 'GET /api/invitations/manage/guests' || route === 'POST /api/invitations/manage/guests'
+      || route === 'POST /api/invitations/manage/music' || route === 'POST /api/invitations/manage/music/remove') {
       const inv = await findManagedInvitation(env.DB, request);
       if (!inv) return NOT_FOUND();
+      if (route.endsWith('/music')) return await uploadMusic(request, env, inv);
+      if (route.endsWith('/music/remove')) return await removeMusic(env, inv);
       if (url.pathname.replace(/\/+$/, '').endsWith('/guests')) return request.method === 'POST' ? await manageGuests(request, env, inv) : await listGuests(env, inv);
       if (request.method === 'POST') return await manageEdit(request, env, inv);
       const { results } = await env.DB.prepare(
@@ -103,7 +106,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
         title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key, colorSchemes: parse(inv.design_color_schemes, []) },
         // style.cover.photo is one of the photos keys
-        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), giftQr: inv.gift_qr ?? null, tier: tierOf(inv), rsvps,
+        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), giftQr: inv.gift_qr ?? null, tier: tierOf(inv), customMusic: inv.music_key ? { key: inv.music_key, title: inv.music_title || 'Our song' } : null, rsvps,
       });
     }
 
@@ -211,7 +214,7 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
     if (err) return json({ error: err }, 400);
   }
   // cover.photo is an index into photos here; it becomes the photo's R2 key once stored
-  const sv = validateStyle(body.style, { photoCount: photos.length, tier, trackIds: await activeTrackIds(env.DB) });
+  const sv = validateStyle(body.style, { photoCount: photos.length, tier, trackIds: await activeTrackIds(env.DB), hasCustomMusic: false });
   if ('error' in sv) return json({ error: sv.error }, 400);
   const sch = schemeFor(design.color_schemes, body.colorScheme, sv.style);
   if ('error' in sch) return json({ error: sch.error }, 400);
@@ -324,7 +327,7 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   if (body.style !== undefined) {
     const sv = validateStyle(body.style, { photoCount: photos.length, photoKeys: current.filter((k) => photos.includes(k)), tier,
       // The unchanged stored track stays valid after it is deactivated or deleted (guests just get no music)
-      trackIds: [...await activeTrackIds(env.DB), ...(stored.music === undefined ? [] : [stored.music])] });
+      trackIds: [...await activeTrackIds(env.DB), ...(typeof stored.music === 'number' ? [stored.music] : [])], hasCustomMusic: !!inv.music_key });
     if ('error' in sv) return json({ error: sv.error }, 400);
     style = sv.style;
   }
@@ -365,6 +368,47 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   if (inv.gift_qr && inv.gift_qr !== giftKey) removed.push(inv.gift_qr);
   if (removed.length) await env.PHOTOS.delete(removed);
   return json({ ok: true, details: v.details, photos: keys, giftQr: giftKey, style });
+}
+
+const MAX_MUSIC_BYTES = 8_000_000;
+const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac'];
+// Premium only. Raw body (not JSON); headers X-Music-Rights: yes and optional X-Music-Title (URI-encoded).
+// The bytes decide the type. The new object is written first, then the row, then the old object goes.
+async function uploadMusic(request: Request, env: Env, inv: any): Promise<Response> {
+  if (tierOf(inv) !== 'premium') return json({ error: 'Your own music is a Premium feature.' }, 403);
+  if (request.headers.get('X-Music-Rights') !== 'yes') return json({ error: 'Please confirm you have the right to use this music.' }, 400);
+  let title = 'Our song';
+  const rawTitle = request.headers.get('X-Music-Title');
+  if (rawTitle !== null) {
+    try { title = decodeURIComponent(rawTitle).trim(); } catch { title = ''; }
+    if (!title || title.length > 80) return json({ error: 'Song title must be 1 to 80 characters.' }, 400);
+  }
+  if (!AUDIO_TYPES.includes((request.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase())) return json({ error: 'Upload an MP3 or M4A file.' }, 400);
+  const len = Number(request.headers.get('Content-Length'));
+  if (!Number.isInteger(len) || len <= 0) return json({ error: 'Upload an MP3 or M4A file.' }, 400);
+  if (len > MAX_MUSIC_BYTES) return json({ error: 'The song must be 8 MB or smaller.' }, 400);
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength > MAX_MUSIC_BYTES) return json({ error: 'The song must be 8 MB or smaller.' }, 400);
+  const type = audioType(bytes);
+  if (!type) return json({ error: 'Upload an MP3 or M4A file.' }, 400);
+  const key = `inv/${inv.id}/music-${Date.now()}.${type}`;
+  await env.PHOTOS.put(key, bytes, { httpMetadata: { contentType: type === 'mp3' ? 'audio/mpeg' : 'audio/mp4' } });
+  try {
+    await env.DB.prepare('UPDATE invitations SET music_key = ?, music_title = ? WHERE id = ?').bind(key, title, inv.id).run();
+  } catch (e) {
+    await env.PHOTOS.delete(key);
+    throw e;
+  }
+  if (inv.music_key) await env.PHOTOS.delete(inv.music_key);
+  return json({ music: { key, title } });
+}
+
+async function removeMusic(env: Env, inv: any): Promise<Response> {
+  if (inv.music_key) await env.PHOTOS.delete(inv.music_key);
+  const style: InvitationStyle = parse(inv.style, {});
+  if (style.music === 'custom') delete style.music;
+  await env.DB.prepare('UPDATE invitations SET music_key = NULL, music_title = NULL, style = ? WHERE id = ?').bind(JSON.stringify(style), inv.id).run();
+  return json({ ok: true });
 }
 
 // Quotes every cell; a leading = + - @ gets a ' so spreadsheets do not run it as a formula.
@@ -457,7 +501,7 @@ async function guest(env: Env, slug: string | null, token: string | null): Promi
   const coverIndex = cover ? keys.indexOf(cover.photo as string) : -1;
   const premium = tierOf(inv) === 'premium';
   // A deactivated or deleted track just means no music; the page still opens
-  const track = premium && style.music !== undefined
+  const track = premium && typeof style.music === 'number'
     ? await env.DB.prepare('SELECT r2_key, title, credit FROM music_tracks WHERE id = ? AND active = 1').bind(style.music).first<any>() : null;
   const g = token ? await env.DB.prepare(
     'SELECT g.name, g.seats, r.attending, r.party_size, r.kids_count, r.message FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id WHERE g.token = ? AND g.invitation_id = ?',
@@ -465,7 +509,8 @@ async function guest(env: Env, slug: string | null, token: string | null): Promi
   return json({
     ...(g ? { guest: { name: g.name, seats: g.seats, rsvp: g.attending == null ? null : { attending: !!g.attending, partySize: g.party_size, kidsCount: g.kids_count ?? 0, message: g.message ?? '' } } } : {}),
     state: 'live', tier: tierOf(inv), intro: premium && style.intro !== false,
-    music: track ? { url: mediaUrl(track.r2_key), title: track.title, credit: track.credit } : null, productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
+    music: premium && style.music === 'custom' ? (inv.music_key ? { url: `/photos/${inv.music_key}`, title: inv.music_title || 'Our song', credit: '' } : null)
+      : track ? { url: mediaUrl(track.r2_key), title: track.title, credit: track.credit } : null, productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
     photos: keys.map((k) => `/photos/${k}`),
     giftQr: inv.gift_qr ? `/photos/${inv.gift_qr}` : null,
     style: coverIndex < 0 ? style : { ...style, cover: { ...cover, photo: coverIndex } },

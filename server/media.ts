@@ -14,6 +14,12 @@ export async function putMedia(photos: R2Bucket, kind: 'design' | 'testimonial' 
   return { key };
 }
 
+// MP3 (ID3 tag or frame sync) or M4A/AAC ('ftyp' box), judged by the bytes and never the declared type.
+export function audioType(b: Uint8Array): 'mp3' | 'm4a' | null {
+  if ((b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0)) return 'mp3';
+  return String.fromCharCode(b[4], b[5], b[6], b[7]) === 'ftyp' ? 'm4a' : null;
+}
+
 const MAX_AUDIO_BYTES = 8_000_000;
 const AUDIO_URL = /^data:audio\/(?:mpeg|mp3);base64,([A-Za-z0-9+/]*={0,2})$/;
 
@@ -23,9 +29,7 @@ export async function putAudio(photos: R2Bucket, dataUrl: unknown): Promise<{ ke
   // Size from the base64 length, before decoding
   if (Math.floor((m[1].length * 3) / 4) > MAX_AUDIO_BYTES) return { error: 'Audio must be 8 MB or smaller' };
   const bytes = Uint8Array.from(atob(m[1]), (c) => c.charCodeAt(0));
-  const id3 = bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33;
-  const frame = bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0;
-  if (!id3 && !frame) return { error: 'Upload an MP3 file' };
+  if (audioType(bytes) !== 'mp3') return { error: 'Upload an MP3 file' };
   const rand = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
   const key = `media/music/${Date.now()}-${rand}.mp3`;
   await photos.put(key, bytes, { httpMetadata: { contentType: 'audio/mpeg' } });

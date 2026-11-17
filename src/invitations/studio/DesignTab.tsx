@@ -25,9 +25,9 @@ function FontCard({ value, label, serif, sans, checked, load, onPick }: { key?: 
 }
 
 // Without designs (the manage page), there is no switcher: switching design after payment changes the product.
-type Props = { designs?: Design[]; slug?: string; packageKey?: string; onSwitch?: (d: Design) => void; schemes: Scheme[]; scheme: string; onScheme: (name: string) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active: boolean; tier?: Tier; tracks?: Tracks };
+type Props = { designs?: Design[]; slug?: string; packageKey?: string; onSwitch?: (d: Design) => void; schemes: Scheme[]; scheme: string; onScheme: (name: string) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active: boolean; tier?: Tier; tracks?: Tracks; customMusic?: { title: string; url: string } | null; ownMusic?: React.ReactNode };
 
-export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes, scheme, onScheme, style, onStyle, active, tier, tracks = null }: Props) {
+export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes, scheme, onScheme, style, onStyle, active, tier, tracks = null, customMusic, ownMusic }: Props) {
   // Sample fonts load the first time the tab is shown, not on every page view.
   const [load, setLoad] = React.useState(active);
   React.useEffect(() => { if (active) setLoad(true); }, [active]);
@@ -70,7 +70,7 @@ export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes
         </fieldset>
       )}
 
-      {tier === 'premium' && <PremiumExtras tracks={tracks} style={style} onStyle={onStyle} active={active} />}
+      {tier === 'premium' && <PremiumExtras tracks={tracks} style={style} onStyle={onStyle} active={active} custom={customMusic} ownMusic={ownMusic} />}
       {tier === 'standard' && premiumNames && (
         <p className="text-xs text-slate-600">Opening animation and background music come with Premium designs: {premiumNames}.</p>
       )}
