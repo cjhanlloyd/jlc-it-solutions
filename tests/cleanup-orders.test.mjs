@@ -99,3 +99,33 @@ test('receipt purge pages through R2: all old-cancelled keys go, others stay, se
   assert.equal([...store.map.keys()].filter((k) => k.startsWith('receipts/2/')).length, 5);
   assert.equal((await runCleanup(db, store, NOW)).purgedReceipts, 0);
 });
+
+test('a purged invitation loses its guests and gift QR object; a kept one keeps both', async () => {
+  const { db, r2 } = seed();
+  for (const [id, date] of [[1, '2026-01-01'], [2, '2099-01-01']]) {
+    await r2.put(`gift/${id}.png`, 'qr');
+    db.exec.prepare("INSERT INTO invitations (id, design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, gift_qr) VALUES (?, 1, ?, 'blush', ?, '[]', 'live', ?, ?, ?)")
+      .run(id, `s-${id}`, JSON.stringify({ partner1: 'A', partner2: 'B', eventDate: date }), date, `h${id}`, `gift/${id}.png`);
+    db.exec.prepare("INSERT INTO invitation_guests (invitation_id, token, name) VALUES (?, ?, 'Guest')").run(id, `t${id}`);
+  }
+  assert.equal((await runCleanup(db, r2, NOW)).purgedInvitations, 1);
+  const q = (sql, id) => db.exec.prepare(sql).get(id);
+  assert.equal(q('SELECT COUNT(*) AS n FROM invitation_guests WHERE invitation_id = ?', 1).n, 0);
+  assert.equal(q('SELECT gift_qr FROM invitations WHERE id = ?', 1).gift_qr, null);
+  assert.equal(has(r2, 'gift/1.png'), false);
+  assert.equal(q('SELECT COUNT(*) AS n FROM invitation_guests WHERE invitation_id = ?', 2).n, 1);
+  assert.equal(q('SELECT gift_qr FROM invitations WHERE id = ?', 2).gift_qr, 'gift/2.png');
+  assert.equal(has(r2, 'gift/2.png'), true);
+});
+
+test('cleanup deletes expired customer sessions and login codes and keeps valid ones', async () => {
+  const { db, r2 } = seed();
+  const past = iso(MIN), future = new Date(NOW.getTime() + MIN).toISOString();
+  for (const [h, e] of [['old', past], ['new', future]]) {
+    db.exec.prepare('INSERT INTO customer_sessions (token_hash, email, expires_at) VALUES (?, ?, ?)').run(h, 'a@x.com', e);
+    db.exec.prepare('INSERT INTO customer_login_codes (email, code_hash, expires_at) VALUES (?, ?, ?)').run(h + '@x.com', 'c', e);
+  }
+  await runCleanup(db, r2, NOW);
+  assert.deepEqual(db.exec.prepare('SELECT token_hash FROM customer_sessions').all().map((r) => r.token_hash), ['new']);
+  assert.deepEqual(db.exec.prepare('SELECT email FROM customer_login_codes').all().map((r) => r.email), ['new@x.com']);
+});
