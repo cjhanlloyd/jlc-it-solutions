@@ -58,8 +58,13 @@ export function makeR2({ pageSize = 1000 } = {}) {
   const view = (key, opts = {}) => {
     const o = m.get(key);
     const r = /^bytes=(\d+)-(\d*)$/.exec(opts.range?.get?.('range') ?? '');
+    const sfx = /^bytes=-(\d+)$/.exec(opts.range?.get?.('range') ?? '');
     let range, body = o?.body;
-    if (o && r) {
+    if (o && sfx) { // the runtime reports a suffix range as { suffix }
+      const n = Math.min(Number(sfx[1]), o.bytes.byteLength);
+      range = { suffix: Number(sfx[1]) };
+      body = o.bytes.slice(o.bytes.byteLength - n);
+    } else if (o && r) {
       const start = Number(r[1]), size = o.bytes.byteLength;
       if (start >= size) throw new Error('range not satisfiable');
       const end = Math.min(r[2] === '' ? size - 1 : Number(r[2]), size - 1);

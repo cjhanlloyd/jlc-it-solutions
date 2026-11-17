@@ -116,3 +116,16 @@ test('media route honours Range for audio: 206 slice, 200 without, 416 when unsa
   assert.equal((await get('bytes=500-')).status, 416);
   assert.equal((await get('garbage')).status, 200);
 });
+
+test('media route handles a suffix range and sets Content-Length on a full response', async () => {
+  await create();
+  const [t] = await list();
+  const get = (range) => mediaFn({ request: new Request('https://shop.test' + t.url, { headers: range ? { Range: range } : {} }), env: { PHOTOS: r2 } });
+  const part = await get('bytes=-4');
+  assert.equal(part.status, 206);
+  assert.equal(part.headers.get('Content-Range'), 'bytes 6-9/10');
+  assert.equal(part.headers.get('Content-Length'), '4');
+  assert.deepEqual([...new Uint8Array(await part.arrayBuffer())], [0, 0, 0, 0]);
+  assert.equal((await get('bytes=-99')).headers.get('Content-Range'), 'bytes 0-9/10');
+  assert.equal((await get()).headers.get('Content-Length'), '10');
+});
