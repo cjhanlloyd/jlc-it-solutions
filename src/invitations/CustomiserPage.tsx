@@ -311,12 +311,12 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                 </Field>
                 <div className="space-y-2">
                   {promo ? (
-                    <dl className="rounded-2xl border border-slate-200 p-4 text-sm space-y-1">
+                    <><dl className="rounded-2xl border border-slate-200 p-4 text-sm space-y-1">
                       <div className="flex justify-between gap-3"><dt>Subtotal</dt><dd>{peso(promo.subtotalCentavos)}</dd></div>
                       <div className="flex justify-between gap-3 text-emerald-800"><dt className="min-w-0 break-words">Discount ({promo.code} · {promo.label})</dt><dd className="shrink-0">−{peso(promo.discountCentavos)}</dd></div>
                       <div className="flex justify-between gap-3 border-t border-slate-200 pt-1 font-extrabold text-slate-900"><dt>Total</dt><dd>{peso(promo.totalCentavos)}</dd></div>
-                      <button type="button" onClick={removePromo} className="pt-1 text-xs font-bold text-slate-700 underline cursor-pointer">Remove promo code</button>
                     </dl>
+                    <button type="button" onClick={removePromo} className="text-xs font-bold text-slate-700 underline cursor-pointer">Remove promo code</button></>
                   ) : (
                     <Field label="Promo code (optional)">
                       <div className="flex gap-2">

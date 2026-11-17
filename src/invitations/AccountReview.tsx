@@ -85,7 +85,7 @@ export default function AccountReview({ token, onSignOut }: { token: string; onS
           <p className="text-sm text-ink/80">Shown as <span className="font-semibold text-ink">{review.displayName}</span></p>
           {error && <Alert>{error}</Alert>}
           <div className="flex flex-wrap gap-3 pt-2">
-            <button type="button" onClick={startEdit} disabled={busy} className={secondaryBtn}>Edit</button>
+            {state.eligible && <button type="button" onClick={startEdit} disabled={busy} className={secondaryBtn}>Edit</button>}
             <button type="button" onClick={remove} disabled={busy} className={secondaryBtn}>Delete</button>
           </div>
         </div>

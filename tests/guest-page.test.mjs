@@ -138,6 +138,7 @@ test('guest page responses carry the same security headers as public/_headers', 
   const expected = readFileSync(join(root, 'public/_headers'), 'utf8').split(/\r?\n/).slice(1).filter(Boolean)
     .map((l) => l.trim().match(/^([^:]+):\s*(.*)$/).slice(1));
   assert.equal(expected.length, 6);
+  assert.match(expected.find(([n]) => n === 'Content-Security-Policy')[1], /media-src 'self' blob:/); // local song preview
   for (const slug of ['live-one', 'nope']) {
     const { res } = await view(slug);
     for (const [name, value] of expected) assert.equal(res.headers.get(name), value, `${slug} ${name}`);

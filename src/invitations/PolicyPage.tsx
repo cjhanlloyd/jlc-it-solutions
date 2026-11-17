@@ -15,7 +15,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
       body: <>
         <p>These terms cover the digital invitations sold by {company} ("we", "us") on this website. By placing an order you agree to them, together with our <a href="/refund-policy">Refund Policy</a> and <a href="/privacy">Privacy Notice</a>.</p>
         <h2>What you get</h2>
-        <p>One online invitation in the design and package you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, map links and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs. Premium designs add an opening animation, background music from our library and room for more photos.</p>
+        <p>One online invitation in the design and package you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, map links and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs. Premium designs add an opening animation, background music from our library (or your own song) and room for more photos.</p>
         <h2>Price and payment</h2>
         <p>Prices are shown in Philippine pesos on each design page and are one-time payments. Payment is by QR code: after you place your order, scan the QR code on your order page with your preferred payment app (GCash, Maya or any bank app that supports QR Ph) and upload a screenshot of your receipt. Our team checks each payment by hand, and your order moves ahead only after we confirm it. Unpaid orders are cancelled automatically after the payment deadline shown on your order page.</p>
         <h2>How long it stays online</h2>
@@ -79,7 +79,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
 
         <h2>What we collect</h2>
         <ul>
-          <li><strong>When you order an invitation:</strong> your name, email address and (if you give it) mobile number; the names, dates, venues, messages and photos you add to the invitation; your design choices; order records (amount, date, status); and the payment receipt screenshot and reference number you upload to confirm payment. We do not receive or store your PIN, password or banking login.</li>
+          <li><strong>When you order an invitation:</strong> your name, email address and (if you give it) mobile number; the names, dates, venues, messages and photos you add to the invitation; your design choices; order records (amount, date, status and any promo code used); and the payment receipt screenshot and reference number you upload to confirm payment. We do not receive or store your PIN, password or banking login.</li>
           <li><strong>When guests RSVP:</strong> the guest's name, whether they are attending, party size (and number of children, for birthdays), and an optional message.</li>
           <li><strong>When you upload your own song (Premium):</strong> the audio file and the title you give it. It is part of your invitation's content and is deleted with the invitation.</li>
           <li><strong>When you add guest links:</strong> the guest names and seat numbers you enter. They are visible only to you and our staff, and are deleted with the invitation.</li>

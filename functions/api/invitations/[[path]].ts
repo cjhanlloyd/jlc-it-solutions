@@ -404,10 +404,10 @@ async function uploadMusic(request: Request, env: Env, inv: any): Promise<Respon
 }
 
 async function removeMusic(env: Env, inv: any): Promise<Response> {
-  if (inv.music_key) await env.PHOTOS.delete(inv.music_key);
   const style: InvitationStyle = parse(inv.style, {});
   if (style.music === 'custom') delete style.music;
   await env.DB.prepare('UPDATE invitations SET music_key = NULL, music_title = NULL, style = ? WHERE id = ?').bind(JSON.stringify(style), inv.id).run();
+  if (inv.music_key) await env.PHOTOS.delete(inv.music_key).catch((e) => console.error('music delete failed:', e instanceof Error ? e.message : e));
   return json({ ok: true });
 }
 

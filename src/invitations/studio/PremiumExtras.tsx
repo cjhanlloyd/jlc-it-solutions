@@ -56,13 +56,19 @@ export default function PremiumExtras({ tracks, style, onStyle, active = true, c
         <p className="text-sm font-semibold text-slate-800">Background music</p>
         {tracks === null && <p className="text-xs text-slate-600">Loading music…</p>}
         {tracks === 'offline' && <p className="text-xs text-slate-600">Music is unavailable right now.</p>}
+        {!Array.isArray(tracks) && custom && (
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-2 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">
+            <input type="radio" name="studio-music" className={radio} checked={style.music === 'custom'} onChange={() => onStyle({ ...style, music: 'custom' })} />
+            <span className="min-w-0 truncate font-semibold">Your song: {custom.title}</span>
+          </label>
+        )}
         {Array.isArray(tracks) && (
           <>
             <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-2 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">
               <input type="radio" name="studio-music" className={radio} checked={style.music === undefined} onChange={() => onStyle(noMusic)} />
               No music
             </label>
-            {style.music !== undefined && !tracks.some((t) => t.id === style.music) && (
+            {typeof style.music === 'number' && !tracks.some((t) => t.id === style.music) && (
               <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-2 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">
                 <input type="radio" name="studio-music" className={radio} checked readOnly />
                 Current track (no longer available)

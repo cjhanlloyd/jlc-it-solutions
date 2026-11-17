@@ -24,9 +24,9 @@ export default function ReviewsPage() {
         {data === 'offline' && <p className="text-center text-sm text-ink/80">We could not load the reviews. Please try again later.</p>}
         {d && d.reviews.length === 0 && <p className="text-center text-sm text-ink/80">No reviews yet.</p>}
         {d && d.reviews.length > 0 && <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">{d.reviews.map((r, i) => <React.Fragment key={i}><ReviewCard r={r} /></React.Fragment>)}</ul>}
-        {d && d.count > d.reviews.length && (
+        {d && d.count > d.reviews.length && limit < 200 && (
           <div className="mt-10 text-center">
-            <button type="button" onClick={() => setLimit((n) => Math.min(n + 24, 50))} className={`inline-flex min-h-11 items-center rounded-full border border-gold px-7 py-3 text-sm font-semibold text-ink hover:bg-sand ${focusRing}`}>Show more</button>
+            <button type="button" onClick={() => setLimit((n) => Math.min(n + 24, 200))} className={`inline-flex min-h-11 items-center rounded-full border border-gold px-7 py-3 text-sm font-semibold text-ink hover:bg-sand ${focusRing}`}>Show more</button>
           </div>
         )}
         <p className="mt-12 text-center text-sm text-ink/80">Bought an invitation? <NavLink href="/account" className={`font-medium text-brand-700 underline underline-offset-4 ${focusRing}`}>Sign in to leave a review.</NavLink></p>
