@@ -144,3 +144,21 @@ test('cleanup deletes expired customer sessions and login codes and keeps valid 
   assert.deepEqual(db.exec.prepare('SELECT token_hash FROM customer_sessions').all().map((r) => r.token_hash), ['new']);
   assert.deepEqual(db.exec.prepare('SELECT email FROM customer_login_codes').all().map((r) => r.email), ['new@x.com']);
 });
+
+test('a purged invitation loses its media rows and objects, gift items and check-in key; a kept one keeps them', async () => {
+  const { db, r2 } = seed();
+  for (const [id, date] of [[1, '2026-01-01'], [2, '2099-01-01']]) {
+    db.exec.prepare("INSERT INTO invitations (id, design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, checkin_key_hash) VALUES (?, 1, ?, 'blush', ?, '[]', 'live', ?, ?, 'k')")
+      .run(id, `s-${id}`, JSON.stringify({ partner1: 'A', partner2: 'B', eventDate: date }), date, `h${id}`);
+    for (const [n, kind, st] of [[1, 'attire', 'approved'], [2, 'guest', 'pending']]) {
+      await r2.put(`inv/${id}/m${n}.jpg`, 'x');
+      db.exec.prepare('INSERT INTO invitation_media (invitation_id, kind, r2_key, status) VALUES (?, ?, ?, ?)').run(id, kind, `inv/${id}/m${n}.jpg`, st);
+    }
+    db.exec.prepare("INSERT INTO gift_items (invitation_id, name) VALUES (?, 'Blender')").run(id);
+  }
+  assert.equal((await runCleanup(db, r2, NOW)).purgedInvitations, 1);
+  const n = (t, id) => db.exec.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE invitation_id = ?`).get(id).n;
+  const key = (id) => db.exec.prepare('SELECT checkin_key_hash AS k FROM invitations WHERE id = ?').get(id).k;
+  assert.deepEqual([n('invitation_media', 1), n('gift_items', 1), key(1), has(r2, 'inv/1/m1.jpg'), has(r2, 'inv/1/m2.jpg')], [0, 0, null, false, false]);
+  assert.deepEqual([n('invitation_media', 2), n('gift_items', 2), key(2), has(r2, 'inv/2/m1.jpg'), has(r2, 'inv/2/m2.jpg')], [2, 1, 'k', true, true]);
+});

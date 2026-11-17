@@ -79,9 +79,12 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
       console.error(`cleanup: cannot purge invitation ${i.id}:`, e instanceof Error ? e.message : e);
       continue;
     }
-    if (!await deletePhotos(photos, [...keysOf(i.photos), ...(i.gift_qr ? [i.gift_qr] : []), ...(i.music_key ? [i.music_key] : [])], `invitation ${i.id}`)) continue;
+    const { results: media } = await db.prepare('SELECT r2_key FROM invitation_media WHERE invitation_id = ?').bind(i.id).all<any>();
+    if (!await deletePhotos(photos, [...keysOf(i.photos), ...(i.gift_qr ? [i.gift_qr] : []), ...(i.music_key ? [i.music_key] : []), ...(media || []).map((m) => m.r2_key as string)], `invitation ${i.id}`)) continue;
     await db.batch([
-      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', gift_qr = NULL, music_key = NULL, music_title = NULL, details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
+      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', gift_qr = NULL, music_key = NULL, music_title = NULL, checkin_key_hash = NULL, details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
+      db.prepare('DELETE FROM invitation_media WHERE invitation_id = ?').bind(i.id),
+      db.prepare('DELETE FROM gift_items WHERE invitation_id = ?').bind(i.id),
       db.prepare('DELETE FROM rsvps WHERE invitation_id = ?').bind(i.id),
       db.prepare('DELETE FROM invitation_guests WHERE invitation_id = ?').bind(i.id),
     ]);

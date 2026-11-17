@@ -59,6 +59,7 @@ function exec(sql, a) {
     return { meta: { changes: i ? 1 : 0 } };
   }
   if (/^SELECT status, event_date, tier, photos, gift_qr, music_key FROM invitations WHERE id = \?/.test(sql)) return db.find(x => x.id === a[0]) ?? null;
+  if (/^SELECT 1 FROM invitation_media WHERE/.test(sql)) return null;
   throw new Error('Unexpected SQL: ' + sql);
 }
 const stmt = (sql) => {

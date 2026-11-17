@@ -22,6 +22,7 @@ export const MIGRATION_MARKERS: Marker[] = [
   { migration: '0012_tier_prices', dataOnly: true }, // data only: tier packages, prices and descriptions
   { migration: '0013_accounts_guests', table: 'invitation_guests' },
   { migration: '0014_music_reviews_promos', table: 'reviews' },
+  { migration: '0015_event_features', table: 'invitation_media' },
 ];
 
 /** Names of migrations whose marker is missing, in order, without duplicates. */

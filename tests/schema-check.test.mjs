@@ -19,7 +19,7 @@ test('fully migrated database: nothing missing', async () => {
 
 test('no migrations applied: every schema migration is reported once, in order', async () => {
   assert.deepEqual(await missingMigrations(makeD1({ migrations: false })),
-    ['0003_orders_gcash', '0005_design_marketing', '0006_packages_content', '0007_custom_orders', '0008_invitation_style', '0010_design_sample_photos', '0011_premium_tier', '0013_accounts_guests', '0014_music_reviews_promos']);
+    ['0003_orders_gcash', '0005_design_marketing', '0006_packages_content', '0007_custom_orders', '0008_invitation_style', '0010_design_sample_photos', '0011_premium_tier', '0013_accounts_guests', '0014_music_reviews_promos', '0015_event_features']);
 });
 
 test('a skipped 0007 is reported by name with a clear message', async () => {
