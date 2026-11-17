@@ -68,6 +68,14 @@ export async function dashboardData(db: D1Database, role: string, email: string,
     if (r.status === 'pending_payment') pendingCentavos += r.sum;
   }
 
+  // Paid orders that used a promo code, by the same paid-at rule as revenue, over the same range as the charts
+  const promotions = async () => {
+    const from = range === '12m' ? monthStart(11) : today - (RANGE_DAYS[range] - 1) * DAY_MS;
+    const r = await db.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(o.discount_centavos), 0) AS sum FROM orders o WHERE o.promo_code IS NOT NULL AND o.status IN (${PAID}) AND ${paidAtSql('o')} >= ? AND ${paidAtSql('o')} < ?`)
+      .bind(new Date(from).toISOString(), new Date(today + DAY_MS).toISOString()).first<any>();
+    return { redeemed: r.n, discountCentavos: r.sum };
+  };
+
   // Charts are optional: a failure here (say, a missing migration) must not take down the tiles
   const charts = await chartData(db, role, scope, args, range, today, monthStart(11), now).catch((e) => { console.error('admin dashboard charts error:', e instanceof Error ? e.message : e); return null; });
 
@@ -81,7 +89,7 @@ export async function dashboardData(db: D1Database, role: string, email: string,
       at: r.at, reference: r.reference, orderId: r.id, actor: r.actor,
       label: r.kind === 'status' ? STATUS_LABEL[r.to_status as OrderStatus] ?? r.to_status : r.note,
     })),
-    ...(can(role, 'reports.view') ? { money: { pendingCentavos, thisMonth: await month(0), lastMonth: await month(1) } } : {}),
+    ...(can(role, 'reports.view') ? { money: { pendingCentavos, thisMonth: await month(0), lastMonth: await month(1) }, promotions: await promotions() } : {}),
   };
 }
 

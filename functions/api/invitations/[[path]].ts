@@ -12,6 +12,7 @@ import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-field
 import { coverIndexToKey, deriveScheme, remapCover, validateStyle, type InvitationStyle } from '../../../shared/invitation-style';
 import { mediaUrl } from '../../../server/media';
 import { occasionOf } from '../../../shared/occasions';
+import { applyPromo, MESSAGE as PROMO_MESSAGE, normalizeCode, promoLabel } from '../../../shared/promo';
 import { fromPrice, pickPackage, validatePackages, type Package } from '../../../shared/packages';
 import { photoLimit, tierOf, type Tier } from '../../../shared/tiers';
 
@@ -73,6 +74,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }) });
     }
 
+    if (route === 'POST /api/invitations/promo') return await promoCheck(request, env);
     if (route === 'POST /api/invitations/checkout') return await checkout(context, url.origin);
     if (route === 'POST /api/invitations/resend') return await resend(context, url.origin);
 
@@ -127,6 +129,34 @@ async function putPhoto(env: Env, invitationId: number, n: number | string, p: s
   const bin = atob(p.slice(p.indexOf(',') + 1));
   await env.PHOTOS.put(key, Uint8Array.from(bin, (c) => c.charCodeAt(0)), { httpMetadata: { contentType: `image/${type}` } });
   return key;
+}
+
+// The promo row and its use count (orders not cancelled), applied to a price. The price always comes from the stored package.
+async function checkPromo(db: D1Database, raw: unknown, price: number, now: Date): Promise<{ ok: false; error: string } | { ok: true; promo: any; discountCentavos: number; totalCentavos: number }> {
+  const code = normalizeCode(raw);
+  const promo = code ? await db.prepare('SELECT * FROM promo_codes WHERE code = ?').bind(code).first<any>() : null;
+  if (!promo) return { ok: false, error: PROMO_MESSAGE.unknown };
+  const used = (await db.prepare("SELECT COUNT(*) AS n FROM orders WHERE promo_code = ? AND status != 'cancelled'").bind(code).first<any>())?.n ?? 0;
+  const r = applyPromo(promo, price, now, used);
+  return r.ok === false ? { ok: false, error: r.error } : { ok: true, promo, discountCentavos: r.discountCentavos, totalCentavos: r.totalCentavos };
+}
+
+// Body: { code, designSlug, packageKey }. 20 checks per IP per hour, counted in audit_logs like the resend limit.
+async function promoCheck(request: Request, env: Env): Promise<Response> {
+  const body: any = await request.json().catch(() => ({}));
+  const message = `Promo code check from ${request.headers.get('CF-Connecting-IP') || 'unknown'}`;
+  const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM audit_logs WHERE log_type = 'promo_check' AND message = ? AND timestamp > ?")
+    .bind(message, new Date(Date.now() - 60 * 60 * 1000).toISOString()).first<any>();
+  if ((recent?.count || 0) >= 20) return json({ error: 'Too many promo code checks. Please try again later.' }, 429);
+  await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'promo_check', ?)").bind(new Date().toISOString(), message).run();
+
+  const design = await env.DB.prepare('SELECT * FROM products_designs WHERE slug = ? AND active = 1').bind(String(body.designSlug ?? '')).first<any>();
+  if (!design) return json({ error: 'That design is not available.' }, 400);
+  const key = typeof body.packageKey === 'string' && body.packageKey.length <= 30 ? body.packageKey : undefined;
+  const pkg = pickPackage(packagesOf(design), key)!;
+  const r = await checkPromo(env.DB, body.code, pkg.priceCentavos, new Date());
+  if (r.ok === false) return json({ error: r.error }, 400);
+  return json({ code: r.promo.code, discountCentavos: r.discountCentavos, totalCentavos: r.totalCentavos, subtotalCentavos: pkg.priceCentavos, label: promoLabel(r.promo.discount_type, r.promo.discount_value) });
 }
 
 async function checkout(context: EventContext<Env, any, any>, origin: string): Promise<Response> {
@@ -190,6 +220,16 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   const trackingToken = randomToken();
   const reference = newReference();
   const now = new Date();
+  // Refused here for any code that is unknown, inactive, early, expired, used up or below its minimum; the client's amount is never read
+  let promoCode: string | null = null;
+  let discount = 0;
+  if (body.promoCode != null && body.promoCode !== '') {
+    const r = await checkPromo(env.DB, body.promoCode, pkg.priceCentavos, now);
+    if (r.ok === false) return json({ error: r.error }, 400);
+    promoCode = r.promo.code;
+    discount = r.discountCentavos;
+  }
+  const total = pkg.priceCentavos - discount;
   const suffix = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('');
   const slug = makeSlug(occasion.slugBase(details), suffix);
   // One transaction for customer, invitation, order and its first event. Rows before photos, so the R2 keys
@@ -200,14 +240,18 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
       .bind(email, name, phone || null),
     env.DB.prepare("INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, tier) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?, ?)")
       .bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(randomToken()), tier),
-    env.DB.prepare("INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at, reference, customer_id, provider, payment_deadline, tracking_token_hash, updated_at, package_key, package_name, package_kind, designer_notes) VALUES (last_insert_rowid(), ?, ?, 'pending_payment', ?, ?, (SELECT id FROM customers WHERE email = ?), ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(email, pkg.priceCentavos, now.toISOString(), reference, email, provider.key,
+    env.DB.prepare("INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at, reference, customer_id, provider, payment_deadline, tracking_token_hash, updated_at, package_key, package_name, package_kind, designer_notes, promo_code, discount_centavos) SELECT last_insert_rowid(), ?, ?, 'pending_payment', ?, ?, (SELECT id FROM customers WHERE email = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ? IS NULL OR (SELECT max_uses FROM promo_codes WHERE code = ?) IS NULL OR (SELECT COUNT(*) FROM orders WHERE promo_code = ? AND status != 'cancelled') < (SELECT max_uses FROM promo_codes WHERE code = ?)")
+      .bind(email, total, now.toISOString(), reference, email, provider.key,
         new Date(now.getTime() + settings.deadlineHours * 3_600_000).toISOString(), await sha256(trackingToken), now.toISOString(), pkg.key, pkg.name,
-        custom ? 'custom' : 'template', custom ? notes : null),
-    env.DB.prepare("INSERT INTO order_events (order_id, at, actor, kind, from_status, to_status, note, visible) VALUES (last_insert_rowid(), ?, 'customer', 'status', NULL, 'pending_payment', 'Order placed', 1)")
+        custom ? 'custom' : 'template', custom ? notes : null, promoCode, discount, promoCode, promoCode, promoCode, promoCode),
+    env.DB.prepare("INSERT INTO order_events (order_id, at, actor, kind, from_status, to_status, note, visible) SELECT last_insert_rowid(), ?, 'customer', 'status', NULL, 'pending_payment', 'Order placed', 1 WHERE changes() > 0")
       .bind(now.toISOString()),
   ]);
   const invitationId = inv.meta.last_row_id;
+  if (!ord.meta.changes) { // the promo code's limit was reached between the check and the insert: nothing else was created
+    await env.DB.prepare('DELETE FROM invitations WHERE id = ?').bind(invitationId).run();
+    return json({ error: PROMO_MESSAGE.used_up }, 409);
+  }
   const orderId = ord.meta.last_row_id;
 
   const keys: string[] = [];
@@ -218,7 +262,7 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
     if (giftQr !== undefined) giftKey = await putPhoto(env, invitationId, 'gift', giftQr as string);
     await env.DB.prepare('UPDATE invitations SET photos = ?, style = ?, gift_qr = ? WHERE id = ?')
       .bind(JSON.stringify(keys), JSON.stringify(coverIndexToKey(sv.style, keys)), giftKey, invitationId).run();
-    start = await provider.start({ id: orderId, reference, amountCentavos: pkg.priceCentavos, email, itemName: `${occasion.label} invitation: ${design.name}` }, { env, origin });
+    start = await provider.start({ id: orderId, reference, amountCentavos: total, email, itemName: `${occasion.label} invitation: ${design.name}` }, { env, origin });
     if (start.kind === 'redirect') await env.DB.prepare('UPDATE orders SET paymongo_checkout_id = ? WHERE id = ?').bind(start.providerRef, orderId).run();
   } catch (e) {
     console.error('checkout failed:', e instanceof Error ? e.message : e);

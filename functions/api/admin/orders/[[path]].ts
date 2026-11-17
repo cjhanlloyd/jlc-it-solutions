@@ -128,7 +128,7 @@ async function detail(env: Env, me: Admin, id: number): Promise<Response> {
   return json({
     order: {
       id: o.id, reference: o.reference, status: o.status, statusLabel: label(o.status), title: titleOf(o.design_type, o.details), designName: o.design_name ?? '', packageName: o.package_name ?? 'Standard', packageKind: o.package_kind ?? 'template', tier: o.tier ?? 'standard',
-      ...(review ? { amountCentavos: o.amount_centavos } : {}), provider: o.provider, createdAt: sqlUtcToIso(o.created_at), updatedAt: sqlUtcToIso(o.updated_at), paymentDeadline: o.payment_deadline,
+      ...(review ? { amountCentavos: o.amount_centavos, promoCode: o.promo_code ?? null, discountCentavos: o.promo_code ? o.discount_centavos : 0 } : {}), provider: o.provider, createdAt: sqlUtcToIso(o.created_at), updatedAt: sqlUtcToIso(o.updated_at), paymentDeadline: o.payment_deadline,
       deliveredAt: o.delivered_at, assignedTo: o.assigned_to, designerNotes: o.designer_notes ?? null,
     },
     proofs,
