@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 import { randomToken, sha256 } from '../../../server/crypto';
+import { findManagedInvitation } from '../../../server/customer-session';
 import { EMAIL_RE } from '../../../server/email';
 import { decodeSegment, findGuestInvitation, todayUtc } from '../../../server/guest-invitation';
 import { emailAndRotateToken } from '../../../server/invitation-links';
@@ -85,10 +86,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (guestSlug) return await guest(env, decodeSegment(guestSlug));
 
     if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv') {
-      const token = request.headers.get('X-Manage-Token');
-      const inv = token && await env.DB.prepare(
-        "SELECT i.*, d.slug AS design_slug, d.name AS design_name, d.layout_key, d.product_type, d.color_schemes AS design_color_schemes FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.manage_token_hash = ? AND i.status = 'live'",
-      ).bind(await sha256(token)).first<any>();
+      const inv = await findManagedInvitation(env.DB, request);
       if (!inv) return NOT_FOUND();
       if (request.method === 'POST') return await manageEdit(request, env, inv);
       const { results } = await env.DB.prepare(
