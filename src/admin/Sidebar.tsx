@@ -1,12 +1,12 @@
 // Admin navigation: collapsible desktop rail and phone drawer.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, CalendarHeart, CreditCard, FileText, Globe, Inbox, LayoutDashboard, Mail, Menu, Music, PanelLeftClose, PanelLeftOpen, Palette, ShoppingBag, TicketPercent, UserCog, Users, X, type LucideIcon } from 'lucide-react';
+import { Activity, BarChart3, CalendarHeart, CreditCard, FileText, Globe, Inbox, LayoutDashboard, Mail, Menu, Music, PanelLeftClose, PanelLeftOpen, Palette, ShoppingBag, Star, TicketPercent, UserCog, Users, X, type LucideIcon } from 'lucide-react';
 import { isActive, visibleGroups } from './navConfig';
 
 const COLLAPSE_KEY = 'jlc_admin_nav_collapsed';
 const ICONS: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, reports: BarChart3, orders: ShoppingBag, customers: Users, inquiries: Inbox, invitations: CalendarHeart,
-  designs: Palette, music: Music, promos: TicketPercent, content: FileText, itContent: Globe, users: UserCog, activity: Activity, payment: CreditCard, email: Mail,
+  designs: Palette, music: Music, promos: TicketPercent, reviews: Star, content: FileText, itContent: Globe, users: UserCog, activity: Activity, payment: CreditCard, email: Mail,
 };
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
 

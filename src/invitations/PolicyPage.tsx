@@ -82,6 +82,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
           <li><strong>When guests RSVP:</strong> the guest's name, whether they are attending, party size (and number of children, for birthdays), and an optional message.</li>
           <li><strong>When you add guest links:</strong> the guest names and seat numbers you enter. They are visible only to you and our staff, and are deleted with the invitation.</li>
           <li><strong>When you sign in to your account:</strong> your email address; a one-time sign-in code, which we keep only as a protected code and which is valid for 10 minutes; and a sign-in session that lasts 30 days (deleted when you sign out or it expires). Signing in with an email address also creates a customer record for that email. We log sign-in requests to prevent abuse.</li>
+          <li><strong>When you leave a review:</strong> your star rating, the review text and the display name you choose (which can be a first name or a nickname). Only customers with a delivered invitation can review, and you can have one review. It is shown publicly, with your display name and the date, only after we approve it. You can edit or delete your review at any time from your account; editing sends it for approval again.</li>
           <li><strong>When you send an inquiry about our IT services:</strong> your name, email address, mobile number and company (if you give them), and your message.</li>
           <li><strong>Technical information:</strong> basic server logs and an anti-spam check (Cloudflare Turnstile) on our forms. Your browser also keeps small items on your own device: your invitation draft while you design it, a private order link after you order, and your sign-in session when you sign in. We do not use advertising or tracking cookies.</li>
         </ul>
@@ -93,6 +94,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
           <li>create, publish and run your invitation, and show RSVPs to you;</li>
           <li>check your payment and process refunds;</li>
           <li>send you order updates, links and replies to your questions;</li>
+          <li>show approved reviews on our website;</li>
           <li>answer inquiries about our IT services;</li>
           <li>prevent spam, fraud and abuse, and keep the website secure;</li>
           <li>keep the accounting and tax records the law requires.</li>
@@ -106,6 +108,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
           <li><strong>You:</strong> guest RSVPs and guest lists are shown only to the customer who bought the invitation, through their private manage link or their account.</li>
           <li><strong>Our team:</strong> authorised staff can see order, payment and RSVP information when they need it to do their work.</li>
           <li><strong>Service providers:</strong> Cloudflare hosts the website and stores our data, and our email provider delivers our emails. They handle information only on our instructions. Their servers may be outside the Philippines; we use providers with strong security safeguards.</li>
+          <li><strong>Everyone:</strong> an approved review, with its display name, rating, text and date, is public. Your email address is never shown with it.</li>
           <li><strong>When required by law:</strong> we may disclose information if a court, the NPC or another authority lawfully requires it.</li>
         </ul>
 
@@ -116,6 +119,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
           <li><strong>Sign-in codes:</strong> stop working after 10 minutes and are deleted soon after. <strong>Sign-in sessions:</strong> end after 30 days, or straight away when you sign out, and are then deleted.</li>
           <li><strong>Payment receipts of cancelled orders:</strong> deleted 60 days after cancellation.</li>
           <li><strong>Order and payment records:</strong> kept for as long as accounting and tax laws require.</li>
+          <li><strong>Reviews:</strong> kept until you delete them from your account, or we remove them.</li>
           <li><strong>IT service inquiries:</strong> kept while we handle your request and for our records afterwards. You can ask us to delete them at any time.</li>
         </ul>
 

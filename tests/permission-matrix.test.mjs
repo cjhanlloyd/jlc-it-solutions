@@ -79,6 +79,11 @@ const TABLE = [
   ['POST /api/admin/promos', { action: 'update' }, ADMINS],
   ['POST /api/admin/promos', { action: 'toggle' }, ADMINS],
   ['POST /api/admin/promos', { action: 'delete' }, ADMINS],
+  // reviews: reviews.manage
+  ['GET /api/admin/reviews', null, ADMINS],
+  ['POST /api/admin/reviews', { action: 'approve' }, ADMINS],
+  ['POST /api/admin/reviews', { action: 'reject' }, ADMINS],
+  ['POST /api/admin/reviews', { action: 'delete' }, ADMINS],
   // email: settings.email
   ['GET /api/admin/email', null, SUPER_ONLY],
   ['POST /api/admin/email', { section: 'smtp' }, SUPER_ONLY],

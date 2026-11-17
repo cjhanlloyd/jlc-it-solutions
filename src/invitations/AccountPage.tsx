@@ -5,6 +5,7 @@ import { Alert, Link, peso, useTurnstile } from './kit';
 import { occasionLabel } from './occasions';
 import { PremiumBadge } from '../site/DesignCard';
 import LinkBox, { focusRing, primaryBtn, secondaryBtn } from './LinkBox';
+import AccountReview from './AccountReview';
 import { clearSession, readSession, saveSession, type CustomerSession } from './customer-ui';
 
 type Order = {
@@ -210,6 +211,8 @@ function Dashboard({ session, onSignOut }: { session: CustomerSession; onSignOut
           </Card>
         )}
         {Array.isArray(orders) && orders.length > 0 && <ul className="space-y-6">{orders.map((o) => <React.Fragment key={o.reference}><OrderCard o={o} /></React.Fragment>)}</ul>}
+
+        {Array.isArray(orders) && <AccountReview token={session.token} onSignOut={onSignOut} />}
       </div>
     </div>
   );

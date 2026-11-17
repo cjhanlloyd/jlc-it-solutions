@@ -15,6 +15,7 @@ import DesignEditor from './DesignEditor';
 import DesignsPage from './DesignsPage';
 import MusicPage from './MusicPage';
 import PromosPage from './PromosPage';
+import ReviewsPage from './ReviewsPage';
 import InvitationsPage from './InvitationsPage';
 import ItContentPage from './ItContentPage';
 import InquiriesPage from './InquiriesPage';
@@ -39,7 +40,7 @@ function loadSaved(): { token: string; user: AdminUser } | null {
   }
 }
 
-type Route = { page: 'dashboard' } | { page: 'orders' } | { page: 'reports' } | { page: 'order'; id: number } | { page: 'settings' } | { page: 'users' } | { page: 'activity' } | { page: 'emailSettings' } | { page: 'content' } | { page: 'invitations' } | { page: 'itContent' } | { page: 'designs' } | { page: 'music' } | { page: 'promos' } | { page: 'design'; id: number | null }
+type Route = { page: 'dashboard' } | { page: 'orders' } | { page: 'reports' } | { page: 'order'; id: number } | { page: 'settings' } | { page: 'users' } | { page: 'activity' } | { page: 'emailSettings' } | { page: 'content' } | { page: 'invitations' } | { page: 'itContent' } | { page: 'designs' } | { page: 'music' } | { page: 'promos' } | { page: 'reviews' } | { page: 'design'; id: number | null }
   | { page: 'inquiries' } | { page: 'inquiry'; id: string } | { page: 'customers' } | { page: 'customer'; id: number }
   | { page: 'forgot' } | { page: 'invite' | 'reset'; email: string; token: string };
 function parseRoute(hash: string): Route | null {
@@ -62,6 +63,7 @@ function parseRoute(hash: string): Route | null {
   if (hash === '#/designs') return { page: 'designs' };
   if (hash === '#/music') return { page: 'music' };
   if (hash === '#/promos') return { page: 'promos' };
+  if (hash === '#/reviews') return { page: 'reviews' };
   if (hash === '#/designs/new') return { page: 'design', id: null };
   if (hash === '#/inquiries') return { page: 'inquiries' };
   if (hash === '#/customers') return { page: 'customers' };
@@ -183,6 +185,7 @@ export default function App() {
   const paymentSettings = can(user.role, 'settings.payment');
   const manageDesigns = can(user.role, 'designs.manage');
   const managePromos = can(user.role, 'promos.manage');
+  const manageReviews = can(user.role, 'reviews.manage');
   const manageUsers = can(user.role, 'users.manage');
   const viewActivity = can(user.role, 'activity.view');
   const emailSettings = can(user.role, 'settings.email');
@@ -208,6 +211,7 @@ export default function App() {
           {route.page === 'designs' && (manageDesigns ? <DesignsPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage designs.</p>)}
           {route.page === 'music' && (manageDesigns ? <MusicPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage music.</p>)}
           {route.page === 'promos' && (managePromos ? <PromosPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage promo codes.</p>)}
+          {route.page === 'reviews' && (manageReviews ? <ReviewsPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage reviews.</p>)}
           {route.page === 'design' && (manageDesigns ? <div key={route.id ?? 'new'}><DesignEditor session={session} id={route.id} /></div> : <p className="text-sm text-slate-700">Your role cannot manage designs.</p>)}
           {route.page === 'content' && (manageContent ? <ContentPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage content.</p>)}
           {route.page === 'invitations' && (viewOrders ? <InvitationsPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot view invitations.</p>)}

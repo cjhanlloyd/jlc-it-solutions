@@ -9,6 +9,7 @@ import { fetchSite, type SiteContent } from './site-api';
 import { splitAnswer } from './faq-text';
 import { FAQS, HERO, HOW_STEPS, INCLUDES, featuredDesigns } from './home-content';
 import { occasionLabel } from '../invitations/occasions';
+import { ReviewCard, Stars, summary, useReviews } from './Stars';
 
 const INCLUDE_ICONS = [Users, MapPin, Timer, Images, KeyRound, CalendarCheck]; // same order as INCLUDES
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
@@ -44,6 +45,7 @@ export default function HomePage() {
   const hero = { eyebrow: site?.home?.eyebrow?.trim() || HERO.eyebrow, title: site?.home?.headline?.trim() || HERO.title, lead: site?.home?.subheadline?.trim() || HERO.lead };
   const faqs: { q: string; a: string; link?: { href: string; label: string } }[] = site?.faqs.length ? site.faqs : FAQS;
   const testimonials = site?.testimonials ?? [];
+  const reviews = useReviews(6);
 
   const list = Array.isArray(designs) ? designs : [];
   const occasions = [...new Set(list.map((d) => d.productType))].map((t) => ({ type: t, count: list.filter((d) => d.productType === t).length }));
@@ -186,6 +188,20 @@ export default function HomePage() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Reviews: approved customer reviews, hidden when there are none */}
+      {reviews && reviews !== 'offline' && reviews.count > 0 && reviews.average !== null && (
+        <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24 lg:px-8" aria-labelledby="reviews-title">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <p className={eyebrow}>Reviews</p>
+            <h2 id="reviews-title" className={`mt-3 ${h2}`}>Loved by our clients</h2>
+            <div className="mx-auto mt-5 h-px w-16 bg-gold" aria-hidden="true" />
+            <p className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm text-ink/80"><Stars rating={reviews.average} /> <span>{summary(reviews.average, reviews.count)}</span></p>
+          </div>
+          <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">{reviews.reviews.map((r, i) => <React.Fragment key={i}><ReviewCard r={r} /></React.Fragment>)}</ul>
+          <p className="mt-8 text-center"><NavLink href="/reviews" className={linkCls}>Read all reviews</NavLink></p>
         </section>
       )}
 

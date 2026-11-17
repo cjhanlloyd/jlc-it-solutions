@@ -6,6 +6,7 @@ import { turnstileError } from '../../../server/turnstile';
 import { STATUS_LABEL, type OrderStatus } from '../../../shared/order-status';
 import { occasionOf } from '../../../shared/occasions';
 import { tierOf } from '../../../shared/tiers';
+import { validateReview } from '../../../shared/reviews';
 
 interface Env {
   DB: D1Database;
@@ -39,6 +40,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (token) await env.DB.prepare('DELETE FROM customer_sessions WHERE token_hash = ?').bind(await sha256(token)).run();
       return json({ ok: true });
     }
+    if (route === 'GET /api/account/review') return await getReview(request, env);
+    if (route === 'POST /api/account/review') return await saveReview(request, env);
+    if (route === 'POST /api/account/review/delete') return await deleteReview(request, env);
     return json({ error: 'Not found.' }, 404);
   } catch (e) {
     console.error('account API error:', e);
@@ -128,4 +132,50 @@ async function account(request: Request, env: Env): Promise<Response> {
     };
   });
   return json({ email: session.email, orders });
+}
+
+const reviewOut = (r: any) => (r ? { rating: r.rating, body: r.body, displayName: r.display_name, status: r.status, rejectReason: r.reject_reason, updatedAt: r.updated_at } : null);
+const eligible = async (env: Env, email: string) =>
+  !!(await env.DB.prepare("SELECT 1 AS ok FROM orders WHERE lower(customer_email) = ? AND status = 'delivered' LIMIT 1").bind(email).first());
+
+async function getReview(request: Request, env: Env): Promise<Response> {
+  const session = await customerFromToken(env.DB, request.headers.get('X-Customer-Token'));
+  if (!session) return json({ error: 'Please sign in.' }, 401);
+  const [ok, review, who] = await Promise.all([
+    eligible(env, session.email),
+    env.DB.prepare('SELECT * FROM reviews WHERE customer_email = ?').bind(session.email).first<any>(),
+    env.DB.prepare('SELECT name FROM customers WHERE email = ?').bind(session.email).first<any>(),
+  ]);
+  return json({ eligible: ok, review: reviewOut(review), suggestedName: who?.name ?? '' });
+}
+
+async function saveReview(request: Request, env: Env): Promise<Response> {
+  const session = await customerFromToken(env.DB, request.headers.get('X-Customer-Token'));
+  if (!session) return json({ error: 'Please sign in.' }, 401);
+  const body: any = await request.json().catch(() => ({}));
+  const v = validateReview(body);
+  if (v.ok === false) return json({ error: v.error }, 400);
+  if (!(await eligible(env, session.email))) return json({ error: 'Reviews are open to customers with a delivered invitation.' }, 403);
+  const spam = await turnstileError(request, env.TURNSTILE_SECRET_KEY, body.turnstileToken);
+  if (spam) return spam;
+  // 5 saves per email per hour, counted in audit_logs
+  const message = `Review saved by ${session.email}`;
+  const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM audit_logs WHERE log_type = 'customer_review' AND message = ? AND timestamp > ?")
+    .bind(message, new Date(Date.now() - 60 * 60 * 1000).toISOString()).first<any>();
+  if ((recent?.count || 0) >= 5) return json({ error: 'You have saved your review several times already. Please try again in an hour.' }, 429);
+  const now = new Date().toISOString();
+  await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'customer_review', ?)").bind(now, message).run();
+  const row = await env.DB.prepare(
+    `INSERT INTO reviews (customer_email, display_name, rating, body, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)
+     ON CONFLICT(customer_email) DO UPDATE SET display_name = excluded.display_name, rating = excluded.rating, body = excluded.body,
+       status = 'pending', reject_reason = NULL, updated_at = excluded.updated_at RETURNING *`,
+  ).bind(session.email, v.value.displayName, v.value.rating, v.value.body, now, now).first<any>();
+  return json({ review: reviewOut(row) });
+}
+
+async function deleteReview(request: Request, env: Env): Promise<Response> {
+  const session = await customerFromToken(env.DB, request.headers.get('X-Customer-Token'));
+  if (!session) return json({ error: 'Please sign in.' }, 401);
+  await env.DB.prepare('DELETE FROM reviews WHERE customer_email = ?').bind(session.email).run();
+  return json({ ok: true });
 }
