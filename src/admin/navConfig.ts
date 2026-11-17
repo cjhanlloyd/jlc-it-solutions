@@ -12,6 +12,7 @@ export const NAV: NavGroup[] = [
   { label: 'Sales', items: [
     { id: 'orders', label: 'Orders', href: '#/orders', perm: 'orders.view', pages: ['orders', 'order'] },
     { id: 'customers', label: 'Customers', href: '#/customers', perm: 'customers.view', pages: ['customers', 'customer'] },
+    { id: 'promos', label: 'Promo codes', href: '#/promos', perm: 'promos.manage', pages: ['promos'] },
     { id: 'inquiries', label: 'Inquiries', href: '#/inquiries', perm: 'inquiries.manage', pages: ['inquiries', 'inquiry'] },
     { id: 'invitations', label: 'Invitations & RSVPs', href: '#/invitations', perm: 'orders.view', pages: ['invitations'] },
   ] },

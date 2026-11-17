@@ -15,6 +15,7 @@ type Data = {
   pendingPayments: { count: number };
   statusCounts: Record<OrderStatus, number>;
   recent: { at: string; reference: string; orderId: number; label: string; actor: string }[];
+  promotions?: { redeemed: number; discountCentavos: number };
   money?: { pendingCentavos: number; thisMonth: Month; lastMonth: Month };
   charts: {
     range: Range; bucket: 'day' | 'month'; buckets: string[]; asOf: string;
@@ -114,6 +115,15 @@ export default function DashboardPage({ session }: { session: Session }) {
             ))}
           </div>
         </Card>
+      )}
+
+      {data.promotions && (
+        <a href="#/promos" className="block rounded-card focus-visible:outline-2 hover:opacity-90">
+          <Card>
+            <h2 className="font-display text-lg font-bold">Promotions</h2>
+            <p className="mt-1 text-sm text-slate-700">{data.promotions.redeemed} {data.promotions.redeemed === 1 ? 'code' : 'codes'} redeemed · {peso(data.promotions.discountCentavos)} discount given ({RANGES.find(([k]) => k === range)?.[1]})</p>
+          </Card>
+        </a>
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">

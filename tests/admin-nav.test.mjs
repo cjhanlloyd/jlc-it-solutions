@@ -9,10 +9,10 @@ test('Editor sees only Dashboard, Orders and Invitations & RSVPs', () => {
   assert.deepEqual(labels('Editor'), [['Overview', ['Dashboard']], ['Sales', ['Orders', 'Invitations & RSVPs']]]);
 });
 
-test('Super Admin sees all 14 items in 5 groups', () => {
+test('Super Admin sees all 15 items in 5 groups', () => {
   const g = visibleGroups('Super Admin');
   assert.equal(g.length, 5);
-  assert.equal(g.flatMap((x) => x.items).length, 14);
+  assert.equal(g.flatMap((x) => x.items).length, 15);
 });
 
 test('Administrator sees no Settings group and only Activity under Team', () => {

@@ -12,7 +12,7 @@ import { LookupForm, orderKey } from './TrackPage';
 
 type Order = {
   reference: string; status: string; statusLabel: string; message: string; title: string; designName: string;
-  amountCentavos: number; deadline: string | null; createdAt: string;
+  amountCentavos: number; promoCode?: string | null; discountCentavos?: number; subtotalCentavos?: number; deadline: string | null; createdAt: string;
   events: { at: string; label: string; note: string | null }[];
   payment: { method: string; accountName: string; accountNumber: string; instructions: string; qrUrl: string; amountCentavos: number; reference: string; deadline: string | null } | null;
   lastRejection: string | null; guestUrl?: string;
@@ -106,7 +106,13 @@ export default function OrderPage({ reference }: { reference: string }) {
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-500">Reference</dt>
             <dd className="flex items-center gap-2 font-mono font-semibold text-slate-900"><span>{order.reference}</span><CopyButton text={order.reference} label="Copy reference" /></dd>
-            <dt className="text-slate-500">Amount</dt>
+            {order.promoCode && <>
+              <dt className="text-slate-500">Subtotal</dt>
+              <dd className="text-slate-900">{peso(order.subtotalCentavos ?? order.amountCentavos)}</dd>
+              <dt className="text-slate-500">Discount</dt>
+              <dd className="text-slate-900 break-words">{order.promoCode} · −{peso(order.discountCentavos ?? 0)}</dd>
+            </>}
+            <dt className="text-slate-500">{order.promoCode ? 'Amount to pay' : 'Amount'}</dt>
             <dd className="font-semibold text-slate-900">{peso(order.amountCentavos)}</dd>
             {order.designName && <><dt className="text-slate-500">Design</dt><dd className="text-slate-900 break-words">{order.designName}</dd></>}
             {order.title && <><dt className="text-slate-500">Invitation</dt><dd className="text-slate-900 break-words">{order.title}</dd></>}

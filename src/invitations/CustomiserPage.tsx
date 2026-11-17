@@ -29,6 +29,16 @@ export { fetchDesigns, type Design };
 // The studio autosaves here so a refresh or failed attempt keeps the work (photos are too large to keep).
 // Every key with this prefix is cleared once the order is placed.
 const DRAFT_KEY = 'jlc_inv_draft:';
+type AppliedPromo = { code: string; discountCentavos: number; totalCentavos: number; subtotalCentavos: number; label: string };
+async function checkPromo(code: string, designSlug: string, packageKey: string): Promise<AppliedPromo> {
+  let res: Response;
+  try {
+    res = await fetch('/api/invitations/promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, designSlug, packageKey }) });
+  } catch { throw new Error('We could not reach the server. Please try again.'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'We could not check that code. Please try again.');
+  return data;
+}
 const TAB_NAMES = { details: 'Details', design: 'Design', photos: 'Photos & cover' };
 
 // Switching designs only replaces the URL (no popstate), so App keeps this page mounted and the studio state lives on;
@@ -56,8 +66,13 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [error, setError] = React.useState('');
   const [paying, setPaying] = React.useState(false);
   const [view, setView] = React.useState<'edit' | 'preview'>('edit');
+  const [promoInput, setPromoInput] = React.useState('');
+  const [promo, setPromo] = React.useState<AppliedPromo | null>(null);
+  const [promoMsg, setPromoMsg] = React.useState('');
+  const [promoBusy, setPromoBusy] = React.useState(false);
   const turnstile = useTurnstile();
-  const tierNow = tierOf(Array.isArray(designs) ? resolveOrderPackage(designs.find((x) => x.slug === cur)?.packages ?? [], packageKey) : null);
+  const pkgNow = Array.isArray(designs) ? resolveOrderPackage(designs.find((x) => x.slug === cur)?.packages ?? [], packageKey) : null;
+  const tierNow = tierOf(pkgNow);
   const tracks = useTracks(tierNow === 'premium'); // lazily, once, only for Premium
   const visited = React.useRef([slug]); // every design shown here; each keeps the latest draft (state is per occasion)
   const focusNext = React.useRef<string | null>(null); // element to focus after the next render (entering or leaving Review)
@@ -90,6 +105,19 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     }, 500);
     return () => clearTimeout(t);
   }, [cur, draft, scheme, style, email, name, phone, photos.length > 0, awaitPhotos]);
+
+  // A discount belongs to one design and package: check it again when either changes, or drop it with a note
+  const promoRef = React.useRef(promo);
+  promoRef.current = promo;
+  React.useEffect(() => {
+    const p = promoRef.current;
+    if (!p || !pkgNow) return;
+    let alive = true;
+    checkPromo(p.code, cur, pkgNow.key)
+      .then((r) => { if (alive) setPromo(r); })
+      .catch((e: Error) => { if (alive) { setPromo(null); setPromoMsg(`${p.code} was removed: ${e.message}`); } });
+    return () => { alive = false; };
+  }, [cur, pkgNow?.key]);
 
   React.useEffect(() => {
     if (!focusNext.current) return;
@@ -149,6 +177,21 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   };
   const edit = (t: StudioTab) => { focusNext.current = `studio-${t}`; setReview(false); setTab(t); setError(''); window.scrollTo({ top: 0 }); };
 
+  async function applyPromo() {
+    if (!promoInput.trim()) return setPromoMsg('Enter a promo code.');
+    setPromoBusy(true);
+    setPromoMsg('');
+    try {
+      setPromo(await checkPromo(promoInput, cur, pkg!.key));
+      setPromoInput('');
+    } catch (e) {
+      setPromoMsg((e as Error).message);
+    }
+    setPromoBusy(false);
+  }
+  const removePromo = () => { setPromo(null); setPromoMsg(''); };
+  const total = promo ? promo.totalCentavos : pkg!.priceCentavos;
+
   async function pay(e: React.FormEvent) {
     e.preventDefault();
     if (!review) return enterReview();
@@ -165,7 +208,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
+        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), ...(promo ? { promoCode: promo.code } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.reference) {
@@ -176,7 +219,8 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
         go('/order/' + data.reference);
         return;
       }
-      setError(data.error || 'Something went wrong. Please try again.');
+      if (promo && /promo code/i.test(data.error ?? '')) { setPromo(null); setPromoMsg(data.error); } // shown on the promo field
+      else setError(data.error || 'Something went wrong. Please try again.');
     } catch {
       setError('We could not reach the server. Please check your connection and try again.');
     }
@@ -265,6 +309,26 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                 <Field label="Mobile number (optional)">
                   <input className={inputCls} type="tel" autoComplete="tel" maxLength={LIMITS.phone} value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </Field>
+                <div className="space-y-2">
+                  {promo ? (
+                    <dl className="rounded-2xl border border-slate-200 p-4 text-sm space-y-1">
+                      <div className="flex justify-between gap-3"><dt>Subtotal</dt><dd>{peso(promo.subtotalCentavos)}</dd></div>
+                      <div className="flex justify-between gap-3 text-emerald-800"><dt className="min-w-0 break-words">Discount ({promo.code} · {promo.label})</dt><dd className="shrink-0">−{peso(promo.discountCentavos)}</dd></div>
+                      <div className="flex justify-between gap-3 border-t border-slate-200 pt-1 font-extrabold text-slate-900"><dt>Total</dt><dd>{peso(promo.totalCentavos)}</dd></div>
+                      <button type="button" onClick={removePromo} className="pt-1 text-xs font-bold text-slate-700 underline cursor-pointer">Remove promo code</button>
+                    </dl>
+                  ) : (
+                    <Field label="Promo code (optional)">
+                      <div className="flex gap-2">
+                        <input className={inputCls} autoCapitalize="characters" autoComplete="off" maxLength={30} value={promoInput} aria-describedby="promo-msg"
+                          onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }} />
+                        <button type="button" onClick={applyPromo} disabled={promoBusy} className="shrink-0 px-5 rounded-full border border-slate-300 text-xs font-bold uppercase tracking-wider text-slate-800 hover:bg-slate-100 disabled:opacity-60 cursor-pointer">{promoBusy ? 'Checking…' : 'Apply'}</button>
+                      </div>
+                    </Field>
+                  )}
+                  <p id="promo-msg" role="status" className={promoMsg ? 'text-xs font-semibold text-red-700' : 'sr-only'}>{promoMsg}</p>
+                </div>
                 <label className="flex items-start gap-3 text-sm text-slate-700">
                   <input type="checkbox" className="mt-1 h-4 w-4" checked={terms} onChange={(e) => setTerms(e.target.checked)} required />
                   <span>
@@ -278,7 +342,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                 {turnstile.error && <p role="alert" className="text-xs text-red-600">{turnstile.error}</p>}
                 {review && error && <Alert>{error}</Alert>}
                 <button type="submit" disabled={paying} className={submitCls}>
-                  {paying ? 'Placing order…' : `Place order · ${peso(pkg.priceCentavos)}`}
+                  {paying ? 'Placing order…' : `Place order · ${peso(total)}`}
                 </button>
                 <p className="text-[11px] text-slate-600 text-center">Next you'll see our payment QR code. Scan it with GCash, Maya or any bank app that supports QR Ph, then upload your receipt; we confirm your payment before starting your invitation.</p>
               </fieldset>
