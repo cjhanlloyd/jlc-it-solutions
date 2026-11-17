@@ -12,6 +12,7 @@ import { INCLUDES } from './home-content';
 import { PremiumBadge, sampleOf } from './DesignCard';
 import { isPremium } from './design-tier';
 import { NavLink } from './NavLink';
+import PricingCompare from './PricingCompare';
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
 const primaryBtn = `inline-flex items-center justify-center gap-2 rounded-full bg-brand-700 px-8 py-4 text-base font-semibold text-white shadow-card hover:bg-brand-800 ${focusRing}`;
@@ -92,11 +93,13 @@ export default function DesignPage({ slug }: { slug: string }) {
   const [schemeName, setSchemeName] = React.useState('');
   const [phone, setPhone] = React.useState(false);
   const [pkgKey, setPkgKey] = React.useState('');
+  const [all, setAll] = React.useState<Design[]>([]);
 
   const load = React.useCallback((alive: () => boolean = () => true) => {
     setDesign(null);
     fetchDesigns().then((all) => {
       if (!alive()) return;
+      setAll(all);
       const d = all.find((x) => x.slug === slug);
       setDesign(d ?? 'missing');
       if (!d) { document.title = 'Design not found | JLC Solutions'; return; }
@@ -233,6 +236,7 @@ export default function DesignPage({ slug }: { slug: string }) {
           </ul>
         </section>
       </div>
+      <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8"><PricingCompare designs={all} /></div>
     </div>
   );
 }

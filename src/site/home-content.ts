@@ -27,7 +27,7 @@ export const INCLUDES = [
   { label: 'Countdown', detail: 'A live countdown to your event.' },
   { label: 'Photo gallery', detail: 'Share up to 6 of your favourite photos.' },
   { label: 'Private manage link', detail: 'Edit your details and see RSVPs any time.' },
-  { label: 'Online until 60 days after the event', detail: 'Your guests can revisit it long after the day.' },
+  { label: 'Online until 60 days after the event (6 months with Premium)', detail: 'Your guests can revisit it long after the day.' },
 ];
 
 // Answers stick to how ordering works today; `link` points to the page the answer mentions.
@@ -36,7 +36,7 @@ export const FAQS: { q: string; a: string; link?: { href: string; label: string 
   { q: 'When do I get my invitation?', a: 'As soon as our team has verified your payment, your invitation is delivered as a private link you can share with your guests.' },
   { q: 'How do my guests RSVP?', a: 'Right on the invitation page. They say whether they are coming and how many are in their party, and you see every reply.' },
   { q: 'Can I change details after ordering?', a: 'Yes. Your private manage link lets you edit your invitation details, and your guests see the changes right away.' },
-  { q: 'How long does my invitation stay online?', a: 'Until 60 days after your event.' },
+  { q: 'How long does my invitation stay online?', a: 'Standard invitations stay online until 60 days after your event; Premium invitations stay online for 6 months.' },
   { q: 'Can I get a refund?', a: 'Refunds follow our Refund Policy.', link: { href: '/refund-policy', label: 'Read the Refund Policy' } },
   { q: 'I have another question.', a: 'We are happy to help.', link: { href: '/contact', label: 'Contact us' } },
 ];

@@ -1,6 +1,7 @@
 // /designs: the marketplace. Search, occasion chips and sort, kept in the URL (?q=&occasion=&sort=) with replaceState.
 import React from 'react';
 import DesignCard from './DesignCard';
+import PricingCompare from './PricingCompare';
 import { fetchDesigns, type Design } from './designs-api';
 import { filterDesigns, parseQuery, toQuery, type FilterState } from './design-filter';
 import { occasionLabel } from '../invitations/occasions';
@@ -90,6 +91,7 @@ export default function DesignsPage() {
             {shown.map((d) => <li key={d.slug}><DesignCard design={d} /></li>)}
           </ul>
         )}
+        <PricingCompare designs={list} />
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>Price and payment</h2>
         <p>The price is shown in Philippine pesos on the design page and is a one-time payment. Payment is by GCash: after you place your order, you send the amount to our GCash account using the details on your order page and upload a screenshot of your GCash receipt. Our team checks each payment by hand; your order moves ahead only after we confirm it. Unpaid orders are cancelled after the payment deadline shown on the order page.</p>
         <h2>How long it stays online</h2>
-        <p>Your invitation stays online until 60 days after the event date. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
+        <p>Your invitation stays online until 60 days after the event date (6 months after the event date for Premium invitations). After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
         <h2>Editing</h2>
         <p>After payment you can change the date, time, venues, schedule, photos, messages and other details through your manage link. The names on the invitation (the couple's, or the celebrant's) and the design cannot be changed after payment. Keep your manage link private: anyone who has it can edit your invitation. If you lose it, request fresh links from the manage page.</p>
         <h2>Your content</h2>
@@ -60,7 +60,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>Who sees it</h2>
         <p>The invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link. Guest RSVPs are shown only to the customer who bought the invitation, through their private manage link, and to {company} administrators. We do not sell personal information. We use service providers to run the service: Cloudflare (hosting and storage) and our email provider.</p>
         <h2>How long we keep it</h2>
-        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the event date, including for refunded invitations. Only the names (and, for birthdays, the age) shown on the "this celebration has passed" page are kept. Order and payment records are kept as long as required for accounting and tax purposes.</p>
+        <p>Invitation details, photos and guest RSVPs are deleted 60 days after the event date (6 months for Premium invitations), including for refunded invitations. Only the names (and, for birthdays, the age) shown on the "this celebration has passed" page are kept. Order and payment records are kept as long as required for accounting and tax purposes.</p>
         <h2>Your rights</h2>
         <p>Under the Data Privacy Act you may ask to access, correct, or delete your personal information, object to its processing, and file a complaint with the National Privacy Commission. Customers can correct most details themselves through the manage link. Guests who want their RSVP changed or removed can contact the customer or us.</p>
         <h2>Contact</h2>
