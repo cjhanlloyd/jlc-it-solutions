@@ -28,6 +28,7 @@ import ServicesPage from './site/ServicesPage';
 import AboutPage from './site/AboutPage';
 import ContactPage from './site/ContactPage';
 import SiteBanner from './site/SiteBanner.tsx';
+import SiteLoader from './site/SiteLoader.tsx';
 import HomePage from './site/HomePage.tsx';
 import DesignPage from './site/DesignPage.tsx';
 import CustomiserPage from './invitations/CustomiserPage.tsx';
@@ -230,19 +231,7 @@ export default function App() {
     }
   };
 
-  if (isDataLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center font-sans">
-        <div className="space-y-4 text-center">
-          <div className="relative w-12 h-12 mx-auto">
-            <div className="absolute inset-0 rounded-full border-4 border-blue-500/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin"></div>
-          </div>
-          <p className="text-[10px] text-slate-400 font-mono tracking-widest animate-pulse uppercase">Initializing Portal...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isDataLoading) return <SiteLoader name={branding.companyName || 'JLC Solutions'} icon={branding.logoIcon} />;
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans select-none" id="app-wrapper">
