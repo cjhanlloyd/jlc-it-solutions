@@ -594,10 +594,24 @@ test('manage: gift QR is kept when absent, replaced (old extension deleted), the
 test('manage: a bad gift QR → 400 and the stored one is untouched', async () => {
   live();
   sql("UPDATE invitations SET gift_qr = 'inv/1/gift.png' WHERE id = 1");
-  for (const giftQr of ['data:text/html;base64,PGI+', 'inv/1/gift.png', 7]) {
+  for (const giftQr of ['data:text/html;base64,PGI+', 'inv/1/other.png', 7]) {
     const res = await manage({ giftQr });
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error, 'Gift QR code must be a JPEG, PNG or WebP image.');
   }
+  assert.equal(inv().gift_qr, 'inv/1/gift.png');
+});
+
+test('manage: sending the stored gift QR key keeps it, and a full save with an existing QR succeeds', async () => {
+  live();
+  sql("UPDATE invitations SET gift_qr = 'inv/1/gift.png' WHERE id = 1");
+  r2.map.set('inv/1/gift.png', { body: 'qr', bytes: Buffer.from('qr'), httpMetadata: { contentType: 'image/png' } });
+  let res = await manage({ giftQr: 'inv/1/gift.png' });
+  assert.equal(res.status, 200);
+  assert.equal(inv().gift_qr, 'inv/1/gift.png');
+  assert.ok(r2.map.has('inv/1/gift.png'));
+  // what ManagePage sends: details, photos, style, no giftQr
+  res = await call('POST', '/api/invitations/manage', { details: JSON.parse(inv().details), photos: ['inv/1/0.png'], style: {} }, TOKEN);
+  assert.equal(res.status, 200);
   assert.equal(inv().gift_qr, 'inv/1/gift.png');
 });

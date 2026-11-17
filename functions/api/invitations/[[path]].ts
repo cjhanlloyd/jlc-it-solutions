@@ -265,7 +265,7 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   }
 
   // giftQr: absent keeps the stored QR, null removes it, a data URL replaces it
-  const giftQr: unknown = body.giftQr;
+  const giftQr: unknown = inv.gift_qr && body.giftQr === inv.gift_qr ? undefined : body.giftQr; // the stored key means keep
   if (giftQr !== undefined && giftQr !== null) {
     const err = giftQrError(giftQr);
     if (err) return json({ error: err }, 400);

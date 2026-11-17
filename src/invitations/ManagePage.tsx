@@ -129,7 +129,7 @@ export default function ManagePage({ btn }: { btn: string }) {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos, giftQr, style, ...(chosen.name !== data.colorScheme.name ? { colorScheme: chosen.name } : {}) }) });
+      const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos, ...(giftQr === null || giftQr?.startsWith('data:') ? { giftQr } : {}), style, ...(chosen.name !== data.colorScheme.name ? { colorScheme: chosen.name } : {}) }) });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
         setDraft(form!.toDraft(body.details));
