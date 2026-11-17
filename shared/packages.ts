@@ -33,7 +33,7 @@ export function validatePackages(input: unknown): { ok: true; packages: Package[
     if (inclusions.length > 10 || inclusions.some((s) => s.length > 80)) {
       return bad('A package can have up to 10 inclusions of 80 characters each.');
     }
-    packages.push({ key, name, priceCentavos: price, inclusions, kind: p.kind, ...(p.tier !== undefined && { tier: p.tier }) });
+    packages.push({ key, name, priceCentavos: price, inclusions, kind: p.kind, ...(p.tier !== undefined && { tier: p.tier as Tier }) });
   }
   if (new Set(packages.map((p) => p.key)).size !== packages.length) return bad('Package keys must be unique.');
   if (!packages.some((p) => p.kind === 'template')) return bad('Each design needs at least one package that can be ordered online.');
