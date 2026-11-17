@@ -578,17 +578,32 @@ test('manage: gift QR is kept when absent, replaced (old extension deleted), the
   assert.ok(r2.map.has('inv/1/gift.png'));
   res = await manage({ giftQr: JPG });
   assert.equal(res.status, 200);
-  assert.equal((await res.json()).giftQr, 'inv/1/gift.jpg');
-  assert.equal(inv().gift_qr, 'inv/1/gift.jpg');
-  assert.ok(r2.map.has('inv/1/gift.jpg') && !r2.map.has('inv/1/gift.png'));
-  res = await manage({ giftQr: JPG }); // same extension overwrites in place
-  assert.equal(inv().gift_qr, 'inv/1/gift.jpg');
-  assert.ok(r2.map.has('inv/1/gift.jpg'));
+  const k1 = (await res.json()).giftQr;
+  assert.match(k1, /^inv\/1\/gift-\d+\.jpg$/);
+  assert.equal(inv().gift_qr, k1);
+  assert.ok(r2.map.has(k1) && !r2.map.has('inv/1/gift.png'));
+  await new Promise((ok) => setTimeout(ok, 5));
+  res = await manage({ giftQr: JPG }); // same extension still gets a new key (the photo route caches)
+  const k2 = (await res.json()).giftQr;
+  assert.notEqual(k2, k1);
+  assert.equal(inv().gift_qr, k2);
+  assert.ok(r2.map.has(k2) && !r2.map.has(k1), 'old object deleted after the save');
   res = await manage({ giftQr: null });
   assert.equal(res.status, 200);
   assert.equal(inv().gift_qr, null);
-  assert.ok(!r2.map.has('inv/1/gift.jpg'));
+  assert.ok(!r2.map.has(k2));
   assert.ok(r2.map.has('inv/1/0.png'), 'photos untouched');
+});
+
+test('manage: a failed save keeps the old gift QR and removes the new object', async () => {
+  live();
+  sql("UPDATE invitations SET gift_qr = 'inv/1/gift.png' WHERE id = 1");
+  r2.map.set('inv/1/gift.png', { body: 'qr', bytes: Buffer.from('qr'), httpMetadata: { contentType: 'image/png' } });
+  const before = [...r2.map.keys()].sort();
+  sql("CREATE TRIGGER no_update BEFORE UPDATE ON invitations BEGIN SELECT RAISE(ABORT, 'nope'); END");
+  assert.ok((await manage({ giftQr: JPG })).status >= 400);
+  assert.equal(inv().gift_qr, 'inv/1/gift.png');
+  assert.deepEqual([...r2.map.keys()].sort(), before);
 });
 
 test('manage: a bad gift QR → 400 and the stored one is untouched', async () => {

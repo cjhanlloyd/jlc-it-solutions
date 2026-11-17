@@ -302,8 +302,9 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
     }
     if (giftQr === null) giftKey = null;
     else if (giftQr !== undefined) {
-      giftKey = await putPhoto(env, inv.id, 'gift', giftQr as string);
-      if (giftKey !== inv.gift_qr) added.push(giftKey);
+      // fresh key per replacement: the photo route caches, and a failed save must not touch the live object
+      giftKey = await putPhoto(env, inv.id, `gift-${Date.now()}`, giftQr as string);
+      added.push(giftKey);
     }
     style = body.style !== undefined ? coverIndexToKey(style, keys) : remapCover(stored, current, keys);
     await env.DB.prepare('UPDATE invitations SET details = ?, event_date = ?, photos = ?, style = ?, color_scheme = ?, gift_qr = ? WHERE id = ?')
@@ -375,8 +376,11 @@ async function manageGuests(request: Request, env: Env, inv: any): Promise<Respo
   if (!Number.isInteger(id)) return json({ error: 'Guest not found.' }, 404);
   if (body.action === 'update') {
     if (name === undefined && body.seats === undefined) return json({ error: 'Nothing to change.' }, 400);
-    const up = await env.DB.prepare('UPDATE invitation_guests SET name = COALESCE(?, name), seats = COALESCE(?, seats) WHERE id = ? AND invitation_id = ?')
-      .bind(name ?? null, body.seats ?? null, id, inv.id).run();
+    const [up] = await env.DB.batch([
+      env.DB.prepare('UPDATE invitation_guests SET name = COALESCE(?, name), seats = COALESCE(?, seats) WHERE id = ? AND invitation_id = ?')
+        .bind(name ?? null, body.seats ?? null, id, inv.id),
+      env.DB.prepare('UPDATE rsvps SET guest_name = COALESCE(?, guest_name) WHERE guest_id = ? AND invitation_id = ?').bind(name ?? null, id, inv.id),
+    ]);
     return up.meta.changes ? json({ ok: true }) : json({ error: 'Guest not found.' }, 404);
   }
   if (body.action === 'delete') {
@@ -408,10 +412,10 @@ async function guest(env: Env, slug: string | null, token: string | null): Promi
   const track = premium && style.music !== undefined
     ? await env.DB.prepare('SELECT r2_key, title, credit FROM music_tracks WHERE id = ? AND active = 1').bind(style.music).first<any>() : null;
   const g = token ? await env.DB.prepare(
-    'SELECT g.name, g.seats, r.attending, r.party_size FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id WHERE g.token = ? AND g.invitation_id = ?',
+    'SELECT g.name, g.seats, r.attending, r.party_size, r.kids_count, r.message FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id WHERE g.token = ? AND g.invitation_id = ?',
   ).bind(token, inv.id).first<any>() : null;
   return json({
-    ...(g ? { guest: { name: g.name, seats: g.seats, rsvp: g.attending == null ? null : { attending: !!g.attending, partySize: g.party_size } } } : {}),
+    ...(g ? { guest: { name: g.name, seats: g.seats, rsvp: g.attending == null ? null : { attending: !!g.attending, partySize: g.party_size, kidsCount: g.kids_count ?? 0, message: g.message ?? '' } } } : {}),
     state: 'live', tier: tierOf(inv), intro: premium && style.intro !== false,
     music: track ? { url: mediaUrl(track.r2_key), title: track.title, credit: track.credit } : null, productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
     photos: keys.map((k) => `/photos/${k}`),

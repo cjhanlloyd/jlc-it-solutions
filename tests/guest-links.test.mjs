@@ -51,7 +51,10 @@ test('add, list (by name), update and delete with the manage token', async () =>
   assert.equal(list.guests[1].token, a.token);
   assert.equal((await act({ action: 'update', id: a.id, name: 'Bea C', seats: 4 })).status, 200);
   assert.equal((await act({ action: 'update', id: a.id, seats: 5 })).status, 200);
-  assert.deepEqual(q('SELECT name, seats FROM invitation_guests WHERE id = ?', a.id), [{ name: 'Bea C', seats: 5 }]);
+  assert.equal((await rsvp('maria-1', { guestToken: a.token, partySize: 1 })).status, 200);
+  assert.equal((await act({ action: 'update', id: a.id, name: 'Bea Cruz' })).status, 200);
+  assert.deepEqual(q('SELECT guest_name FROM rsvps'), [{ guest_name: 'Bea Cruz' }]);
+  assert.deepEqual(q('SELECT name, seats FROM invitation_guests WHERE id = ?', a.id), [{ name: 'Bea Cruz', seats: 5 }]);
   assert.equal((await act({ action: 'delete', id: b.id })).status, 200);
   assert.equal(q('SELECT * FROM invitation_guests').length, 1);
 });
@@ -108,7 +111,7 @@ test('guest RSVP: name is forced, seat cap holds, a second RSVP replaces the fir
   assert.equal((await rsvp('maria-1', { guestToken: a.token, guestName: 'Spoofed', attending: false })).status, 200);
   const rows = q('SELECT guest_name, attending, guest_id FROM rsvps');
   assert.deepEqual(rows, [{ guest_name: 'Eve', attending: 0, guest_id: a.id }]);
-  assert.deepEqual((await view('maria-1', a.token)).guest.rsvp, { attending: false, partySize: 1 });
+  assert.deepEqual((await view('maria-1', a.token)).guest.rsvp, { attending: false, partySize: 1, kidsCount: 0, message: '' });
   const list = await (await call('GET', '/api/invitations/manage/guests', undefined, M1)).json();
   assert.equal(list.guests[0].rsvp.attending, false);
   const manage = await (await call('GET', '/api/invitations/manage', undefined, M1)).json();
@@ -164,4 +167,8 @@ test('birthday guest: adults plus kids must fit the seats; declining is always a
   assert.equal((await rsvp('mia-3', { guestToken: a.token, partySize: 1, kidsCount: 1 })).status, 200);
   assert.equal((await rsvp('mia-3', { guestToken: a.token, attending: false, partySize: 5, kidsCount: 5 })).status, 200);
   assert.equal(q('SELECT COUNT(*) AS c FROM rsvps WHERE invitation_id = 3')[0].c, 1);
+  // round trip: the guest API returns what they replied, so the form can prefill it
+  const b = await add('Hal', 4, { 'X-Manage-Token': 'mt-3' });
+  await rsvp('mia-3', { guestToken: b.token, partySize: 2, kidsCount: 1, message: 'See you there' });
+  assert.deepEqual((await view('mia-3', b.token)).guest.rsvp, { attending: true, partySize: 2, kidsCount: 1, message: 'See you there' });
 });

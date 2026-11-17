@@ -37,15 +37,15 @@ const NEUTRAL: Scheme = { primary: '#7a5752', accent: '#b8955a', background: '#f
 const slug = window.location.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1] ?? '';
 // A personal guest link (?g=<token>): the server answers with the guest's name, seats and current reply
 const guestToken = new URLSearchParams(window.location.search).get('g') ?? '';
-type Guest = { name: string; seats: number; rsvp: { attending: boolean; partySize: number } | null };
+type Guest = { name: string; seats: number; rsvp: { attending: boolean; partySize: number; kidsCount: number; message: string } | null };
 
 function RsvpForm({ askKids, productType, guest }: { askKids: boolean; productType?: string; guest?: Guest }) {
   const [name, setName] = useState(guest?.name ?? '');
   const [attending, setAttending] = useState<boolean | null>(guest?.rsvp?.attending ?? null);
   // Seats may have been lowered since the reply, so the prefill is clamped to them
   const [partySize, setPartySize] = useState(() => Math.max(1, Math.min(guest?.rsvp?.attending ? guest.rsvp.partySize : 1, guest?.seats ?? LIMITS.partySizeMax)));
-  const [kidsCount, setKidsCount] = useState(0);
-  const [message, setMessage] = useState('');
+  const [kidsCount, setKidsCount] = useState(() => guest?.rsvp?.attending ? guest.rsvp.kidsCount : 0);
+  const [message, setMessage] = useState(guest?.rsvp?.message ?? '');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -110,7 +110,7 @@ function RsvpForm({ askKids, productType, guest }: { askKids: boolean; productTy
       {guest && (
         <p className="rsvp-seats">
           We've saved {seats === 1 ? 'a seat for you' : `${seats} seats for you`}.
-          {guest.rsvp && <> You replied: <strong>{guest.rsvp.attending ? `attending, ${guest.rsvp.partySize} ${guest.rsvp.partySize === 1 ? 'guest' : 'guests'}` : "can't make it"}</strong>. You can change your reply below.</>}
+          {guest.rsvp && <> You replied: <strong>{guest.rsvp.attending ? (askKids ? `attending, ${guest.rsvp.partySize} ${guest.rsvp.partySize === 1 ? 'adult' : 'adults'}${guest.rsvp.kidsCount ? `, ${guest.rsvp.kidsCount} ${guest.rsvp.kidsCount === 1 ? 'kid' : 'kids'}` : ''}` : `attending, ${guest.rsvp.partySize} ${guest.rsvp.partySize === 1 ? 'guest' : 'guests'}`) : "can't make it"}</strong>. You can change your reply below.</>}
         </p>
       )}
       <div>

@@ -4,7 +4,7 @@ import React from 'react';
 
 export type PolicyKind = 'terms' | 'refund-policy' | 'privacy';
 
-const UPDATED = 'November 17, 2026';
+const UPDATED = 'November 18, 2026';
 
 function pages(company: string, email: string): Record<PolicyKind, { title: string; lead: string; body: React.ReactNode }> {
   const mail = <a href={`mailto:${email}`}>{email}</a>;
@@ -80,8 +80,10 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <ul>
           <li><strong>When you order an invitation:</strong> your name, email address and (if you give it) mobile number; the names, dates, venues, messages and photos you add to the invitation; your design choices; order records (amount, date, status); and the payment receipt screenshot and reference number you upload to confirm payment. We do not receive or store your PIN, password or banking login.</li>
           <li><strong>When guests RSVP:</strong> the guest's name, whether they are attending, party size (and number of children, for birthdays), and an optional message.</li>
+          <li><strong>When you add guest links:</strong> the guest names and seat numbers you enter. They are visible only to you and our staff, and are deleted with the invitation.</li>
+          <li><strong>When you sign in to your account:</strong> your email address; a one-time sign-in code, which we keep only as a protected code and which is valid for 10 minutes; and a sign-in session that lasts 30 days (deleted when you sign out or it expires). Signing in with an email address also creates a customer record for that email. We log sign-in requests to prevent abuse.</li>
           <li><strong>When you send an inquiry about our IT services:</strong> your name, email address, mobile number and company (if you give them), and your message.</li>
-          <li><strong>Technical information:</strong> basic server logs and an anti-spam check (Cloudflare Turnstile) on our forms. Your browser also keeps small items on your own device: your invitation draft while you design it, and a private order link after you order. We do not use advertising or tracking cookies.</li>
+          <li><strong>Technical information:</strong> basic server logs and an anti-spam check (Cloudflare Turnstile) on our forms. Your browser also keeps small items on your own device: your invitation draft while you design it, a private order link after you order, and your sign-in session when you sign in. We do not use advertising or tracking cookies.</li>
         </ul>
         <p>Invitations can include information about other people, such as the celebrant, family members or children. By adding it, you confirm that you have their permission (or, for children, the permission of a parent or guardian).</p>
 
@@ -100,7 +102,8 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>Who can see it</h2>
         <ul>
           <li><strong>Your guests:</strong> the invitation page (names, date, venues, schedule, photos, messages) is visible to anyone who has its link, so share it only with people you trust.</li>
-          <li><strong>You:</strong> guest RSVPs are shown only to the customer who bought the invitation, through their private manage link.</li>
+          <li><strong>A guest with a personal link:</strong> the page shows that guest's name and their current reply to anyone who holds the link.</li>
+          <li><strong>You:</strong> guest RSVPs and guest lists are shown only to the customer who bought the invitation, through their private manage link or their account.</li>
           <li><strong>Our team:</strong> authorised staff can see order, payment and RSVP information when they need it to do their work.</li>
           <li><strong>Service providers:</strong> Cloudflare hosts the website and stores our data, and our email provider delivers our emails. They handle information only on our instructions. Their servers may be outside the Philippines; we use providers with strong security safeguards.</li>
           <li><strong>When required by law:</strong> we may disclose information if a court, the NPC or another authority lawfully requires it.</li>
@@ -109,6 +112,8 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>How long we keep it</h2>
         <ul>
           <li><strong>Invitation details, photos and guest RSVPs:</strong> deleted 60 days after the event date for Standard invitations and 6 months after it for Premium invitations, including refunded invitations. Only the names (and, for birthdays, the age) shown on the "this celebration has passed" page are kept.</li>
+          <li><strong>Guest lists (names and seats):</strong> deleted with the invitation's details, as above.</li>
+          <li><strong>Sign-in codes:</strong> deleted after 10 minutes. <strong>Sign-in sessions:</strong> deleted after 30 days, or when you sign out.</li>
           <li><strong>Payment receipts of cancelled orders:</strong> deleted 60 days after cancellation.</li>
           <li><strong>Order and payment records:</strong> kept for as long as accounting and tax laws require.</li>
           <li><strong>IT service inquiries:</strong> kept while we handle your request and for our records afterwards. You can ask us to delete them at any time.</li>
