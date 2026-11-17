@@ -7,9 +7,10 @@ import { schemeVars, type Scheme } from './parts';
 export const monogram = (headline: string) =>
   headline.split('&').map((s) => Array.from(s.trim())[0] ?? '').filter(Boolean).join('&').toUpperCase();
 
-type Props = { card: Card; scheme: Scheme; onOpen: () => void; onDone: () => void };
+// greeting: a personal guest link's name, shown as "Dear <name>," above the headline
+type Props = { card: Card; scheme: Scheme; greeting?: string; onOpen: () => void; onDone: () => void };
 
-export default function IntroCover({ card, scheme, onOpen, onDone }: Props) {
+export default function IntroCover({ card, scheme, greeting, onOpen, onDone }: Props) {
   const [opening, setOpening] = useState(false);
   const [gone, setGone] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -42,6 +43,7 @@ export default function IntroCover({ card, scheme, onOpen, onDone }: Props) {
     <div className={`inv intro-cover${opening ? ' is-opening' : ''}`} style={schemeVars(scheme)}
       role="dialog" aria-modal="true" aria-labelledby="intro-title" onKeyDown={keepFocus}>
       <div className="intro-panel intro-top">
+        {greeting && <p className="intro-greeting">Dear {greeting},</p>}
         {card.kicker && <p className="intro-kicker">{card.kicker}</p>}
         <h2 id="intro-title" className="intro-names">{card.headline || 'You are invited'}</h2>
         {card.dateLine && <p className="intro-date">{card.dateLine}</p>}

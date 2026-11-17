@@ -99,6 +99,7 @@ test('journey: template order, live invitation, guest RSVP, delivered, with emai
   assert.ok(delivered[0].includes('To: <bride@example.com>'));
   assert.ok(delivered[0].includes(`https://shop.test/i/${slug}`));
   assert.match(delivered[0], /https:\/\/shop\.test\/manage#[A-Za-z0-9_-]{43}/);
+  assert.ok(delivered[0].includes('https://shop.test/account'), 'the email points to My account');
 
   // The guest sees it
   assert.equal((await ok(await send(invitations, `/api/invitations/i/${slug}`))).state, 'live');

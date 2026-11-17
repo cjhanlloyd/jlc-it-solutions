@@ -16,6 +16,7 @@ interface FooterProps {
 }
 
 const HELP = [
+  { href: '/account', label: 'My account' },
   { href: '/track', label: 'Track order' },
   { href: '/terms', label: 'Terms of service' },
   { href: '/refund-policy', label: 'Refund policy' },

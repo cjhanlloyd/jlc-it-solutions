@@ -485,10 +485,11 @@ async function resend(context: EventContext<Env, any, any>, origin: string): Pro
           subject: 'Your invitation links',
           // "Key: value" lines: the HTML builder keeps every URL there (plain paragraphs keep only the first)
           body: [
-            'Here are the links to your invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works.',
+            'Here are the links to your invitation. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. Any earlier manage link no longer works. You can also sign in to My account with this email to manage your invitations and guest links.',
             '',
             `Guest link: ${origin}/i/${inv.slug}`,
             `Manage link: ${origin}/manage#${token}`,
+            `My account: ${origin}/account`,
           ].join('\n'),
         }));
       }

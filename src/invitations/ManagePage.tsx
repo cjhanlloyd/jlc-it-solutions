@@ -1,8 +1,12 @@
 // /manage#<token>: the couple edits their invitation and sees RSVPs. The token lives only in memory and goes in a header.
+// /manage?inv=<id>: the same page, reached from /account; the stored customer session authorises it instead.
 import React from 'react';
-import { Copy, Download, ExternalLink, KeyRound } from 'lucide-react';
+import { ArrowLeft, Download, KeyRound } from 'lucide-react';
 import InvitationView from './InvitationView';
-import { Alert, Field, PaneToggle, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
+import { Alert, Field, Link, PaneToggle, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
+import LinkBox, { primaryBtn } from './LinkBox';
+import GuestLinks from './GuestLinks';
+import { readSession } from './customer-ui';
 import { formOf } from './forms';
 import type { Scheme } from './parts';
 import { effectiveScheme, resolveCoverIndex } from './style-render';
@@ -14,7 +18,7 @@ import PreviewFrame from './studio/PreviewFrame';
 import { useTracks } from './studio/PremiumExtras';
 import { photoLimit, type Tier } from '../../shared/tiers';
 
-type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
+type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string; guestId?: number | null };
 type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; giftQr?: string | null; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
@@ -22,7 +26,7 @@ let memoryToken: string | null = null;
 function takeToken(): string {
   if (memoryToken === null) {
     memoryToken = decodeURIComponent(window.location.hash.slice(1));
-    window.history.replaceState(null, '', window.location.pathname);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
   return memoryToken;
 }
@@ -66,7 +70,14 @@ function ResendForm({ btn }: { btn: string }) {
 export default function ManagePage({ btn }: { btn: string }) {
   useInvitationFonts();
   const token = takeToken();
-  const [data, setData] = React.useState<Manage | null | 'missing' | 'offline'>(token ? null : 'missing');
+  const invId = new URLSearchParams(window.location.search).get('inv');
+  // Session mode: every manage request carries the customer token and the invitation id instead of a manage token
+  const [auth] = React.useState<Record<string, string> | null>(() => {
+    if (!invId) return token ? { 'X-Manage-Token': token } : null;
+    const session = readSession();
+    return session ? { 'X-Customer-Token': session.token, 'X-Invitation-Id': invId } : null;
+  });
+  const [data, setData] = React.useState<Manage | null | 'missing' | 'offline'>(auth ? null : 'missing');
   const [draft, setDraft] = React.useState<any>(null);
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [giftQr, setGiftQr] = React.useState<string | null>(null); // stored key or a new data URL
@@ -76,14 +87,13 @@ export default function ManagePage({ btn }: { btn: string }) {
   const [msg, setMsg] = React.useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [positioning, setPositioning] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
   const [view, setView] = React.useState<'edit' | 'preview'>('edit');
 
   const tracks = useTracks(typeof data === 'object' && data?.tier === 'premium');
-  const api = (path: string, init?: RequestInit) => fetch(`/api/invitations/manage${path}`, { ...init, headers: { ...init?.headers, 'X-Manage-Token': token } });
+  const api = React.useCallback((path: string, init?: RequestInit) => fetch(`/api/invitations/manage${path}`, { ...init, headers: { ...init?.headers, ...auth } }), [auth]);
 
   React.useEffect(() => {
-    if (!token) return;
+    if (!auth) return;
     api('').then(async (res) => {
       if (res.status === 404) return setData('missing');
       if (!res.ok) return setData('offline');
@@ -99,6 +109,18 @@ export default function ManagePage({ btn }: { btn: string }) {
 
   if (data === null) return <p className="py-24 text-center text-sm text-slate-500">Loading your invitation…</p>;
   if (data === 'offline') return <p className="py-24 px-4 text-center text-sm text-slate-600">We could not load your invitation. Please check your connection and open your manage link again.</p>;
+  if (data === 'missing' && invId) {
+    return (
+      <div className="bg-ivory py-20 px-4 select-text font-sans text-ink">
+        <div className="max-w-md mx-auto rounded-card border border-gold-light bg-white shadow-card p-8 text-center space-y-4">
+          <h1 className="font-serif text-3xl font-semibold leading-tight">Please sign in to manage this invitation</h1>
+          <div className="mx-auto h-px w-16 bg-gold" aria-hidden="true" />
+          <p className="text-sm text-ink/80">Your session may have ended, or this invitation isn't on your account or isn't live. Sign in with the email you ordered with to see your invitations.</p>
+          <Link href="/account" className={primaryBtn}>Sign in</Link>
+        </div>
+      </div>
+    );
+  }
   if (data === 'missing') {
     return (
       <div className="bg-slate-50 py-20 px-4 select-text">
@@ -109,6 +131,7 @@ export default function ManagePage({ btn }: { btn: string }) {
             <p className="text-sm text-slate-600">It may be an older link (each new email replaces the previous one), or the invitation is no longer live. Enter the email you used at checkout and we'll send fresh links.</p>
           </div>
           <ResendForm btn={btn} />
+          <p className="text-center text-sm text-slate-600">Or <Link href="/account" className="font-semibold text-slate-900 underline">sign in to your account</Link> with the same email.</p>
         </div>
       </div>
     );
@@ -138,7 +161,7 @@ export default function ManagePage({ btn }: { btn: string }) {
         setStyle(resolveCoverIndex(body.style ?? {}, body.photos));
         setData({ ...data, colorScheme: chosen, style: body.style });
         setMsg({ kind: 'success', text: 'Saved. Your guests see the changes right away.' });
-      } else setMsg({ kind: 'error', text: res.status === 404 ? 'This manage link no longer works. Request fresh links from this page after reloading.' : body.error || 'Something went wrong. Please try again.' });
+      } else setMsg({ kind: 'error', text: res.status === 404 ? (invId ? 'We could not save: please sign in again from My account, then try again.' : 'This manage link no longer works. Request fresh links from this page after reloading.') : body.error || 'Something went wrong. Please try again.' });
     } catch {
       setMsg({ kind: 'error', text: 'We could not reach the server. Please check your connection and try again.' });
     }
@@ -154,30 +177,24 @@ export default function ManagePage({ btn }: { btn: string }) {
     URL.revokeObjectURL(url);
   }
 
-  async function copy() {
-    try { await navigator.clipboard.writeText(guestUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-    catch { window.prompt('Copy your guest link:', guestUrl); }
-  }
-
   return (
     <div className="bg-slate-50 select-text">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-8 space-y-4">
+          {invId && (
+            <Link href="/account" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" /> My invitations
+            </Link>
+          )}
           <div>
             <p className="text-[10px] uppercase font-extrabold tracking-widest text-slate-600 font-mono">Manage your invitation · {data.design.name}</p>
             <h1 className="text-2xl font-extrabold text-slate-900 font-display">{data.title}</h1>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input className={`${inputCls} flex-1`} readOnly value={guestUrl} aria-label="Guest link" onFocus={(e) => e.target.select()} />
-            <button type="button" onClick={copy} className={`inline-flex items-center justify-center px-5 py-3 rounded-full text-xs font-bold uppercase tracking-wider font-display text-white cursor-pointer ${btn}`}>
-              <Copy className="h-4 w-4 mr-1.5" /> {copied ? 'Copied!' : 'Copy link'}
-            </button>
-            <a href={guestUrl} target="_blank" rel="noopener" className="inline-flex items-center justify-center px-5 py-3 rounded-full border border-slate-300 text-xs font-bold uppercase tracking-wider font-display text-slate-700 hover:bg-slate-100">
-              Open <ExternalLink className="h-4 w-4 ml-1.5" />
-            </a>
-          </div>
-          <p className="text-xs text-slate-500">Share the guest link. Keep this manage page's link private: anyone with it can edit your invitation.</p>
+          <LinkBox url={guestUrl} title={data.title} />
+          <p className="text-xs text-slate-600">{invId ? 'Share this link with all your guests, or give each guest their own link below.' : "Share the guest link. Keep this manage page's link private: anyone with it can edit your invitation."}</p>
         </div>
+
+        <GuestLinks api={api} slug={data.slug} />
 
         <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-8 space-y-4" aria-labelledby="rsvp-h">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -197,7 +214,7 @@ export default function ManagePage({ btn }: { btn: string }) {
                 <tbody className="divide-y divide-slate-100">
                   {data.rsvps.map((r, i) => (
                     <tr key={i} className="align-top">
-                      <td className="py-2 pr-4 font-semibold text-slate-900">{r.guestName}</td>
+                      <td className="py-2 pr-4 font-semibold text-slate-900">{r.guestName}{r.guestId != null && <span className="ml-2 inline-block rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-800 whitespace-nowrap">Guest link</span>}</td>
                       <td className="py-2 pr-4">{r.attending ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-4">{r.attending ? r.partySize : '–'}</td>
                       {kids && <td className="py-2 pr-4">{r.attending ? r.kidsCount : '–'}</td>}

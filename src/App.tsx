@@ -35,6 +35,7 @@ import CustomiserPage from './invitations/CustomiserPage.tsx';
 import OrderPage from './invitations/OrderPage.tsx';
 import TrackPage from './invitations/TrackPage.tsx';
 import ManagePage from './invitations/ManagePage.tsx';
+import AccountPage from './invitations/AccountPage.tsx';
 import PolicyPage from './invitations/PolicyPage.tsx';
 import { go, Link } from './invitations/kit.tsx';
 import { routeFor, PAGE_META, withSearch, type Route } from './site/routes.ts';
@@ -215,6 +216,8 @@ export default function App() {
         return <TrackPage />;
       case 'manage':
         return <ManagePage btn={btn} />;
+      case 'account':
+        return <AccountPage />;
       case 'policy':
         return <PolicyPage kind={r.kind} company={branding.companyName || 'JLC IT Solutions'} email={content.contactEmail} />;
       case 'notFound':

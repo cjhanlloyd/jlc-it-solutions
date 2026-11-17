@@ -303,6 +303,11 @@ body { margin: 0; }
 .rsvp-error { padding-left: 10px; border-left: 3px solid #c0392b; font-weight: 500; }
 .rsvp .btn { width: 100%; margin-top: 0; }
 .rsvp-done, .rsvp-closed { margin-top: 16px; font-weight: 500; }
+/* Personal guest links (?g=): greeting, saved seats and the read-only name */
+.rsvp-dear { margin-top: 18px; font-family: var(--serif); font-size: 1.5rem; font-style: italic; overflow-wrap: anywhere; }
+.rsvp-seats { margin: 0; overflow-wrap: anywhere; }
+.rsvp-note { margin: 6px 0 0; font-size: .9rem; }
+.rsvp input[readonly] { cursor: default; }
 
 /* ---------- Loading, expired and not-available pages ---------- */
 .plain { display: grid; place-items: center; padding: 32px 20px; text-align: center; font-family: var(--serif); font-size: 1.25rem; line-height: 1.6; }
@@ -522,6 +527,7 @@ body { margin: 0; }
 .intro-kicker { font-family: var(--sans); font-size: .78rem; letter-spacing: .22em; text-transform: uppercase; }
 .intro-names { font-family: var(--serif); font-size: 2.5rem; font-style: italic; font-weight: 500; line-height: 1.1; max-width: 18ch; }
 .intro-date { font-family: var(--serif); font-size: 1.1rem; }
+.intro-greeting { font-family: var(--serif); font-size: 1.3rem; font-style: italic; max-width: 22ch; overflow-wrap: anywhere; }
 .intro-cover .btn { font-family: var(--sans); letter-spacing: .14em; text-transform: uppercase; font-size: .8rem; min-height: 44px; }
 .intro-seal {
   position: absolute; left: 50%; top: 50%; z-index: 2; transform: translate(-50%, -50%);

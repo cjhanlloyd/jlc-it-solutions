@@ -4,7 +4,7 @@ import type { PolicyKind } from '../invitations/PolicyPage.tsx';
 export type Route =
   | { page: 'home' } | { page: 'designs' } | { page: 'design'; slug: string } | { page: 'customise'; slug: string }
   | { page: 'services' } | { page: 'about' } | { page: 'contact' }
-  | { page: 'order'; ref: string } | { page: 'track' } | { page: 'manage' } | { page: 'policy'; kind: PolicyKind }
+  | { page: 'order'; ref: string } | { page: 'track' } | { page: 'manage' } | { page: 'account' } | { page: 'policy'; kind: PolicyKind }
   | { page: 'notFound' };
 
 const SITE = ' | JLC Solutions';
@@ -19,6 +19,7 @@ export const PAGE_META: Record<Route['page'], { title: string; description: stri
   order: { title: 'Your Order' + SITE, description: 'Your invitation order: status, payment QR code and your invitation link.' },
   track: { title: 'Track Your Order' + SITE, description: 'Look up the status of your digital invitation order with your reference.' },
   manage: { title: 'Manage Your Invitation' + SITE, description: 'Get a link to manage your invitation, edit details and view RSVPs.' },
+  account: { title: 'My Account' + SITE, description: 'Sign in with your email to see your invitations, share their links and manage your guests.' },
   policy: { title: 'Policies' + SITE, description: 'Terms of service, refund policy and privacy policy of JLC Solutions.' },
   notFound: { title: 'Page Not Found' + SITE, description: 'This page could not be found. Browse our invitation designs or go to the homepage.' },
 };
@@ -30,7 +31,7 @@ const LEGACY_TABS: Record<string, string> = {
 };
 const STATIC: Record<string, Route> = {
   designs: { page: 'designs' }, services: { page: 'services' }, about: { page: 'about' }, contact: { page: 'contact' },
-  track: { page: 'track' }, manage: { page: 'manage' },
+  track: { page: 'track' }, manage: { page: 'manage' }, account: { page: 'account' },
   terms: { page: 'policy', kind: 'terms' }, 'refund-policy': { page: 'policy', kind: 'refund-policy' }, privacy: { page: 'policy', kind: 'privacy' },
 };
 const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);

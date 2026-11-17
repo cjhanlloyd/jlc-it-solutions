@@ -15,7 +15,7 @@ const INTRO: Record<NotifyKind, [subject: string, message: string]> = {
   receipt: ['We received your payment receipt', CUSTOMER_MESSAGE.payment_verification],
   confirmed: ['Your payment is confirmed', CUSTOMER_MESSAGE.payment_confirmed],
   rejected: ['We could not confirm your payment', 'We could not confirm your payment. Please check the reason below and upload a new receipt on your order page.'],
-  delivered: ['Your invitation is live', 'Your invitation is now live. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private.'],
+  delivered: ['Your invitation is live', 'Your invitation is now live. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private. You can also sign in to My account with this email to manage your invitations and guest links.'],
   cancelled: ['Your order was cancelled', CUSTOMER_MESSAGE.cancelled],
   refunded: ['Your order was refunded', CUSTOMER_MESSAGE.refunded],
   proof: ['Your design proof is ready', 'Your design proof is ready. Open your order page to review it, then approve it or request changes.'],
@@ -44,6 +44,8 @@ export async function notify(db: D1Database, request: Request, orderId: number, 
       `Amount: ${pesos(o.amount_centavos)}`,
       kind === 'placed' && o.payment_deadline && `Pay by: ${manila(o.payment_deadline)}`,
       `Order page: ${orderLink}`,
+      // "Key: value" so the HTML email keeps the URL (a plain paragraph drops it)
+      `My account: ${origin}/account (sign in with this email)`,
     ];
     if (kind === 'rejected') {
       const reason = extra.reason ?? (await db.prepare("SELECT note FROM payments WHERE order_id = ? AND status = 'rejected' ORDER BY id DESC LIMIT 1").bind(orderId).first<any>())?.note;

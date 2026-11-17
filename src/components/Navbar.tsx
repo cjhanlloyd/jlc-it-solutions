@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Activity, Menu, X } from 'lucide-react';
+import { Activity, Menu, UserRound, X } from 'lucide-react';
 import { StoredIcon } from './StoredIcon';
 import { BrandingSettings } from '../types.js';
 import { NavLink, navTo } from '../site/NavLink';
@@ -50,6 +50,8 @@ export default function Navbar({ branding, page, onAdminClick }: NavbarProps) {
     { href: '/contact', label: 'Contact', active: page === 'contact' },
   ];
   const idOf = (href: string) => href.replace(/[^a-z]/g, '') || 'home';
+  // Desktop shows it as an icon link beside the CTA (the text list is full at md); the mobile sheet lists it.
+  const account = { href: '/account', label: 'My account', active: page === 'account' };
 
   const close = () => setIsOpen(false);
 
@@ -113,6 +115,10 @@ export default function Navbar({ branding, page, onAdminClick }: NavbarProps) {
         </ul>
 
         <div className="hidden items-center gap-3 md:flex">
+          <NavLink href={account.href} aria-current={account.active ? 'page' : undefined} aria-label="My account" title="My account" id="nav-item-account"
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2 text-sm font-medium text-ink hover:bg-sand xl:px-3 ${account.active ? 'bg-sand' : ''} ${focusRing}`}>
+            <UserRound className="h-5 w-5" aria-hidden="true" /><span className="hidden xl:inline" aria-hidden="true">My account</span>
+          </NavLink>
           <NavLink href="/designs" className={cta} id="nav-cta-start">Start an invitation</NavLink>
         </div>
 
@@ -139,7 +145,7 @@ export default function Navbar({ branding, page, onAdminClick }: NavbarProps) {
               <X className="h-6 w-6" />
             </button>
             <ul className="flex flex-col">
-              {items.map((it) => (
+              {[...items, account].map((it) => (
                 <li key={it.href} className="border-b border-gold-light">
                   <NavLink
                     href={it.href}

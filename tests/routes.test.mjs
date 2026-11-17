@@ -16,6 +16,7 @@ test('every public route', () => {
   assert.deepEqual(route('/contact'), { page: 'contact' });
   assert.deepEqual(route('/track'), { page: 'track' });
   assert.deepEqual(route('/manage'), { page: 'manage' });
+  assert.deepEqual(route('/account'), { page: 'account' });
   for (const kind of ['terms', 'refund-policy', 'privacy']) assert.deepEqual(route(`/${kind}`), { page: 'policy', kind });
 });
 
@@ -70,7 +71,7 @@ test('plain anchors and unknown hashes keep the page', () => {
 });
 
 test('every page has a title and description', () => {
-  const pages = ['home', 'designs', 'design', 'customise', 'services', 'about', 'contact', 'order', 'track', 'manage', 'policy', 'notFound'];
+  const pages = ['home', 'designs', 'design', 'customise', 'services', 'about', 'contact', 'order', 'track', 'manage', 'account', 'policy', 'notFound'];
   assert.deepEqual(Object.keys(PAGE_META).sort(), [...pages].sort());
   for (const p of pages) {
     assert.match(PAGE_META[p].title, / \| JLC Solutions$/, p);

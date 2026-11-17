@@ -9,6 +9,7 @@ import InvitationView from './InvitationView';
 import MusicToggle, { type Music } from './MusicToggle';
 import { Ornament, schemeVars, type Scheme } from './parts';
 import { effectiveScheme } from './style-render';
+import { seatOptions } from './customer-ui';
 
 // Cloudflare Turnstile, same as src/components/InquiryForm.tsx. On localhost, use Cloudflare's always-pass test key.
 const TURNSTILE_SITE_KEY = ['localhost', '127.0.0.1'].includes(window.location.hostname)
@@ -28,17 +29,21 @@ function loadTurnstile(): Promise<void> {
 
 type Data =
   | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; giftQr?: string | null; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
-      tier?: 'standard' | 'premium'; intro?: boolean; music?: Music | null }
+      tier?: 'standard' | 'premium'; intro?: boolean; music?: Music | null; guest?: Guest }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
 const NEUTRAL: Scheme = { primary: '#7a5752', accent: '#b8955a', background: '#faf7f2', text: '#3a3330' };
 const slug = window.location.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1] ?? '';
+// A personal guest link (?g=<token>): the server answers with the guest's name, seats and current reply
+const guestToken = new URLSearchParams(window.location.search).get('g') ?? '';
+type Guest = { name: string; seats: number; rsvp: { attending: boolean; partySize: number } | null };
 
-function RsvpForm({ askKids, productType }: { askKids: boolean; productType?: string }) {
-  const [name, setName] = useState('');
-  const [attending, setAttending] = useState<boolean | null>(null);
-  const [partySize, setPartySize] = useState(1);
+function RsvpForm({ askKids, productType, guest }: { askKids: boolean; productType?: string; guest?: Guest }) {
+  const [name, setName] = useState(guest?.name ?? '');
+  const [attending, setAttending] = useState<boolean | null>(guest?.rsvp?.attending ?? null);
+  // Seats may have been lowered since the reply, so the prefill is clamped to them
+  const [partySize, setPartySize] = useState(() => Math.max(1, Math.min(guest?.rsvp?.attending ? guest.rsvp.partySize : 1, guest?.seats ?? LIMITS.partySizeMax)));
   const [kidsCount, setKidsCount] = useState(0);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -78,7 +83,7 @@ function RsvpForm({ askKids, productType }: { askKids: boolean; productType?: st
       const res = await fetch(`/api/invitations/i/${slug}/rsvp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestName: name, attending, partySize: attending ? partySize : 1, ...(askKids ? { kidsCount: attending ? kidsCount : 0 } : {}), message, turnstileToken }),
+        body: JSON.stringify({ guestName: name, attending, partySize: attending ? partySize : 1, ...(askKids ? { kidsCount: attending ? kidsCount : 0 } : {}), message, turnstileToken, ...(guest ? { guestToken } : {}) }),
       });
       if (res.ok) return setDone(true);
       setError((await res.json().catch(() => null))?.error || 'Something went wrong. Please try again.');
@@ -99,11 +104,21 @@ function RsvpForm({ askKids, productType }: { askKids: boolean; productType?: st
       </p>
     );
   }
+  const seats = guest?.seats;
   return (
     <form className="rsvp" onSubmit={submit}>
+      {guest && (
+        <p className="rsvp-seats">
+          We've saved {seats === 1 ? 'a seat for you' : `${seats} seats for you`}.
+          {guest.rsvp && <> You replied: <strong>{guest.rsvp.attending ? `attending, ${guest.rsvp.partySize} ${guest.rsvp.partySize === 1 ? 'guest' : 'guests'}` : "can't make it"}</strong>. You can change your reply below.</>}
+        </p>
+      )}
       <div>
         <label htmlFor="rsvp-name">Your name</label>
-        <input id="rsvp-name" type="text" required maxLength={LIMITS.rsvpName} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+        {guest
+          ? <input id="rsvp-name" type="text" readOnly aria-describedby="rsvp-name-note" value={name} />
+          : <input id="rsvp-name" type="text" required maxLength={LIMITS.rsvpName} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />}
+        {guest && <p id="rsvp-name-note" className="rsvp-note">Replying as {guest.name}</p>}
       </div>
       <fieldset>
         <legend>Will you attend?</legend>
@@ -116,7 +131,7 @@ function RsvpForm({ askKids, productType }: { askKids: boolean; productType?: st
         <div>
           <label htmlFor="rsvp-party">{askKids ? 'Adults, including you' : 'Number of guests, including you'}</label>
           <select id="rsvp-party" value={partySize} onChange={(e) => setPartySize(Number(e.target.value))}>
-            {Array.from({ length: LIMITS.partySizeMax }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+            {seatOptions(1, LIMITS.partySizeMax, seats, askKids ? kidsCount : 0).map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
       )}
@@ -124,7 +139,7 @@ function RsvpForm({ askKids, productType }: { askKids: boolean; productType?: st
         <div>
           <label htmlFor="rsvp-kids">Kids</label>
           <select id="rsvp-kids" value={kidsCount} onChange={(e) => setKidsCount(Number(e.target.value))}>
-            {Array.from({ length: LIMITS.kidsMax + 1 }, (_, i) => <option key={i} value={i}>{i}</option>)}
+            {seatOptions(0, LIMITS.kidsMax, seats, partySize).map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
       )}
@@ -166,7 +181,7 @@ function Guest() {
   }, [opened]);
   useEffect(() => {
     if (!slug) return setData({ state: 'missing' });
-    fetch(`/api/invitations/i/${slug}`)
+    fetch(`/api/invitations/i/${slug}${guestToken ? `?g=${encodeURIComponent(guestToken)}` : ''}`)
       .then(async (res) => setData(res.ok ? await res.json() : { state: 'missing' }))
       .catch(() => setData({ state: 'offline' }));
   }, []);
@@ -180,11 +195,14 @@ function Guest() {
       const card = data.intro ? occasionOf(data.productType)?.card(data.details) : undefined;
       return (
         <>
-          {card && <IntroCover card={card} scheme={scheme} onOpen={() => audio.current?.play().catch(() => {})} onDone={onDone} />}
+          {card && <IntroCover card={card} scheme={scheme} greeting={data.guest?.name} onOpen={() => audio.current?.play().catch(() => {})} onDone={onDone} />}
           {/* Behind the aria-modal cover the page is inert, so keyboard and screen readers cannot reach it */}
           <div inert={!!card && !opened} aria-hidden={card && !opened ? true : undefined}>
           <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} giftQr={data.giftQr ?? undefined} style={data.style}
-            rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
+            rsvpSlot={<>
+              {data.guest && <p className="rsvp-dear">Dear {data.guest.name},</p>}
+              {data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} guest={data.guest} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>}
+            </>} />
           {data.music && <MusicToggle ref={audio} music={data.music} scheme={scheme} />}
           </div>
         </>
