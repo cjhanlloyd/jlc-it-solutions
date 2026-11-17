@@ -22,6 +22,6 @@ export async function findManagedInvitation(db: D1Database, request: Request): P
   if (!session || !/^[1-9]\d{0,14}$/.test(idText)) return null;
   return db.prepare(
     `SELECT ${cols} ${from} WHERE i.id = ? AND i.status = 'live'
-     AND EXISTS (SELECT 1 FROM orders o WHERE o.product_id = i.id AND o.customer_email = ? AND o.status = 'delivered')`,
+     AND EXISTS (SELECT 1 FROM orders o WHERE o.product_id = i.id AND lower(o.customer_email) = ? AND o.status = 'delivered')`,
   ).bind(Number(idText), session.email).first<any>();
 }

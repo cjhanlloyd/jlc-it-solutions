@@ -171,3 +171,27 @@ test('manage token path still works', async () => {
   const res = await call(invitations, 'GET', '/api/invitations/manage', undefined, { 'X-Manage-Token': 'mt-1' });
   assert.equal(res.status, 200);
 });
+
+test('verify: 10 parallel wrong guesses then the right code still fails', async () => {
+  await reqCode('a@b.co'); await settle();
+  const right = lastCode();
+  const wrongs = Array.from({ length: 10 }, (_, n) => String(n).repeat(6)).filter((c) => c !== right);
+  await Promise.all(wrongs.map((c) => verify('a@b.co', c)));
+  assert.equal(q('SELECT attempts FROM customer_login_codes')[0].attempts, 5);
+  assert.equal((await verify('a@b.co', right)).status, 400);
+});
+
+test('verify: two parallel correct submissions give exactly one session', async () => {
+  await reqCode('a@b.co'); await settle();
+  const code = lastCode();
+  const res = await Promise.all([verify('a@b.co', code), verify('a@b.co', code)]);
+  assert.deepEqual(res.map((r) => r.status).sort(), [200, 400]);
+  assert.equal(q('SELECT * FROM customer_sessions').length, 1);
+});
+
+test('mixed-case customer_email on an order still matches the session email', async () => {
+  seed(1, 'Bride@Example.com');
+  const token = await signIn('bride@example.com');
+  assert.equal((await (await list(token)).json()).orders.length, 1);
+  assert.equal((await manage('GET', token, 1)).status, 200);
+});

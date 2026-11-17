@@ -89,15 +89,14 @@ async function verify(request: Request, env: Env): Promise<Response> {
   const code = typeof body.code === 'string' ? body.code.trim() : '';
   const bad = () => json({ error: BAD_CODE }, 400);
   if (!EMAIL_RE.test(email) || !/^\d{6}$/.test(code)) return bad();
-  const row = await env.DB.prepare('SELECT code_hash, expires_at, attempts FROM customer_login_codes WHERE email = ?').bind(email).first<any>();
-  if (!row || row.expires_at <= new Date().toISOString() || row.attempts >= MAX_ATTEMPTS) return bad();
-  if (row.code_hash !== await sha256(`${email}:${code}`)) {
-    await env.DB.prepare('UPDATE customer_login_codes SET attempts = attempts + 1 WHERE email = ?').bind(email).run();
-    return bad();
-  }
+  // One atomic statement counts this attempt and decides whether it may be made, so parallel guesses cannot skip the cap
+  const row = await env.DB.prepare(
+    'UPDATE customer_login_codes SET attempts = attempts + 1 WHERE email = ? AND attempts < ? AND expires_at > ? RETURNING code_hash',
+  ).bind(email, MAX_ATTEMPTS, new Date().toISOString()).first<any>();
+  if (!row || row.code_hash !== await sha256(`${email}:${code}`)) return bad();
   // The delete is the single use: only the request that removes the row may sign in
-  const del = await env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ? AND code_hash = ?').bind(email, row.code_hash).run();
-  if (!del.meta.changes) return bad();
+  const del = await env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ? AND code_hash = ? RETURNING email').bind(email, row.code_hash).first();
+  if (!del) return bad();
   const token = randomToken();
   await env.DB.batch([
     env.DB.prepare('INSERT OR IGNORE INTO customers (email) VALUES (?)').bind(email),
@@ -114,7 +113,7 @@ async function account(request: Request, env: Env): Promise<Response> {
     `SELECT o.reference, o.status, o.created_at, o.amount_centavos, o.package_name,
             i.id AS inv_id, i.slug, i.status AS inv_status, i.tier, i.details, i.event_date, d.name AS design_name, d.product_type
      FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id
-     WHERE o.customer_email = ? ORDER BY o.created_at DESC, o.id DESC`,
+     WHERE lower(o.customer_email) = ? ORDER BY o.created_at DESC, o.id DESC`,
   ).bind(session.email).all<any>();
   const orders = (results || []).map((r) => {
     const details = parse(r.details ?? '{}', {}) as any;
