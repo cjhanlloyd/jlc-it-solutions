@@ -23,8 +23,7 @@ export function Link({ href, ...rest }: React.AnchorHTMLAttributes<HTMLAnchorEle
   );
 }
 
-export const peso = (centavos: number) =>
-  `₱${(centavos / 100).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+export { peso } from './event-view';
 
 // The layouts use the same Google Fonts as invitation.html; load them once so previews match the guest page.
 const FONTS_HREF = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Fredoka:wght@500;700&family=Jost:wght@300;400;500;700&display=swap';
@@ -38,52 +37,7 @@ export function useInvitationFonts() {
   }, []);
 }
 
-// Cloudflare Turnstile, same pattern as src/components/InquiryForm.tsx. On localhost, use Cloudflare's always-pass test key.
-const TURNSTILE_SITE_KEY = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-  ? '1x00000000000000000000AA'
-  : '0x4AAAAAAF6Se95DZhEd5led';
-
-let turnstileScript: Promise<void> | null = null;
-function loadTurnstile(): Promise<void> {
-  return (turnstileScript ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.onload = () => resolve();
-    script.onerror = () => { turnstileScript = null; reject(new Error('Turnstile failed to load')); };
-    document.head.appendChild(script);
-  }));
-}
-
-// Returns the widget's ref callback, the current token, a load error and a reset (call it after a failed submit).
-export function useTurnstile() {
-  const [token, setToken] = React.useState('');
-  const [error, setError] = React.useState('');
-  const widgetId = React.useRef<string | null>(null);
-  const ref = React.useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    let unmounted = false;
-    loadTurnstile().then(() => {
-      if (unmounted) return;
-      widgetId.current = (window as any).turnstile.render(el, {
-        sitekey: TURNSTILE_SITE_KEY,
-        callback: (t: string) => { setToken(t); setError(''); },
-        'expired-callback': () => setToken(''),
-        'error-callback': () => setToken(''),
-      });
-    }).catch(() => setError('The anti-spam check could not load. Please disable content blockers for this site and reload.'));
-    return () => {
-      unmounted = true;
-      if (widgetId.current) (window as any).turnstile?.remove(widgetId.current);
-      widgetId.current = null;
-      setToken('');
-    };
-  }, []);
-  const reset = () => {
-    setToken('');
-    if (widgetId.current) (window as any).turnstile?.reset(widgetId.current);
-  };
-  return { ref, token, error, reset };
-}
+export { useTurnstile } from './turnstile';
 
 export const inputCls = 'w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white focus:outline-hidden focus:border-slate-900 focus:ring-1 focus:ring-slate-900 disabled:bg-slate-50 disabled:text-slate-500';
 export const labelCls = 'text-xs font-bold text-slate-700 uppercase tracking-wider font-display block mb-1.5';

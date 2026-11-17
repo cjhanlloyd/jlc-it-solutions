@@ -3,9 +3,12 @@ import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
 import { Cover, Countdown, MapLink, Ordinal, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Confetti({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<BirthdayDetails>) {
+export default function Confetti({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<BirthdayDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   return (
     <main className="inv cf" style={schemeVars(scheme, style)}>
       <header {...heroAttrs('cf-hero', cover, scheme.primary)}>
@@ -45,13 +48,15 @@ export default function Confetti({ details: d, scheme, photos: all, style, rsvpS
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section className="cf-card" aria-labelledby="cf-notes">
             <h2 id="cf-notes">Good to know</h2>
-            {d.dressCode && <><h3 className="cf-small">Attire</h3><p>{d.dressCode}</p></>}
-            {(d.giftsNote || giftQr) && <><h3 className="cf-small">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
+            {n.dress && <><h3 className="cf-small">Attire</h3><p>{d.dressCode}</p></>}
+            {n.gifts && <><h3 className="cf-small">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="cf-attire" className="cf-card" kicker="cf-small" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="cf-gifts" className="cf-card" kicker="cf-small" />
 
         <Photos photos={photos} title={birthday.title(d)} className="cf-photos" />
 

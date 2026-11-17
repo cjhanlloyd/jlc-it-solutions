@@ -59,6 +59,15 @@ test('the draft serializer keeps no photos, only whether there were some', () =>
   assert.deepEqual(saved.style, { v: 1, colors: { primary: '#7a1f3d', accent: '#d4af37' } });
 });
 
+test('the draft keeps the attire motif, palette and notes, and drops attire that no longer validates', () => {
+  const base = { slug: 'a', draft: {}, scheme: 'Rose', style: {}, email: '', photos: [] };
+  const attire = { motif: 'Garden formal', palette: ['#D8A7B1', '#9caf88'], notes: 'Line one\nLine two' };
+  assert.deepEqual(parseDraft(serializeDraft({ ...base, attire }), 'a').attire, { ...attire, palette: ['#d8a7b1', '#9caf88'] });
+  assert.equal('attire' in parseDraft(serializeDraft(base), 'a'), false);
+  assert.equal(parseDraft(serializeDraft({ ...base, attire: { palette: ['red'] } }), 'a').attire, undefined);
+  assert.equal(parseDraft(serializeDraft({ ...base, attire: { motif: 'x'.repeat(121) } }), 'a').attire, undefined);
+});
+
 test('a draft for another design, broken JSON or an invalid style restores safely', () => {
   const raw = serializeDraft({ slug: 'a', draft: {}, scheme: 'Blush', style: { font: 'comic' }, email: '', photos: [] });
   assert.equal(parseDraft(raw, 'b'), null);

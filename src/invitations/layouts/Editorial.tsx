@@ -4,9 +4,12 @@ import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, formatDate, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Editorial({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
+export default function Editorial({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   const places = venues(d);
   return (
     <main className="inv ed" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
@@ -64,15 +67,17 @@ export default function Editorial({ details: d, scheme, photos: all, style, rsvp
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section className="ed-sec" aria-labelledby="ed-notes">
             <h2 id="ed-notes">Good to know</h2>
             <div className="ed-cols">
-              {d.dressCode && <div><h3 className="ed-kicker">Attire</h3><p>{d.dressCode}</p></div>}
-              {(d.giftsNote || giftQr) && <div><h3 className="ed-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></div>}
+              {n.dress && <div><h3 className="ed-kicker">Attire</h3><p>{d.dressCode}</p></div>}
+              {n.gifts && <div><h3 className="ed-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></div>}
             </div>
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="ed-attire" className="ed-sec" kicker="ed-kicker" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="ed-gifts" className="ed-sec" kicker="ed-kicker" />
 
         {photos.length > 0 && (
           <section className="ed-sec" aria-labelledby="ed-gallery">

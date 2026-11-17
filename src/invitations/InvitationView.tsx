@@ -1,13 +1,14 @@
 // Renders an invitation in its chosen layout. The countdown, map links and photos live in ./parts and are placed by each layout.
 import type { ReactNode } from 'react';
 import type { InvitationStyle } from '../../shared/invitation-style';
+import type { EventData } from './event-view';
 import { LAYOUTS, type LayoutKey } from './layouts';
 import { useStyleFonts, type Scheme } from './parts';
 import { effectiveScheme } from './style-render';
 import './invitations.css';
 
 // style.cover.photo must already be an index into photos (see resolveCoverIndex for stored keys).
-type Props = { layoutKey: string; scheme: Scheme; details: any; photos: string[]; style?: InvitationStyle | null; rsvpSlot?: ReactNode; giftQr?: string };
+type Props = { layoutKey: string; scheme: Scheme; details: any; photos: string[]; style?: InvitationStyle | null; rsvpSlot?: ReactNode; giftQr?: string; events?: EventData };
 
 export default function InvitationView({ layoutKey, scheme, style, ...rest }: Props) {
   const s = style ?? {};

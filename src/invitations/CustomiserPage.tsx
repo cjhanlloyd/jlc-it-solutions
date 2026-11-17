@@ -57,7 +57,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [review, setReview] = React.useState(false);
   const [reviewed, setReviewed] = React.useState(false); // the review step stays mounted once shown, so Turnstile keeps its token
   const [photos, setPhotos] = React.useState<string[]>([]);
-  const [attire, setAttire] = React.useState<Attire>({}); // attire motif, palette and notes; sent as extras, not autosaved
+  const [attire, setAttire] = React.useState<Attire>(saved?.attire ?? {}); // attire motif, palette and notes; sent as extras
   const [giftQr, setGiftQr] = React.useState<string | null>(null); // never autosaved, like photos
   const [awaitPhotos, setAwaitPhotos] = React.useState(!!saved?.hadPhotos);
   const [email, setEmail] = React.useState(saved?.email ?? '');
@@ -103,10 +103,10 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   React.useEffect(() => {
     if (!draft) return;
     const t = setTimeout(() => {
-      saveDraft({ draft, scheme, style, email, name, phone, photos, hadPhotos: awaitPhotos });
+      saveDraft({ draft, scheme, style, email, name, phone, photos, hadPhotos: awaitPhotos, attire });
     }, 500);
     return () => clearTimeout(t);
-  }, [cur, draft, scheme, style, email, name, phone, photos.length > 0, awaitPhotos]);
+  }, [cur, draft, scheme, style, email, name, phone, photos.length > 0, awaitPhotos, attire]);
 
   // A discount belongs to one design and package: check it again when either changes, or drop it with a note
   const promoRef = React.useRef(promo);
@@ -360,7 +360,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
         <section aria-label={review ? 'Preview of your invitation' : 'Live preview'} className={`${view === 'preview' ? 'block' : 'hidden'} lg:block min-w-0`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
             <PreviewFrame cover={style.cover} onFocus={review || tab !== 'photos' ? undefined : (f) => setStyle((s) => (s.cover ? { ...s, cover: { ...s.cover, ...f } } : s))}>
-              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} giftQr={giftQr ?? undefined} />}
+              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} giftQr={giftQr ?? undefined} events={{ attire }} />}
             </PreviewFrame>
           </div>
         </section>

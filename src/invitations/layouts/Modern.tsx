@@ -3,9 +3,12 @@ import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, MapLink, GiftQr, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Modern({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
+export default function Modern({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   return (
     <main className="inv md" style={schemeVars(scheme, style)}>
       <header {...heroAttrs('md-hero', cover, scheme.primary)}>
@@ -49,19 +52,21 @@ export default function Modern({ details: d, scheme, photos: all, style, rsvpSlo
           </section>
         )}
 
-        {d.dressCode && (
+        {n.dress && (
           <section className="md-row" aria-labelledby="md-attire">
             <h2 id="md-attire" className="md-label">Attire</h2>
             <p>{d.dressCode}</p>
           </section>
         )}
-        {(d.giftsNote || giftQr) && (
+        {n.gifts && (
           <section className="md-row" aria-labelledby="md-gifts">
             <h2 id="md-gifts" className="md-label">Gifts</h2>
             {d.giftsNote && <p>{d.giftsNote}</p>}
             <GiftQr src={giftQr} />
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="md-attire" className="md-row" headingClass="md-label" kicker="md-label" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="md-gifts" className="md-row" headingClass="md-label" kicker="md-label" />
 
         {photos.length > 1 && (
           <section className="md-row" aria-labelledby="md-moments">

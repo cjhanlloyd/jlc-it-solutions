@@ -3,9 +3,12 @@ import type { LayoutProps } from '.';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
 import { Cover, Countdown, MapLink, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<DebutDetails>) {
+export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<DebutDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   const traditions = TRADITIONS.filter((t) => d[t.key]?.length);
   return (
     <main className="inv bl" style={schemeVars(scheme, style)}>
@@ -51,13 +54,15 @@ export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section aria-labelledby="bl-notes">
             <h2 id="bl-notes">Good to know</h2>
-            {d.dressCode && <><h3 className="bl-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {(d.giftsNote || giftQr) && <><h3 className="bl-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
+            {n.dress && <><h3 className="bl-kicker">Attire</h3><p>{d.dressCode}</p></>}
+            {n.gifts && <><h3 className="bl-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="bl-attire" kicker="bl-kicker" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="bl-gifts" kicker="bl-kicker" />
 
         <Photos photos={photos} title={debut.title(d)} className="bl-photos" />
 

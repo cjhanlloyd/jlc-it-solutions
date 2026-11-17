@@ -4,9 +4,12 @@ import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
 import { Cover, Countdown, displayVars, MapLink, Ordinal, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<BirthdayDetails>) {
+export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<BirthdayDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   return (
     <main className="inv ps" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
       <header {...heroAttrs('ps-hero', cover, scheme.primary)}>
@@ -41,13 +44,15 @@ export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlo
         </section>
       )}
 
-      {(d.dressCode || d.giftsNote || giftQr) && (
+      {(n.dress || n.gifts) && (
         <section className="ps-card" aria-labelledby="ps-notes">
           <h2 id="ps-notes">Good to know</h2>
-          {d.dressCode && <><h3 className="ps-small">Attire</h3><p>{d.dressCode}</p></>}
-          {(d.giftsNote || giftQr) && <><h3 className="ps-small">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
+          {n.dress && <><h3 className="ps-small">Attire</h3><p>{d.dressCode}</p></>}
+          {n.gifts && <><h3 className="ps-small">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
         </section>
       )}
+      <AttireSection events={events} dressCode={d.dressCode} id="ps-attire" className="ps-card" kicker="ps-small" />
+      <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="ps-gifts" className="ps-card" kicker="ps-small" />
 
       <Photos photos={photos} title={birthday.title(d)} className="ps-photos" />
 

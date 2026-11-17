@@ -3,9 +3,12 @@ import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
 import { Cover, Countdown, MapLink, Ordinal, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Golden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<BirthdayDetails>) {
+export default function Golden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<BirthdayDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   return (
     <main className="inv gl" style={schemeVars(scheme, style)}>
       <div className="gl-wrap">
@@ -40,13 +43,15 @@ export default function Golden({ details: d, scheme, photos: all, style, rsvpSlo
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section aria-labelledby="gl-notes">
             <h2 id="gl-notes">Good to know</h2>
-            {d.dressCode && <><h3 className="gl-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {(d.giftsNote || giftQr) && <><h3 className="gl-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
+            {n.dress && <><h3 className="gl-kicker">Attire</h3><p>{d.dressCode}</p></>}
+            {n.gifts && <><h3 className="gl-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="gl-attire" kicker="gl-kicker" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="gl-gifts" kicker="gl-kicker" />
 
         <Photos photos={photos} title={birthday.title(d)} className="gl-photos" />
 

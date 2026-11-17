@@ -5,9 +5,12 @@ import type { Venue } from '../../../shared/invitation-fields';
 import { occasionForDetails } from '../../../shared/occasions';
 import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Portrait({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps) {
+export default function Portrait({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   const occasion = occasionForDetails(d);
   const c = occasion.card(d);
   // Weddings label their ceremony and reception; the other occasions have one venue.
@@ -57,13 +60,15 @@ export default function Portrait({ details: d, scheme, photos: all, style, rsvpS
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section aria-labelledby="pt-notes">
             <h2 id="pt-notes">Good to know</h2>
-            {d.dressCode && <><h3 className="pt-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {(d.giftsNote || giftQr) && <><h3 className="pt-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
+            {n.dress && <><h3 className="pt-kicker">Attire</h3><p>{d.dressCode}</p></>}
+            {n.gifts && <><h3 className="pt-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="pt-attire" kicker="pt-kicker" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="pt-gifts" kicker="pt-kicker" />
 
         <Photos photos={photos} title={occasion.title(d)} className="pt-photos" />
 

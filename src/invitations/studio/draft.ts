@@ -1,21 +1,24 @@
-// The studio draft kept in sessionStorage: details, style, chosen scheme and contact info. Photos are too large to keep.
+// The studio draft kept in sessionStorage: details, style, chosen scheme, attire and contact info. Photos are too large to keep.
 import { validateStyle, type InvitationStyle } from '../../../shared/invitation-style.ts';
 import { savedFor } from '../forms/restore.ts';
+import { validateExtras, type Extras } from '../../../shared/extras.ts';
 
-export type Saved = { slug: string; draft: any; scheme: string; style: InvitationStyle; email: string; name?: string; phone?: string; hadPhotos: boolean };
+export type Saved = { slug: string; draft: any; scheme: string; style: InvitationStyle; email: string; name?: string; phone?: string; hadPhotos: boolean; attire?: Extras['attire'] };
 
 // hadPhotos stays set after a restore until photos are added again, so the re-add notice survives further refreshes.
 export const serializeDraft = ({ photos, hadPhotos, ...rest }: Omit<Saved, 'hadPhotos'> & { photos: string[]; hadPhotos?: boolean }): string =>
   JSON.stringify({ ...rest, hadPhotos: photos.length > 0 || !!hadPhotos } satisfies Saved);
 
-// Photos are never restored, so neither is the cover; a style that no longer validates restores as layout defaults.
+// Photos are never restored, so neither is the cover; a style that no longer validates restores as layout defaults, and invalid attire as none.
 export function parseDraft(raw: string | null, slug: string): Saved | null {
   let saved: Saved | null;
   try { saved = savedFor(JSON.parse(raw || 'null'), slug); } catch { return null; }
   if (!saved) return null;
   const { cover: _c, ...style } = saved.style && typeof saved.style === 'object' ? saved.style : ({} as InvitationStyle);
   const v = validateStyle(style);
-  return { ...saved, style: 'error' in v ? {} : v.style };
+  const { attire, ...rest } = saved;
+  const a = attire === undefined ? null : validateExtras({ attire }, 'standard');
+  return { ...rest, style: 'error' in v ? {} : v.style, ...(a && 'extras' in a ? { attire: a.extras.attire } : {}) };
 }
 
 // One entry per design visited in this studio: the state is kept per occasion, so Back to an earlier design's URL

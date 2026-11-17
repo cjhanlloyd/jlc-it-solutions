@@ -3,6 +3,8 @@ import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, MapLink, GiftQr, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
 const LEAVES: [number, number, number][] = [[46, 37, -50], [70, 33, 35], [100, 24, -40], [126, 23, 40], [156, 13, -35], [176, 12, 30]];
 
@@ -16,8 +18,9 @@ const Sprig = ({ className }: { className: string }) => (
   </svg>
 );
 
-export default function Garden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
+export default function Garden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   return (
     <main className="inv gd" style={schemeVars(scheme, style)}>
       <div className="gd-wrap">
@@ -54,13 +57,15 @@ export default function Garden({ details: d, scheme, photos: all, style, rsvpSlo
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section className="gd-card" aria-labelledby="gd-notes">
             <h2 id="gd-notes">A few notes</h2>
-            {d.dressCode && <p><span className="gd-small">Attire</span>{d.dressCode}</p>}
-            {(d.giftsNote || giftQr) && <><p><span className="gd-small">Gifts</span>{d.giftsNote}</p><GiftQr src={giftQr} /></>}
+            {n.dress && <p><span className="gd-small">Attire</span>{d.dressCode}</p>}
+            {n.gifts && <><p><span className="gd-small">Gifts</span>{d.giftsNote}</p><GiftQr src={giftQr} /></>}
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="gd-attire" className="gd-card" kicker="gd-small" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="gd-gifts" className="gd-card" kicker="gd-small" />
 
         <Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="gd-photos" />
 

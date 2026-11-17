@@ -4,9 +4,12 @@ import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
+import { AttireSection, GiftsSection } from '../event-parts';
+import { legacyNotes } from '../event-view';
 
-export default function Minimal({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
+export default function Minimal({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
+  const n = legacyNotes(events, d.dressCode, d.giftsNote, giftQr);
   const places = venues(d);
   return (
     <main className="inv mn" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
@@ -47,13 +50,15 @@ export default function Minimal({ details: d, scheme, photos: all, style, rsvpSl
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote || giftQr) && (
+        {(n.dress || n.gifts) && (
           <section className="mn-sec" aria-labelledby="mn-notes">
             <h2 id="mn-notes">Good to know</h2>
-            {d.dressCode && <><h3 className="mn-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {(d.giftsNote || giftQr) && <><h3 className="mn-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
+            {n.dress && <><h3 className="mn-kicker">Attire</h3><p>{d.dressCode}</p></>}
+            {n.gifts && <><h3 className="mn-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
+        <AttireSection events={events} dressCode={d.dressCode} id="mn-attire" className="mn-sec" kicker="mn-kicker" />
+        <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="mn-gifts" className="mn-sec" kicker="mn-kicker" />
 
         {photos.length > 0 && (
           <div className="mn-sec">

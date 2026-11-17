@@ -567,3 +567,58 @@ main.inv[tabindex="-1"]:focus { outline: none; }
 }
 .inv-gift-qr { display: block; box-sizing: border-box; width: clamp(180px, 60cqw, 240px); margin: 14px auto 0; padding: 12px; background: #fff; border-radius: 14px; }
 .inv .inv-gift-qr img { width: 100%; background: #fff; image-rendering: auto; }
+
+/* ---------- Attire & motif and Gifts (event-parts.tsx). Each layout supplies its own section, heading and kicker classes;
+   these rules only add the shared pieces. Text stays --fg on --bg (or a light tint of it), so every scheme keeps its contrast. ---------- */
+.inv-ev-body { min-width: 0; }
+.inv-ev-body :where(ul) { margin: 0; padding: 0; list-style: none; }
+.inv-ev-body > * + * { margin-top: 12px; }
+.inv-ev-body > * + h3 { margin-top: 22px; }
+.inv-ev-body > h3 + * { margin-top: 4px; }
+.inv-pre { white-space: pre-line; }
+.inv-motif { font-family: var(--serif); font-size: 1.4rem; font-style: italic; line-height: 1.35; }
+.inv-swatches { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.inv-swatch { display: block; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bg) 60%, transparent); }
+.inv-attire-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.inv-attire-photos a { display: block; border-radius: 12px; }
+.inv .inv-attire-photos img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; }
+.inv-attire-cap { margin-top: 6px; font-family: var(--sans); font-size: .9rem; line-height: 1.4; }
+.inv-wish, .inv-cash { display: grid; gap: 12px; }
+.inv-wish-item, .inv-cash-item {
+  padding: 16px; font-family: var(--sans); font-size: 1rem; line-height: 1.5;
+  background: color-mix(in srgb, var(--fg) 4%, var(--bg)); border: 1px solid var(--line); border-radius: 14px;
+}
+.inv-cash-item > * + * { margin-top: 6px; }
+.inv-wish-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.inv-wish-item:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.inv-wish-name { font-size: 1.1rem; font-weight: 600; line-height: 1.3; }
+.inv-wish-price, .inv-cash-number { font-variant-numeric: lining-nums tabular-nums; font-weight: 500; }
+.inv-wish-note { font-size: .95rem; }
+.inv-wish-link { display: inline-block; padding: 2px 0; color: var(--fg); font-size: .95rem; text-decoration: underline; text-underline-offset: 3px; }
+.inv .inv-wish-item .btn { margin-top: 4px; }
+.inv .inv-wish-taken:disabled, .inv .inv-wish-taken:disabled:hover { opacity: 1; cursor: default; color: var(--fg); background: transparent; border-style: dashed; }
+.inv-wish-yours { font-weight: 600; }
+.inv-linkbtn { min-height: 32px; padding: 4px 2px; font: inherit; font-weight: 600; color: var(--fg); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.inv-linkbtn:disabled { cursor: progress; }
+.inv-wish-error, .inv-wish-thanks { padding-left: 10px; font-size: .95rem; font-weight: 500; border-left: 3px solid var(--fg); }
+.inv-wish-error { border-left-color: #c0392b; }
+.inv-cash-label { font-size: .8rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+.inv-cash-number { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; }
+.inv .inv-copy { min-height: 36px; margin-top: 0; padding: 4px 16px; font-size: .85rem; }
+:is(.md, .ed) :is(.inv-swatches, .inv-cash-number) { justify-content: flex-start; }
+:is(.md, .ed) .inv-wish-item { align-items: flex-start; }
+@container (min-width: 560px) {
+  .inv-attire-photos { grid-template-columns: repeat(3, 1fr); }
+  .inv-wish, .inv-cash { grid-template-columns: 1fr 1fr; }
+}
+/* The guest page's reserve dialog sits outside the layout, so it carries the scheme variables itself. */
+.inv.inv-dialog {
+  width: min(440px, calc(100% - 32px)); min-height: 0; max-height: calc(100% - 32px); overflow: auto; padding: 24px 20px;
+  font-family: var(--sans); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 48px -24px rgb(0 0 0 / .45);
+}
+.inv-dialog::backdrop { background: rgb(0 0 0 / .55); }
+.inv-dialog .rsvp { margin: 0; }
+.inv-dialog h2 { font-family: var(--serif); font-size: 1.6rem; font-weight: 500; line-height: 1.2; }
+.inv-dialog-item { font-weight: 600; }
+.inv-dialog-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.inv-dialog-actions .btn { flex: 1 1 140px; width: auto; }
