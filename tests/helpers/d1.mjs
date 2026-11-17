@@ -19,8 +19,8 @@ export function makeD1({ migrations = true } = {}) {
     // 0001/0002 are already in schema.sql
     const dir = join(root, 'migrations');
     for (const f of readdirSync(dir).sort()) {
-      // 0009 only seeds catalogue rows; tests that need them apply it themselves
-      if (f.endsWith('.sql') && parseInt(f, 10) > 2 && !f.startsWith('0009')) db.exec(readFileSync(join(dir, f), 'utf8'));
+      // 0009 seeds catalogue rows and 0012 reprices them; tests that need them apply them themselves
+      if (f.endsWith('.sql') && parseInt(f, 10) > 2 && !f.startsWith('0009') && !f.startsWith('0012')) db.exec(readFileSync(join(dir, f), 'utf8'));
     }
   }
   const stmt = (sql, params = []) => ({
