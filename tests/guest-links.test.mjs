@@ -103,7 +103,7 @@ test('guest API: own token adds guest, foreign or unknown token does not', async
 test('guest RSVP: name is forced, seat cap holds, a second RSVP replaces the first', async () => {
   const a = await add('Eve', 3);
   const over = await (await rsvp('maria-1', { guestToken: a.token, partySize: 4 })).json();
-  assert.equal(over.error, 'You can reply for up to 3 guests.');
+  assert.equal(over.error, 'You can reply for up to 3 guests in total.');
   assert.equal((await rsvp('maria-1', { guestToken: a.token, guestName: 'Spoofed', partySize: 2 })).status, 200);
   assert.equal((await rsvp('maria-1', { guestToken: a.token, guestName: 'Spoofed', attending: false })).status, 200);
   const rows = q('SELECT guest_name, attending, guest_id FROM rsvps');
@@ -149,4 +149,19 @@ test('expired invitations ignore g', async () => {
   const data = await view('maria-1', a.token);
   assert.equal(data.state, 'expired');
   assert.equal('guest' in data, false);
+});
+
+test('birthday guest: adults plus kids must fit the seats; declining is always allowed', async () => {
+  db.exec.exec(`INSERT INTO products_designs (id, slug, name, layout_key, price_centavos, color_schemes, active, sort_order, product_type)
+    VALUES (3, 'confetti', 'Confetti', 'confetti', 99900, '[${SCHEME}]', 1, 0, 'birthday_invitation');
+    INSERT INTO invitations (id, design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, tier)
+    VALUES (3, 3, 'mia-3', '${SCHEME}', '${JSON.stringify({ celebrant: 'Mia', age: 7, eventDate: '2027-06-12', venue: { name: 'Fun Hall' } })}', '[]', 'live', '2027-06-12', '${hash('mt-3')}', 'premium');`);
+  const a = await add('Gil', 2, { 'X-Manage-Token': 'mt-3' });
+  const res = await rsvp('mia-3', { guestToken: a.token, partySize: 2, kidsCount: 1 });
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, 'You can reply for up to 2 guests in total.');
+  assert.equal((await rsvp('mia-3', { guestToken: a.token, partySize: 1, kidsCount: 3 })).status, 400);
+  assert.equal((await rsvp('mia-3', { guestToken: a.token, partySize: 1, kidsCount: 1 })).status, 200);
+  assert.equal((await rsvp('mia-3', { guestToken: a.token, attending: false, partySize: 5, kidsCount: 5 })).status, 200);
+  assert.equal(q('SELECT COUNT(*) AS c FROM rsvps WHERE invitation_id = 3')[0].c, 1);
 });

@@ -439,7 +439,7 @@ async function rsvp(request: Request, env: Env, slug: string): Promise<Response>
   const v = validateRsvp({ guestName: g ? g.name : body.guestName, attending: body.attending, partySize: body.partySize, kidsCount: body.kidsCount, message: body.message }, { askKids: occasion.askKids });
   if (v.ok === false) return json({ error: v.error }, 400);
   const r = v.rsvp;
-  if (g && r.partySize > g.seats) return json({ error: `You can reply for up to ${g.seats} guests.` }, 400);
+  if (g && r.partySize + r.kidsCount > g.seats) return json({ error: `You can reply for up to ${g.seats} guests in total.` }, 400);
   // One statement, so the 300 cap holds even with concurrent submissions. A guest's earlier reply is deleted in the
   // same batch (one reply per guest); it is gone before the count, so a replacement is never blocked by the cap.
   const [, ins] = await env.DB.batch([
