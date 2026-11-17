@@ -118,6 +118,21 @@ test('a purged invitation loses its guests and gift QR object; a kept one keeps 
   assert.equal(has(r2, 'gift/2.png'), true);
 });
 
+test('a purged invitation loses its own music object and columns; a kept one keeps them', async () => {
+  const { db, r2 } = seed();
+  for (const [id, date] of [[1, '2026-01-01'], [2, '2099-01-01']]) {
+    await r2.put(`inv/${id}/music-1.mp3`, 'm');
+    db.exec.prepare("INSERT INTO invitations (id, design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, music_key, music_title) VALUES (?, 1, ?, 'blush', ?, '[]', 'live', ?, ?, ?, 'Song')")
+      .run(id, `s-${id}`, JSON.stringify({ partner1: 'A', partner2: 'B', eventDate: date }), date, `h${id}`, `inv/${id}/music-1.mp3`);
+  }
+  assert.equal((await runCleanup(db, r2, NOW)).purgedInvitations, 1);
+  const q = (id) => db.exec.prepare('SELECT music_key, music_title FROM invitations WHERE id = ?').get(id);
+  assert.deepEqual({ ...q(1) }, { music_key: null, music_title: null });
+  assert.equal(has(r2, 'inv/1/music-1.mp3'), false);
+  assert.equal(q(2).music_key, 'inv/2/music-1.mp3');
+  assert.equal(has(r2, 'inv/2/music-1.mp3'), true);
+});
+
 test('cleanup deletes expired customer sessions and login codes and keeps valid ones', async () => {
   const { db, r2 } = seed();
   const past = iso(MIN), future = new Date(NOW.getTime() + MIN).toISOString();

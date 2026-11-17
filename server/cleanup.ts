@@ -67,7 +67,7 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
   // _purged, no RSVPs) are not selected again. The expired page and link previews keep only what the
   // occasion's title needs (expiredSummary); everything else in details is deleted.
   const { results: live } = await db.prepare(
-    "SELECT i.id, i.event_date, i.tier, i.photos, i.gift_qr, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))",
+    "SELECT i.id, i.event_date, i.tier, i.photos, i.gift_qr, i.music_key, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))",
   ).all<any>();
   for (const i of (live || []).filter((x) => isPastExpiry(x.event_date, now, x.tier))) {
     const occasion = occasionOf(i.product_type);
@@ -79,9 +79,9 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
       console.error(`cleanup: cannot purge invitation ${i.id}:`, e instanceof Error ? e.message : e);
       continue;
     }
-    if (!await deletePhotos(photos, [...keysOf(i.photos), ...(i.gift_qr ? [i.gift_qr] : [])], `invitation ${i.id}`)) continue;
+    if (!await deletePhotos(photos, [...keysOf(i.photos), ...(i.gift_qr ? [i.gift_qr] : []), ...(i.music_key ? [i.music_key] : [])], `invitation ${i.id}`)) continue;
     await db.batch([
-      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', gift_qr = NULL, details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
+      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', gift_qr = NULL, music_key = NULL, music_title = NULL, details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
       db.prepare('DELETE FROM rsvps WHERE invitation_id = ?').bind(i.id),
       db.prepare('DELETE FROM invitation_guests WHERE invitation_id = ?').bind(i.id),
     ]);
