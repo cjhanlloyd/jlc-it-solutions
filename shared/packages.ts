@@ -1,10 +1,12 @@
 // Design package rules. Dependency-free: used by the Cloudflare server and the React client.
+import type { Tier } from './tiers.ts';
 export type Package = {
   key: string;
   name: string;
   priceCentavos: number;
   inclusions: string[];
   kind: 'template' | 'custom';
+  tier?: Tier; // absent = standard
 };
 
 const KEY_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -24,13 +26,14 @@ export function validatePackages(input: unknown): { ok: true; packages: Package[
       return bad('Package price must be between ₱10 and ₱100,000.');
     }
     if (p.kind !== 'template' && p.kind !== 'custom') return bad('Package kind must be template or custom.');
+    if (p.tier !== undefined && p.tier !== 'standard' && p.tier !== 'premium') return bad('Package tier must be standard or premium.');
     const incl = Array.isArray(p.inclusions) ? p.inclusions : [];
     if (!incl.every((s) => typeof s === 'string')) return bad('Package inclusions must be text.');
     const inclusions = (incl as string[]).map((s) => s.trim()).filter(Boolean);
     if (inclusions.length > 10 || inclusions.some((s) => s.length > 80)) {
       return bad('A package can have up to 10 inclusions of 80 characters each.');
     }
-    packages.push({ key, name, priceCentavos: price, inclusions, kind: p.kind });
+    packages.push({ key, name, priceCentavos: price, inclusions, kind: p.kind, ...(p.tier !== undefined && { tier: p.tier }) });
   }
   if (new Set(packages.map((p) => p.key)).size !== packages.length) return bad('Package keys must be unique.');
   if (!packages.some((p) => p.kind === 'template')) return bad('Each design needs at least one package that can be ordered online.');
