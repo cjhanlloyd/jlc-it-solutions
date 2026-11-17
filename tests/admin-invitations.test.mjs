@@ -56,7 +56,7 @@ beforeEach(() => {
   globalThis.SMTP_FAIL = false;
 });
 
-const PURGE_SELECT = `SELECT i.id, i.event_date, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))`;
+const PURGE_SELECT = `SELECT i.id, i.event_date, i.tier, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))`;
 const PURGE_UPDATE = "UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')";
 function exec(sql, a) {
   if (/FROM admins WHERE email/.test(sql)) return a[0] in ADMINS ? { email: a[0], fullName: a[0], role: ADMINS[a[0]] } : null;

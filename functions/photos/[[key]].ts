@@ -11,10 +11,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const key = decodeSegment(new URL(request.url).pathname.slice('/photos/'.length));
   const id = key?.match(/^inv\/(\d+)\//)?.[1];
   if (!id) return NOT_FOUND();
-  const inv = await env.DB.prepare('SELECT status, event_date, photos FROM invitations WHERE id = ?').bind(Number(id)).first<any>();
+  const inv = await env.DB.prepare('SELECT status, event_date, tier, photos FROM invitations WHERE id = ?').bind(Number(id)).first<any>();
   let photos: unknown = [];
   try { photos = JSON.parse(inv?.photos || '[]'); } catch { /* treated as no photos */ }
-  if (inv?.status !== 'live' || isPastExpiry(inv.event_date) || !Array.isArray(photos) || !photos.includes(key)) return NOT_FOUND();
+  if (inv?.status !== 'live' || isPastExpiry(inv.event_date, new Date(), inv.tier) || !Array.isArray(photos) || !photos.includes(key)) return NOT_FOUND();
   const obj = await env.PHOTOS.get(key);
   if (!obj) return NOT_FOUND();
   return new Response(obj.body, { headers: {

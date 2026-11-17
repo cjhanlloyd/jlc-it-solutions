@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-// Expires unpaid orders and purges guest data after the event (privacy notice: 60 days).
+// Expires unpaid orders and purges guest data after the event (privacy notice: 60 days Standard, 183 Premium).
 // Safe to run repeatedly or concurrently: every write is conditional, and R2 deletes of missing keys are no-ops.
 import { occasionOf } from '../shared/occasions';
 import { isPastExpiry } from './guest-invitation';
@@ -58,13 +58,13 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
   }
 
   // 'expired' rows are included because the guest page marks them lazily without purging; 'refunded' ones
-  // follow the same 60-day rule but keep their status. Rows already reduced (photos '[]', details marked
+  // follow the same retention rule (60 days Standard, 183 Premium) but keep their status. Rows already reduced (photos '[]', details marked
   // _purged, no RSVPs) are not selected again. The expired page and link previews keep only what the
   // occasion's title needs (expiredSummary); everything else in details is deleted.
   const { results: live } = await db.prepare(
-    "SELECT i.id, i.event_date, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))",
+    "SELECT i.id, i.event_date, i.tier, i.photos, i.details, d.product_type FROM invitations i JOIN products_designs d ON d.id = i.design_id WHERE i.status = 'live' OR (i.status IN ('expired', 'refunded') AND (i.photos != '[]' OR json_extract(i.details, '$._purged') IS NULL OR i.id IN (SELECT invitation_id FROM rsvps)))",
   ).all<any>();
-  for (const i of (live || []).filter((x) => isPastExpiry(x.event_date, now))) {
+  for (const i of (live || []).filter((x) => isPastExpiry(x.event_date, now, x.tier))) {
     const occasion = occasionOf(i.product_type);
     let summary: string;
     try {

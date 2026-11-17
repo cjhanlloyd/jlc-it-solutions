@@ -9,8 +9,10 @@ import { activeProvider, loadPaymentSettings } from '../../../server/payments';
 import { turnstileError } from '../../../server/turnstile';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
 import { coverIndexToKey, deriveScheme, remapCover, validateStyle, type InvitationStyle } from '../../../shared/invitation-style';
+import { mediaUrl } from '../../../server/media';
 import { occasionOf } from '../../../shared/occasions';
 import { fromPrice, pickPackage, validatePackages, type Package } from '../../../shared/packages';
+import { photoLimit, tierOf, type Tier } from '../../../shared/tiers';
 
 interface Env {
   DB: D1Database;
@@ -32,6 +34,11 @@ function packagesOf(d: { id: number; packages: string; price_centavos: number })
     return [{ key: 'standard', name: 'Standard', priceCentavos: d.price_centavos, inclusions: [], kind: 'template' }];
   }
   return v.packages;
+}
+// Ids the customer may pick as music (Premium only; validateStyle checks the tier).
+async function activeTrackIds(db: D1Database): Promise<number[]> {
+  const { results } = await db.prepare('SELECT id FROM music_tracks WHERE active = 1').all<any>();
+  return (results || []).map((r) => r.id);
 }
 // 'Custom' is the customer's own colours (style.colors); any other name must be one of the design's schemes.
 function schemeFor(designSchemes: string, name: unknown, style: InvitationStyle): { scheme: object } | { error: string } {
@@ -143,6 +150,7 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   const notes = custom && typeof body.designerNotes === 'string' ? body.designerNotes.trim() : '';
   if (custom && (!notes || notes.length > 1500)) return json({ error: "Please tell the designer what you'd like (up to 1,500 characters)." }, 400);
 
+  const tier: Tier = tierOf(pkg); // from the stored package only, never the body
   const occasion = occasionOf(design.product_type);
   if (!occasion) return json({ error: 'That design is not available.' }, 400);
 
@@ -154,13 +162,13 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
 
   const photos: unknown = body.photos ?? [];
   if (!Array.isArray(photos)) return json({ error: 'Photos must be a list.' }, 400);
-  if (photos.length > LIMITS.photos) return json({ error: `Too many photos (max ${LIMITS.photos}).` }, 400);
+  if (photos.length > photoLimit(tier)) return json({ error: `Too many photos (max ${photoLimit(tier)}).` }, 400);
   for (const p of photos) {
     const err = photoError(p);
     if (err) return json({ error: err }, 400);
   }
   // cover.photo is an index into photos here; it becomes the photo's R2 key once stored
-  const sv = validateStyle(body.style, { photoCount: photos.length });
+  const sv = validateStyle(body.style, { photoCount: photos.length, tier, trackIds: await activeTrackIds(env.DB) });
   if ('error' in sv) return json({ error: sv.error }, 400);
   const sch = schemeFor(design.color_schemes, body.colorScheme, sv.style);
   if ('error' in sch) return json({ error: sch.error }, 400);
@@ -177,8 +185,8 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   const [, inv, ord] = await env.DB.batch([
     env.DB.prepare('INSERT INTO customers (email, name, phone) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET name = excluded.name, phone = COALESCE(excluded.phone, phone)')
       .bind(email, name, phone || null),
-    env.DB.prepare("INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?)")
-      .bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(randomToken())),
+    env.DB.prepare("INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, tier) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?, ?)")
+      .bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(randomToken()), tier),
     env.DB.prepare("INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at, reference, customer_id, provider, payment_deadline, tracking_token_hash, updated_at, package_key, package_name, package_kind, designer_notes) VALUES (last_insert_rowid(), ?, ?, 'pending_payment', ?, ?, (SELECT id FROM customers WHERE email = ?), ?, ?, ?, ?, ?, ?, ?, ?)")
       .bind(email, pkg.priceCentavos, now.toISOString(), reference, email, provider.key,
         new Date(now.getTime() + settings.deadlineHours * 3_600_000).toISOString(), await sha256(trackingToken), now.toISOString(), pkg.key, pkg.name,
@@ -228,10 +236,11 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   // An unchanged past date (the wedding already happened) must not block other edits
   if (v.details.eventDate !== old.eventDate && v.details.eventDate < todayUtc()) return json({ error: pastDate(occasion) }, 400);
 
+  const tier = tierOf(inv);
   const current: string[] = parse(inv.photos, []);
   const photos: unknown = body.photos ?? [];
   if (!Array.isArray(photos)) return json({ error: 'Photos must be a list.' }, 400);
-  if (photos.length > LIMITS.photos) return json({ error: `Too many photos (max ${LIMITS.photos}).` }, 400);
+  if (photos.length > photoLimit(tier)) return json({ error: `Too many photos (max ${photoLimit(tier)}).` }, 400);
   for (const p of photos) {
     if (current.includes(p as string)) continue;
     if (typeof p === 'string' && !p.startsWith('data:')) return json({ error: 'Unknown photo.' }, 400);
@@ -242,7 +251,7 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   const stored: InvitationStyle = parse(inv.style, {});
   let style = stored;
   if (body.style !== undefined) {
-    const sv = validateStyle(body.style, { photoCount: photos.length, photoKeys: current.filter((k) => photos.includes(k)) });
+    const sv = validateStyle(body.style, { photoCount: photos.length, photoKeys: current.filter((k) => photos.includes(k)), tier, trackIds: await activeTrackIds(env.DB) });
     if ('error' in sv) return json({ error: sv.error }, 400);
     style = sv.style;
   }
@@ -302,8 +311,13 @@ async function guest(env: Env, slug: string | null): Promise<Response> {
   // Guests get the cover as an index into photos (the keys stay server-side); a missing key drops the cover
   const { cover, ...style }: InvitationStyle = parse(inv.style, {});
   const coverIndex = cover ? keys.indexOf(cover.photo as string) : -1;
+  const premium = tierOf(inv) === 'premium';
+  // A deactivated or deleted track just means no music; the page still opens
+  const track = premium && style.music !== undefined
+    ? await env.DB.prepare('SELECT r2_key, title, credit FROM music_tracks WHERE id = ? AND active = 1').bind(style.music).first<any>() : null;
   return json({
-    state: 'live', productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
+    state: 'live', tier: tierOf(inv), intro: premium && style.intro !== false,
+    music: track ? { url: mediaUrl(track.r2_key), title: track.title, credit: track.credit } : null, productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
     photos: keys.map((k) => `/photos/${k}`),
     style: coverIndex < 0 ? style : { ...style, cover: { ...cover, photo: coverIndex } },
     // Same rule as the RSVP route below: open through the deadline day (UTC)

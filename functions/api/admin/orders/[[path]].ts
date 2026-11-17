@@ -115,7 +115,7 @@ async function list(env: Env, me: Admin, params: URLSearchParams): Promise<Respo
 
 async function detail(env: Env, me: Admin, id: number): Promise<Response> {
   const o = await env.DB.prepare(
-    `SELECT o.*, i.slug, i.status AS invitation_status, i.color_scheme, i.style, i.details, i.photos, d.layout_key, d.product_type AS design_type, d.name AS design_name, c.name AS customer_name, c.phone AS customer_phone ${FROM} WHERE o.id = ?`,
+    `SELECT o.*, i.slug, i.tier, i.status AS invitation_status, i.color_scheme, i.style, i.details, i.photos, d.layout_key, d.product_type AS design_type, d.name AS design_name, c.name AS customer_name, c.phone AS customer_phone ${FROM} WHERE o.id = ?`,
   ).bind(id).first<any>();
   if (!o) return NOT_FOUND();
   const [payments, events, proofs] = await Promise.all([
@@ -127,7 +127,7 @@ async function detail(env: Env, me: Admin, id: number): Promise<Response> {
   const custom = o.package_kind === 'custom';
   return json({
     order: {
-      id: o.id, reference: o.reference, status: o.status, statusLabel: label(o.status), title: titleOf(o.design_type, o.details), designName: o.design_name ?? '', packageName: o.package_name ?? 'Standard', packageKind: o.package_kind ?? 'template',
+      id: o.id, reference: o.reference, status: o.status, statusLabel: label(o.status), title: titleOf(o.design_type, o.details), designName: o.design_name ?? '', packageName: o.package_name ?? 'Standard', packageKind: o.package_kind ?? 'template', tier: o.tier ?? 'standard',
       ...(review ? { amountCentavos: o.amount_centavos } : {}), provider: o.provider, createdAt: sqlUtcToIso(o.created_at), updatedAt: sqlUtcToIso(o.updated_at), paymentDeadline: o.payment_deadline,
       deliveredAt: o.delivered_at, assignedTo: o.assigned_to, designerNotes: o.designer_notes ?? null,
     },
