@@ -1,4 +1,4 @@
-// /terms, /refund-policy and /privacy. The text describes how the site actually works (GCash payments checked by hand,
+// /terms, /refund-policy and /privacy. The text describes how the site actually works (QR payments checked by hand,
 // Standard 60-day and Premium 6-month retention, the cleanup job), so update it whenever those rules change.
 import React from 'react';
 
@@ -17,7 +17,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <h2>What you get</h2>
         <p>One online invitation in the design and package you choose, published at its own link that you can share with your guests. It includes your details and photos, a countdown, map links and an RSVP form. You also get a private manage link to edit your invitation and see your guests' RSVPs. Premium designs add an opening animation, background music from our library and room for more photos.</p>
         <h2>Price and payment</h2>
-        <p>Prices are shown in Philippine pesos on each design page and are one-time payments. Payment is by GCash: after you place your order, send the amount to the GCash account shown on your order page and upload a screenshot of your receipt. Our team checks each payment by hand, and your order moves ahead only after we confirm it. Unpaid orders are cancelled automatically after the payment deadline shown on your order page.</p>
+        <p>Prices are shown in Philippine pesos on each design page and are one-time payments. Payment is by QR code: after you place your order, scan the QR code on your order page with your preferred payment app (GCash, Maya or any bank app that supports QR Ph) and upload a screenshot of your receipt. Our team checks each payment by hand, and your order moves ahead only after we confirm it. Unpaid orders are cancelled automatically after the payment deadline shown on your order page.</p>
         <h2>How long it stays online</h2>
         <p>Standard invitations stay online until 60 days after the event date, and Premium invitations until 6 months after it. After that, the link shows a short "this celebration has passed" page, and the details, photos and RSVPs are deleted.</p>
         <h2>Editing</h2>
@@ -64,7 +64,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <p>Email {mail} from the address you used when ordering. Include your order reference (it starts with JLC- and is in your order email) and tell us briefly what happened. We reply within 3 business days.</p>
 
         <h2>How you receive it</h2>
-        <p>Approved refunds are sent by GCash to the number you paid from, normally within 7 business days of approval. We will email you when it has been sent. A refunded invitation is taken offline, and its details, photos and RSVPs are deleted as described in our <a href="/privacy">Privacy Notice</a>.</p>
+        <p>Approved refunds are sent back to the account you paid from (for example your GCash or Maya wallet, or your bank account), normally within 7 business days of approval. We will email you when it has been sent. A refunded invitation is taken offline, and its details, photos and RSVPs are deleted as described in our <a href="/privacy">Privacy Notice</a>.</p>
 
         <h2>Still not resolved?</h2>
         <p>If you are not satisfied with how we handled your request, please reply to our email so we can take another look. You may also contact the Department of Trade and Industry (DTI).</p>
@@ -78,7 +78,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
 
         <h2>What we collect</h2>
         <ul>
-          <li><strong>When you order an invitation:</strong> your name, email address and (if you give it) mobile number; the names, dates, venues, messages and photos you add to the invitation; your design choices; order records (amount, date, status); and the GCash receipt screenshot and reference number you upload to confirm payment. We do not receive or store your GCash PIN or account login.</li>
+          <li><strong>When you order an invitation:</strong> your name, email address and (if you give it) mobile number; the names, dates, venues, messages and photos you add to the invitation; your design choices; order records (amount, date, status); and the payment receipt screenshot and reference number you upload to confirm payment. We do not receive or store your PIN, password or banking login.</li>
           <li><strong>When guests RSVP:</strong> the guest's name, whether they are attending, party size (and number of children, for birthdays), and an optional message.</li>
           <li><strong>When you send an inquiry about our IT services:</strong> your name, email address, mobile number and company (if you give them), and your message.</li>
           <li><strong>Technical information:</strong> basic server logs and an anti-spam check (Cloudflare Turnstile) on our forms. Your browser also keeps small items on your own device: your invitation draft while you design it, and a private order link after you order. We do not use advertising or tracking cookies.</li>

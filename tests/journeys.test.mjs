@@ -84,7 +84,7 @@ test('journey: template order, live invitation, guest RSVP, delivered, with emai
   await settle();
   assert.equal(status(o.id), 'for_review');
   assert.equal(q('SELECT status FROM payments')[0].status, 'confirmed');
-  const confirmed = mailTo('Your GCash payment is confirmed');
+  const confirmed = mailTo('Your payment is confirmed');
   assert.equal(confirmed.length, 1);
   assert.ok(confirmed[0].includes(`https://shop.test/order/${o.reference}`));
   assert.equal(mailTo('Your invitation is live').length, 0);

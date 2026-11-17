@@ -1,4 +1,4 @@
-// /order/<REF>#<token>: order status, GCash payment instructions and receipt upload.
+// /order/<REF>#<token>: order status, payment instructions (QR code) and receipt upload.
 // The emailed tracking token arrives in the hash once; it (or a /track view token) lives in sessionStorage per reference.
 import React from 'react';
 import { Check, Copy, Download, ExternalLink } from 'lucide-react';
@@ -178,7 +178,7 @@ function PaymentCard({ order, payment, token, now, reload, setNotice }: {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!image) return setError('Please choose a screenshot of your GCash receipt.');
+    if (!image) return setError('Please choose a screenshot of your payment receipt.');
     setBusy(true);
     setError('');
     try {
@@ -202,10 +202,11 @@ function PaymentCard({ order, payment, token, now, reload, setNotice }: {
 
   return (
     <Card className="space-y-4">
-      <h2 className="text-base font-extrabold text-slate-900 font-display">Pay with GCash</h2>
+      <h2 className="text-base font-extrabold text-slate-900 font-display">Scan to pay</h2>
+      <p className="text-sm text-slate-700">Scan the QR code with your preferred payment app: GCash, Maya or any bank app that supports QR Ph. You can also send the amount to the number below.</p>
       {order.lastRejection && <Alert>Your last receipt was not accepted: {order.lastRejection}</Alert>}
       <div className="flex flex-col sm:flex-row gap-4">
-        <img src={payment.qrUrl} alt="GCash QR code" className="w-full max-w-[240px] self-center sm:self-start rounded-xl border border-slate-200 bg-white" />
+        <img src={payment.qrUrl} alt="Payment QR code" className="w-full max-w-[240px] self-center sm:self-start rounded-xl border border-slate-200 bg-white" />
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm content-start">
           <dt className="text-slate-500">Account name</dt><dd className="font-semibold text-slate-900 break-words">{payment.accountName}</dd>
           <dt className="text-slate-500">GCash number</dt>
@@ -222,12 +223,12 @@ function PaymentCard({ order, payment, token, now, reload, setNotice }: {
 
       <form onSubmit={submit} className="space-y-4 border-t border-slate-200 pt-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-800">Screenshot of your GCash receipt</span>
+          <span className="mb-1 block text-sm font-medium text-slate-800">Screenshot of your payment receipt</span>
           <input type="file" accept="image/*" className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-control file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold"
             onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
         </label>
         {image && <img src={image} alt="Receipt preview" className="max-h-80 rounded-xl border border-slate-200" />}
-        <TextField label="GCash reference no. (optional)" maxLength={LIMITS.paymentRef} value={customerReference} onChange={(e) => setCustomerReference(e.target.value)} />
+        <TextField label="Payment reference no. (optional)" maxLength={LIMITS.paymentRef} value={customerReference} onChange={(e) => setCustomerReference(e.target.value)} />
         {error && <Alert>{error}</Alert>}
         <Button type="submit" loading={busy} disabled={!!payment.deadline && !left} className="w-full">Submit payment confirmation</Button>
       </form>

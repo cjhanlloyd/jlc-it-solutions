@@ -9,14 +9,14 @@ export type Route =
 
 const SITE = ' | JLC Solutions';
 export const PAGE_META: Record<Route['page'], { title: string; description: string }> = {
-  home: { title: 'Digital Invitations' + SITE, description: 'Beautiful digital invitations you personalise, pay for with GCash and share with one link.' },
+  home: { title: 'Digital Invitations' + SITE, description: 'Beautiful digital invitations you personalise, pay for with your preferred payment app and share with one link.' },
   designs: { title: 'Invitation Designs' + SITE, description: 'Browse our digital invitation designs for weddings, birthdays, debuts and more.' },
   design: { title: 'Invitation Design' + SITE, description: 'See this digital invitation design and personalise it with your event details.' },
   customise: { title: 'Customise Your Invitation' + SITE, description: 'Add your event details, preview your invitation live and place your order.' },
   services: { title: 'IT Services' + SITE, description: 'IT consulting, custom software and networks from JLC Solutions, with clear pricing.' },
   about: { title: 'About Us' + SITE, description: 'Who we are: a small, client-focused team making digital invitations and IT solutions.' },
   contact: { title: 'Contact Us' + SITE, description: 'Get in touch with JLC Solutions or send us an inquiry about your project.' },
-  order: { title: 'Your Order' + SITE, description: 'Your invitation order: status, GCash payment details and your invitation link.' },
+  order: { title: 'Your Order' + SITE, description: 'Your invitation order: status, payment QR code and your invitation link.' },
   track: { title: 'Track Your Order' + SITE, description: 'Look up the status of your digital invitation order with your reference.' },
   manage: { title: 'Manage Your Invitation' + SITE, description: 'Get a link to manage your invitation, edit details and view RSVPs.' },
   policy: { title: 'Policies' + SITE, description: 'Terms of service, refund policy and privacy policy of JLC Solutions.' },

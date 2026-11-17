@@ -10,13 +10,13 @@ export function featuredDesigns<T extends Pick<Design, 'featured'>>(designs: T[]
 export const HERO = {
   eyebrow: 'Digital invitations',
   title: 'Invitations as memorable as the day itself',
-  lead: 'Choose a design, add your details and photos, pay with GCash, and share one beautiful link. Your guests RSVP right on the page.',
+  lead: 'Choose a design, add your details and photos, pay by scanning our QR code with your preferred payment app, and share one beautiful link. Your guests RSVP right on the page.',
 };
 
 export const HOW_STEPS = [
   { title: 'Choose', body: 'Browse our designs and pick the one, and the colour scheme, that suits your celebration.' },
   { title: 'Personalise', body: 'Add your names, date, venue, schedule and photos, and watch your invitation update as you type.' },
-  { title: 'Pay with GCash', body: 'Send your payment by GCash and upload a screenshot of the receipt. Our team verifies it.' },
+  { title: 'Scan to pay', body: 'Scan our payment QR code with GCash, Maya or any bank app that supports QR Ph, then upload a screenshot of the receipt. Our team verifies it.' },
   { title: 'Share', body: 'Once verified, your invitation arrives as a private link. Send it to your guests; they RSVP on the page.' },
 ];
 
@@ -32,7 +32,7 @@ export const INCLUDES = [
 
 // Answers stick to how ordering works today; `link` points to the page the answer mentions.
 export const FAQS: { q: string; a: string; link?: { href: string; label: string } }[] = [
-  { q: 'How do I pay?', a: 'By GCash. After you place your order you get our GCash details. Send the payment and upload a screenshot of your receipt; our team verifies it.' },
+  { q: 'How do I pay?', a: 'Scan to pay with your preferred payment app: GCash, Maya or any bank app that supports QR Ph. After you place your order you see our payment QR code. Pay, then upload a screenshot of your receipt; our team verifies it.' },
   { q: 'When do I get my invitation?', a: 'As soon as our team has verified your payment, your invitation is delivered as a private link you can share with your guests.' },
   { q: 'How do my guests RSVP?', a: 'Right on the invitation page. They say whether they are coming and how many are in their party, and you see every reply.' },
   { q: 'Can I change details after ordering?', a: 'Yes. Your private manage link lets you edit your invitation details, and your guests see the changes right away.' },

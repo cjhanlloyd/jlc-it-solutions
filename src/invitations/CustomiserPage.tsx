@@ -1,5 +1,5 @@
 // /designs/<design>/customise: the studio (details, design, photos & cover) with a live preview, then Review & checkout
-// → the order page with GCash payment details.
+// → the order page with the payment QR code.
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import InvitationView from './InvitationView';
@@ -277,7 +277,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                 <button type="submit" disabled={paying} className={submitCls}>
                   {paying ? 'Placing order…' : `Place order · ${peso(pkg.priceCentavos)}`}
                 </button>
-                <p className="text-[11px] text-slate-600 text-center">Next you'll see the GCash details. Pay, then upload your receipt; we confirm your payment before starting your invitation.</p>
+                <p className="text-[11px] text-slate-600 text-center">Next you'll see our payment QR code. Scan it with GCash, Maya or any bank app that supports QR Ph, then upload your receipt; we confirm your payment before starting your invitation.</p>
               </fieldset>
             </div>
           )}

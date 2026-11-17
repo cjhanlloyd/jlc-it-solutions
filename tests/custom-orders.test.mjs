@@ -122,7 +122,7 @@ test('customer GET: custom orders get the custom messages and packageKind; templ
   }
   assert.equal(CUSTOMER_MESSAGE_CUSTOM.for_review, 'Your proof is ready — please review it below.');
   db.exec.exec("UPDATE orders SET status = 'pending_payment'");
-  assert.match((await view(c)).message, /GCash/); // falls back for other statuses
+  assert.match((await view(c)).message, /payment QR code/); // falls back for other statuses
   assert.equal((await view(t)).packageKind, 'template');
 });
 

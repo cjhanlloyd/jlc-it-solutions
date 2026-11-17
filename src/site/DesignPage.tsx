@@ -107,7 +107,7 @@ export default function DesignPage({ slug }: { slug: string }) {
       setPkgKey(pickPackage(d.packages)?.key ?? '');
       document.title = `${d.name} | JLC Solutions`;
       document.querySelector('meta[name="description"]')?.setAttribute('content',
-        d.description.trim() || `${occasionLabel(d.productType)} invitation design — personalise it, pay with GCash, share one link.`);
+        d.description.trim() || `${occasionLabel(d.productType)} invitation design — personalise it, scan to pay, share one link.`);
     }, () => { if (alive()) setDesign('offline'); });
   }, [slug]);
   React.useEffect(() => {
@@ -158,7 +158,7 @@ export default function DesignPage({ slug }: { slug: string }) {
 
           <div className="mt-8 flex items-baseline gap-3">
             <span className="font-serif text-4xl font-semibold">{peso(pkg?.priceCentavos ?? design.priceCentavos)}</span>
-            <span className="text-sm text-ink/80">{custom ? 'Made to order — our designer creates it after your payment is verified' : "one-time payment by GCash"}</span>
+            <span className="text-sm text-ink/80">{custom ? 'Made to order — our designer creates it after your payment is verified' : "one-time payment · scan to pay with your preferred app"}</span>
           </div>
 
           {design.colorSchemes.length > 1 && (

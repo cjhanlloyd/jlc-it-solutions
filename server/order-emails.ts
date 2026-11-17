@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-// Customer emails for GCash orders. Fire-and-forget: never throws, no-op when SMTP is disabled.
+// Customer emails for QR payment orders. Fire-and-forget: never throws, no-op when SMTP is disabled.
 import { CUSTOMER_MESSAGE, STATUS_LABEL, type OrderStatus } from '../shared/order-status';
 import { sendSmtpEmail } from './email';
 import { emailAndRotateToken } from './invitation-links';
@@ -11,17 +11,17 @@ const pesos = (centavos: number) => `PHP ${(centavos / 100).toLocaleString('en-U
 const manila = (iso: string) => new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'short' });
 
 const INTRO: Record<NotifyKind, [subject: string, message: string]> = {
-  placed: ['Your order is placed', 'Thank you for your order! Please pay with GCash before the deadline and upload your receipt on your order page.'],
-  receipt: ['We received your GCash receipt', CUSTOMER_MESSAGE.payment_verification],
-  confirmed: ['Your GCash payment is confirmed', CUSTOMER_MESSAGE.payment_confirmed],
-  rejected: ['We could not confirm your GCash payment', 'We could not confirm your GCash payment. Please check the reason below and upload a new receipt on your order page.'],
+  placed: ['Your order is placed', 'Thank you for your order! Please scan our payment QR code with your preferred payment app before the deadline and upload your receipt on your order page.'],
+  receipt: ['We received your payment receipt', CUSTOMER_MESSAGE.payment_verification],
+  confirmed: ['Your payment is confirmed', CUSTOMER_MESSAGE.payment_confirmed],
+  rejected: ['We could not confirm your payment', 'We could not confirm your payment. Please check the reason below and upload a new receipt on your order page.'],
   delivered: ['Your invitation is live', 'Your invitation is now live. Share the guest link with your guests. Use the manage link to edit your invitation and see RSVPs, and keep it private.'],
   cancelled: ['Your order was cancelled', CUSTOMER_MESSAGE.cancelled],
   refunded: ['Your order was refunded', CUSTOMER_MESSAGE.refunded],
   proof: ['Your design proof is ready', 'Your design proof is ready. Open your order page to review it, then approve it or request changes.'],
   review: ['Customer reviewed a proof', 'A customer reviewed their design proof.'],
 };
-const CONFIRMED_CUSTOM = "Your GCash payment is confirmed. Our designer will start on your invitation now, and you'll receive a proof to review.";
+const CONFIRMED_CUSTOM = "Your payment is confirmed. Our designer will start on your invitation now, and you'll receive a proof to review.";
 
 export async function notify(db: D1Database, request: Request, orderId: number, kind: NotifyKind, extra: { trackingToken?: string; reason?: string; decision?: string; note?: string } = {}): Promise<void> {
   try {
