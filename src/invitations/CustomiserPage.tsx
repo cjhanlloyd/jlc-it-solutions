@@ -17,6 +17,7 @@ import StudioTabs, { type StudioTab } from './studio/StudioTabs';
 import DesignTab from './studio/DesignTab';
 import PhotosTab from './studio/PhotosTab';
 import GiftQrField from './studio/GiftQrField';
+import AttireFields, { cleanAttire, type Attire } from './features/AttireFields';
 import { useTracks } from './studio/PremiumExtras';
 import { forTier, photoLimit, tierOf } from '../../shared/tiers';
 import PreviewFrame from './studio/PreviewFrame';
@@ -56,6 +57,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [review, setReview] = React.useState(false);
   const [reviewed, setReviewed] = React.useState(false); // the review step stays mounted once shown, so Turnstile keeps its token
   const [photos, setPhotos] = React.useState<string[]>([]);
+  const [attire, setAttire] = React.useState<Attire>({}); // attire motif, palette and notes; sent as extras, not autosaved
   const [giftQr, setGiftQr] = React.useState<string | null>(null); // never autosaved, like photos
   const [awaitPhotos, setAwaitPhotos] = React.useState(!!saved?.hadPhotos);
   const [email, setEmail] = React.useState(saved?.email ?? '');
@@ -208,7 +210,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), ...(promo ? { promoCode: promo.code } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
+        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), ...(cleanAttire(attire) ? { extras: { attire: cleanAttire(attire) } } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), ...(promo ? { promoCode: promo.code } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.reference) {
@@ -255,6 +257,11 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
             <div id="studio-details" tabIndex={-1} role="region" aria-label={TAB_NAMES.details} className="focus:outline-none space-y-6" hidden={tab !== 'details'}>
               <form.Form draft={draft} onChange={setDraft} />
               <GiftQrField value={giftQr} onChange={setGiftQr} />
+              <section aria-labelledby="studio-attire-h" className="space-y-3 border-t border-slate-200 pt-6">
+                <h3 id="studio-attire-h" className="text-sm font-extrabold text-slate-900 font-display">Attire and motif (optional)</h3>
+                <p className="text-xs text-slate-600">Tell guests what to wear. You can add sample photos after your invitation is live.</p>
+                <AttireFields value={attire} onChange={setAttire} idPrefix="studio-attire" />
+              </section>
               {pkg.kind === 'custom' && (
                 <div className="space-y-1 border-t border-slate-200 pt-6">
                   <label htmlFor="designer-notes" className="block text-sm font-extrabold text-slate-900 font-display">Notes for the designer *</label>

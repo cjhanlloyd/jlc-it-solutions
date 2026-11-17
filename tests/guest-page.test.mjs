@@ -60,6 +60,7 @@ function exec(sql, a) {
   }
   if (/^SELECT status, event_date, tier, photos, gift_qr, music_key FROM invitations WHERE id = \?/.test(sql)) return db.find(x => x.id === a[0]) ?? null;
   if (/^SELECT 1 FROM invitation_media WHERE/.test(sql)) return null;
+  if (/^SELECT r2_key, caption FROM invitation_media WHERE|^SELECT \* FROM gift_items WHERE/.test(sql)) return { results: [] };
   throw new Error('Unexpected SQL: ' + sql);
 }
 const stmt = (sql) => {
@@ -185,7 +186,7 @@ test('API: live → layout, colors, details, photo URLs, rsvpOpen', async () => 
   const res = await ctx(api, '/api/invitations/i/live-one');
   assert.equal(res.status, 200);
   const data = await res.json();
-  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'colorScheme', 'details', 'giftQr', 'intro', 'layoutKey', 'music', 'photos', 'productType', 'rsvpOpen', 'state', 'style', 'tier']);
+  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'attirePhotos', 'colorScheme', 'details', 'extras', 'giftItems', 'giftQr', 'intro', 'layoutKey', 'music', 'photos', 'productType', 'rsvpOpen', 'state', 'style', 'tier']);
   assert.deepEqual(data.style, {}, 'a row without a style reads as {}');
   assert.equal(data.state, 'live');
   assert.equal(data.layoutKey, 'classic');

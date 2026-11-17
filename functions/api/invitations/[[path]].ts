@@ -7,7 +7,9 @@ import { emailAndRotateToken } from '../../../server/invitation-links';
 import { notify } from '../../../server/order-emails';
 import { newReference } from '../../../server/orders';
 import { activeProvider, loadPaymentSettings } from '../../../server/payments';
+import { guestFeatures, guestGift, manageFeature, manageFeatures, photoError, putPhoto, PHOTO_RE } from '../../../server/event-features';
 import { turnstileError } from '../../../server/turnstile';
+import { validateExtras } from '../../../shared/extras';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
 import { coverIndexToKey, deriveScheme, remapCover, validateStyle, type InvitationStyle } from '../../../shared/invitation-style';
 import { audioType, mediaUrl } from '../../../server/media';
@@ -25,7 +27,6 @@ interface Env {
 
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
-const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const NOT_FOUND = () => json({ error: 'Invitation not found.' }, 404);
 const pastDate = (o: { dateNoun: string }) => `The ${o.dateNoun} date cannot be in the past.`;
 // A bad stored row must never block or misprice checkout: fall back to one Standard package at price_centavos.
@@ -84,6 +85,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return slug === null ? NOT_FOUND() : await rsvp(request, env, slug);
     }
 
+    const giftRoute = route.match(/^POST \/api\/invitations\/i\/([^/]+)\/gifts\/(reserve|release)$/);
+    if (giftRoute) {
+      const slug = decodeSegment(giftRoute[1]);
+      return slug === null ? NOT_FOUND() : await guestGift(giftRoute[2] as 'reserve' | 'release', slug, request, env);
+    }
+    const feature = route.match(/^POST \/api\/invitations\/manage\/(extras|attire|attire\/update|attire\/delete|gifts)$/)?.[1];
+    if (feature) {
+      const inv = await findManagedInvitation(env.DB, request);
+      return inv ? await manageFeature(feature, request, env, inv) : NOT_FOUND();
+    }
+
     const guestSlug = route.match(/^GET \/api\/invitations\/i\/([^/]+)$/)?.[1];
     if (guestSlug) return await guest(env, decodeSegment(guestSlug), url.searchParams.get('g'));
 
@@ -106,7 +118,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
         title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key, colorSchemes: parse(inv.design_color_schemes, []) },
         // style.cover.photo is one of the photos keys
-        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), giftQr: inv.gift_qr ?? null, tier: tierOf(inv), customMusic: inv.music_key ? { key: inv.music_key, title: inv.music_title || 'Our song' } : null, rsvps,
+        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), giftQr: inv.gift_qr ?? null, tier: tierOf(inv), customMusic: inv.music_key ? { key: inv.music_key, title: inv.music_title || 'Our song' } : null, rsvps, ...await manageFeatures(env.DB, inv),
       });
     }
 
@@ -117,22 +129,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 };
 
-const photoError = (p: unknown): string | null =>
-  typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Photos must be JPEG, PNG or WebP images.'
-    : p.length > LIMITS.photoChars ? 'A photo is too large.' : null;
-
 const giftQrError = (p: unknown): string | null =>
   typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Gift QR code must be a JPEG, PNG or WebP image.'
     : p.length > LIMITS.photoChars ? 'The gift QR code is too large.' : null;
-
-// Stores a checked data URL in R2 as inv/<invitationId>/<n>.<ext> and returns the key.
-async function putPhoto(env: Env, invitationId: number, n: number | string, p: string): Promise<string> {
-  const [, type] = p.match(PHOTO_RE)!;
-  const key = `inv/${invitationId}/${n}.${type === 'jpeg' ? 'jpg' : type}`;
-  const bin = atob(p.slice(p.indexOf(',') + 1));
-  await env.PHOTOS.put(key, Uint8Array.from(bin, (c) => c.charCodeAt(0)), { httpMetadata: { contentType: `image/${type}` } });
-  return key;
-}
 
 // The promo row and its use count (orders not cancelled), applied to a price. The price always comes from the stored package.
 async function checkPromo(db: D1Database, raw: unknown, price: number, now: Date): Promise<{ ok: false; error: string } | { ok: true; promo: any; discountCentavos: number; totalCentavos: number }> {
@@ -208,6 +207,8 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
     const err = photoError(p);
     if (err) return json({ error: err }, 400);
   }
+  const ex = validateExtras(body.extras ?? {}, tier);
+  if ('error' in ex) return json({ error: ex.error }, 400);
   const giftQr: unknown = body.giftQr ?? undefined;
   if (giftQr !== undefined) {
     const err = giftQrError(giftQr);
@@ -241,8 +242,8 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   const [, inv, ord] = await env.DB.batch([
     env.DB.prepare('INSERT INTO customers (email, name, phone) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET name = excluded.name, phone = COALESCE(excluded.phone, phone)')
       .bind(email, name, phone || null),
-    env.DB.prepare("INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, tier) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?, ?)")
-      .bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(randomToken()), tier),
+    env.DB.prepare("INSERT INTO invitations (design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, tier, extras) VALUES (?, ?, ?, ?, '[]', 'pending', ?, ?, ?, ?)")
+      .bind(design.id, slug, JSON.stringify(scheme), JSON.stringify(details), details.eventDate, await sha256(randomToken()), tier, JSON.stringify(ex.extras)),
     env.DB.prepare("INSERT INTO orders (product_id, customer_email, amount_centavos, status, terms_accepted_at, reference, customer_id, provider, payment_deadline, tracking_token_hash, updated_at, package_key, package_name, package_kind, designer_notes, promo_code, discount_centavos) SELECT last_insert_rowid(), ?, ?, 'pending_payment', ?, ?, (SELECT id FROM customers WHERE email = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ? IS NULL OR (SELECT max_uses FROM promo_codes WHERE code = ?) IS NULL OR (SELECT COUNT(*) FROM orders WHERE promo_code = ? AND status != 'cancelled') < (SELECT max_uses FROM promo_codes WHERE code = ?)")
       .bind(email, total, now.toISOString(), reference, email, provider.key,
         new Date(now.getTime() + settings.deadlineHours * 3_600_000).toISOString(), await sha256(trackingToken), now.toISOString(), pkg.key, pkg.name,
@@ -504,7 +505,7 @@ async function guest(env: Env, slug: string | null, token: string | null): Promi
   const track = premium && typeof style.music === 'number'
     ? await env.DB.prepare('SELECT r2_key, title, credit FROM music_tracks WHERE id = ? AND active = 1').bind(style.music).first<any>() : null;
   const g = token ? await env.DB.prepare(
-    'SELECT g.name, g.seats, r.attending, r.party_size, r.kids_count, r.message FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id WHERE g.token = ? AND g.invitation_id = ?',
+    'SELECT g.id, g.name, g.seats, r.attending, r.party_size, r.kids_count, r.message FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id WHERE g.token = ? AND g.invitation_id = ?',
   ).bind(token, inv.id).first<any>() : null;
   return json({
     ...(g ? { guest: { name: g.name, seats: g.seats, rsvp: g.attending == null ? null : { attending: !!g.attending, partySize: g.party_size, kidsCount: g.kids_count ?? 0, message: g.message ?? '' } } } : {}),
@@ -516,6 +517,7 @@ async function guest(env: Env, slug: string | null, token: string | null): Promi
     style: coverIndex < 0 ? style : { ...style, cover: { ...cover, photo: coverIndex } },
     // Same rule as the RSVP route below: open through the deadline day (UTC)
     rsvpOpen: !details.rsvpDeadline || todayUtc() <= details.rsvpDeadline,
+    ...await guestFeatures(env.DB, inv, g?.id ?? null),
   });
 }
 

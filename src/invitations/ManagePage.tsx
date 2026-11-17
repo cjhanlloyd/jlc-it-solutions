@@ -6,6 +6,7 @@ import InvitationView from './InvitationView';
 import { Alert, Field, Link, PaneToggle, inputCls, photoSrc, useInvitationFonts, useTurnstile } from './kit';
 import LinkBox, { primaryBtn } from './LinkBox';
 import GuestLinks from './GuestLinks';
+import EventFeatures from './features/EventFeatures';
 import { readSession } from './customer-ui';
 import { formOf } from './forms';
 import type { Scheme } from './parts';
@@ -20,7 +21,7 @@ import OwnMusic, { type CustomMusic } from './studio/OwnMusic';
 import { photoLimit, type Tier } from '../../shared/tiers';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string; guestId?: number | null };
-type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; giftQr?: string | null; customMusic?: CustomMusic | null; rsvps: Rsvp[] };
+type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; giftQr?: string | null; customMusic?: CustomMusic | null; rsvps: Rsvp[]; extras?: any; attirePhotos?: any[]; giftItems?: any[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -198,6 +199,8 @@ export default function ManagePage({ btn }: { btn: string }) {
         </div>
 
         <GuestLinks api={api} slug={data.slug} />
+
+        <EventFeatures api={api} initial={data} />
 
         <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-8 space-y-4" aria-labelledby="rsvp-h">
           <div className="flex flex-wrap items-center justify-between gap-3">
