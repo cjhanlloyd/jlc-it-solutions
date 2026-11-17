@@ -113,7 +113,7 @@ function pages(company: string, email: string): Record<PolicyKind, { title: stri
         <ul>
           <li><strong>Invitation details, photos and guest RSVPs:</strong> deleted 60 days after the event date for Standard invitations and 6 months after it for Premium invitations, including refunded invitations. Only the names (and, for birthdays, the age) shown on the "this celebration has passed" page are kept.</li>
           <li><strong>Guest lists (names and seats):</strong> deleted with the invitation's details, as above.</li>
-          <li><strong>Sign-in codes:</strong> deleted after 10 minutes. <strong>Sign-in sessions:</strong> deleted after 30 days, or when you sign out.</li>
+          <li><strong>Sign-in codes:</strong> stop working after 10 minutes and are deleted soon after. <strong>Sign-in sessions:</strong> end after 30 days, or straight away when you sign out, and are then deleted.</li>
           <li><strong>Payment receipts of cancelled orders:</strong> deleted 60 days after cancellation.</li>
           <li><strong>Order and payment records:</strong> kept for as long as accounting and tax laws require.</li>
           <li><strong>IT service inquiries:</strong> kept while we handle your request and for our records afterwards. You can ask us to delete them at any time.</li>
