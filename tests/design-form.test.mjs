@@ -26,3 +26,22 @@ test('move', () => {
   assert.equal(move(l, 0, -1), l);
   assert.equal(move(l, 1, 1), l);
 });
+
+test('package tier round-trips through the editor rows; no tier stays standard', async () => {
+  const { bundle } = await import('./helpers/bundle.mjs');
+  const { toRows, toPackages } = await bundle('src/admin/PackagesEditor.tsx');
+  const base = { key: 'a', name: 'A', priceCentavos: 100000, kind: 'template', inclusions: ['x'] };
+  const prem = toPackages(toRows([{ ...base, tier: 'premium' }]));
+  assert.equal(prem[0].tier, 'premium');
+  assert.equal('tier' in toPackages(toRows([base]))[0], false);
+  assert.equal('tier' in toPackages([{ ...toRows([{ ...base, tier: 'premium' }])[0], kind: 'custom' }])[0], false);
+});
+
+test('isPremium: any template package with tier premium', async () => {
+  const { bundle } = await import('./helpers/bundle.mjs');
+  const { isPremium } = await bundle('src/site/design-tier.ts');
+  const p = (kind, tier) => ({ kind, tier });
+  assert.equal(isPremium({ packages: [p('template'), p('template', 'premium')] }), true);
+  assert.equal(isPremium({ packages: [p('template'), p('custom', 'premium')] }), false);
+  assert.equal(isPremium({ packages: [p('template')] }), false);
+});

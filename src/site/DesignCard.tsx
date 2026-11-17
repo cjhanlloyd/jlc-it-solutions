@@ -6,6 +6,7 @@ import { NavLink } from './NavLink';
 import { peso, useInvitationFonts } from '../invitations/kit';
 import { formOf } from '../invitations/forms';
 import { occasionLabel } from '../invitations/occasions';
+import { isPremium } from './design-tier';
 import { sampleStyle } from '../../shared/invitation-style';
 
 const InvitationView = React.lazy(() => import('../invitations/InvitationView'));
@@ -18,6 +19,11 @@ export const sampleOf = (d: { productType: string; sampleDetails: any }) => {
 
 // "From" when the price depends on the package chosen.
 export const hasFrom = (d: Design) => d.packages.filter((p) => p.kind === 'template').length > 1 || d.packages.some((p) => p.kind === 'custom');
+
+// Gold-on-ink pill (about 10:1 contrast); sits over the top-left of a preview.
+export const PremiumBadge = ({ className = '' }: { className?: string }) => (
+  <span className={`rounded-full bg-ink/90 px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-gold-light ${className}`}>Premium</span>
+);
 
 const RENDER_WIDTH = 400; // the layout renders at phone width, then scales to the frame
 
@@ -65,6 +71,7 @@ export default function DesignCard({ design, heading: Heading = 'h3' }: { design
         {design.previewImages[0]
           ? <img src={design.previewImages[0]} alt={`${design.name} invitation design`} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.03]" />
           : <LivePreview design={design} />}
+        {isPremium(design) && <PremiumBadge className="absolute left-3 top-3" />}
       </div>
       <div className="flex flex-1 flex-col gap-1 border-t border-gold-light p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">{occasionLabel(design.productType)}</p>

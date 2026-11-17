@@ -4,7 +4,8 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Design } from './designs-api';
-import { LivePreview, hasFrom } from './DesignCard';
+import { LivePreview, PremiumBadge, hasFrom } from './DesignCard';
+import { isPremium } from './design-tier';
 import { NavLink } from './NavLink';
 import { peso } from '../invitations/kit';
 import { occasionLabel } from '../invitations/occasions';
@@ -74,6 +75,7 @@ export default function DesignShowcase({ designs }: { designs: Design[] }) {
                 {d.previewImages[0]
                   ? <img src={d.previewImages[0]} alt={`${d.name} invitation design`} loading={o <= 1 ? 'eager' : 'lazy'} draggable={false} className="h-full w-full object-cover" />
                   : (o <= BACK || o === n - 1) && <LivePreview design={d} eager />}
+                {isPremium(d) && <PremiumBadge className="absolute left-3 top-3" />}
               </div>
               <div className="flex items-end justify-between gap-3 border-t border-gold-light p-4">
                 <div className="min-w-0">

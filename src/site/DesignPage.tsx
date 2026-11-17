@@ -9,7 +9,8 @@ import { occasionLabel } from '../invitations/occasions';
 import { pickPackage, type Package } from '../../shared/packages';
 import { fetchDesigns, type Design } from './designs-api';
 import { INCLUDES } from './home-content';
-import { sampleOf } from './DesignCard';
+import { PremiumBadge, sampleOf } from './DesignCard';
+import { isPremium } from './design-tier';
 import { NavLink } from './NavLink';
 
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700';
@@ -147,7 +148,7 @@ export default function DesignPage({ slug }: { slug: string }) {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr] lg:gap-x-14 lg:px-8">
         <div className="lg:col-start-1 lg:row-start-1">
           <BackLink />
-          <p className={`mt-8 ${eyebrow}`}>{occasionLabel(design.productType)} invitation</p>
+          <p className={`mt-8 flex items-center gap-3 ${eyebrow}`}>{occasionLabel(design.productType)} invitation{isPremium(design) && <PremiumBadge />}</p>
           <h1 className="mt-3 font-serif text-5xl font-semibold leading-tight sm:text-6xl">{design.name}</h1>
           <div className="mt-5 h-px w-16 bg-gold" aria-hidden="true" />
           {design.description.trim() && <p className="mt-6 whitespace-pre-line text-base leading-relaxed text-ink/80">{design.description}</p>}
