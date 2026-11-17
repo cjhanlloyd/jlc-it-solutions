@@ -17,6 +17,7 @@ export const NAV: NavGroup[] = [
   ] },
   { label: 'Catalogue & website', items: [
     { id: 'designs', label: 'Designs', href: '#/designs', perm: 'designs.manage', pages: ['designs', 'design'] },
+    { id: 'music', label: 'Music', href: '#/music', perm: 'designs.manage', pages: ['music'] },
     { id: 'content', label: 'Content & settings', href: '#/content', perm: 'content.manage', pages: ['content'] },
     { id: 'itContent', label: 'IT pages', href: '#/it-content', perm: 'content.manage', pages: ['itContent'] },
   ] },

@@ -67,6 +67,12 @@ const TABLE = [
   ['POST /api/admin/designs', { action: 'reorder' }, ADMINS],
   ['POST /api/admin/designs', { action: 'update' }, ADMINS],
   ['POST /api/admin/designs', { action: 'create' }, ADMINS],
+  // music: designs.manage
+  ['GET /api/admin/music', null, ADMINS],
+  ['POST /api/admin/music', { action: 'create' }, ADMINS],
+  ['POST /api/admin/music', { action: 'update' }, ADMINS],
+  ['POST /api/admin/music', { action: 'reorder' }, ADMINS],
+  ['POST /api/admin/music', { action: 'delete' }, ADMINS],
   // email: settings.email
   ['GET /api/admin/email', null, SUPER_ONLY],
   ['POST /api/admin/email', { section: 'smtp' }, SUPER_ONLY],

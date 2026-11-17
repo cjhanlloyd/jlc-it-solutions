@@ -13,6 +13,7 @@ import CustomersPage from './CustomersPage';
 import DashboardPage from './DashboardPage';
 import DesignEditor from './DesignEditor';
 import DesignsPage from './DesignsPage';
+import MusicPage from './MusicPage';
 import InvitationsPage from './InvitationsPage';
 import ItContentPage from './ItContentPage';
 import InquiriesPage from './InquiriesPage';
@@ -37,7 +38,7 @@ function loadSaved(): { token: string; user: AdminUser } | null {
   }
 }
 
-type Route = { page: 'dashboard' } | { page: 'orders' } | { page: 'reports' } | { page: 'order'; id: number } | { page: 'settings' } | { page: 'users' } | { page: 'activity' } | { page: 'emailSettings' } | { page: 'content' } | { page: 'invitations' } | { page: 'itContent' } | { page: 'designs' } | { page: 'design'; id: number | null }
+type Route = { page: 'dashboard' } | { page: 'orders' } | { page: 'reports' } | { page: 'order'; id: number } | { page: 'settings' } | { page: 'users' } | { page: 'activity' } | { page: 'emailSettings' } | { page: 'content' } | { page: 'invitations' } | { page: 'itContent' } | { page: 'designs' } | { page: 'music' } | { page: 'design'; id: number | null }
   | { page: 'inquiries' } | { page: 'inquiry'; id: string } | { page: 'customers' } | { page: 'customer'; id: number }
   | { page: 'forgot' } | { page: 'invite' | 'reset'; email: string; token: string };
 function parseRoute(hash: string): Route | null {
@@ -58,6 +59,7 @@ function parseRoute(hash: string): Route | null {
   if (hash === '#/invitations') return { page: 'invitations' };
   if (hash === '#/it-content') return { page: 'itContent' };
   if (hash === '#/designs') return { page: 'designs' };
+  if (hash === '#/music') return { page: 'music' };
   if (hash === '#/designs/new') return { page: 'design', id: null };
   if (hash === '#/inquiries') return { page: 'inquiries' };
   if (hash === '#/customers') return { page: 'customers' };
@@ -201,6 +203,7 @@ export default function App() {
           {route.page === 'customers' && (viewCustomers ? <CustomersPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot view customers.</p>)}
           {route.page === 'customer' && (viewCustomers ? <div key={route.id}><CustomerDetail session={session} id={route.id} /></div> : <p className="text-sm text-slate-700">Your role cannot view customers.</p>)}
           {route.page === 'designs' && (manageDesigns ? <DesignsPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage designs.</p>)}
+          {route.page === 'music' && (manageDesigns ? <MusicPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage music.</p>)}
           {route.page === 'design' && (manageDesigns ? <div key={route.id ?? 'new'}><DesignEditor session={session} id={route.id} /></div> : <p className="text-sm text-slate-700">Your role cannot manage designs.</p>)}
           {route.page === 'content' && (manageContent ? <ContentPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot manage content.</p>)}
           {route.page === 'invitations' && (viewOrders ? <InvitationsPage session={session} /> : <p className="text-sm text-slate-700">Your role cannot view invitations.</p>)}

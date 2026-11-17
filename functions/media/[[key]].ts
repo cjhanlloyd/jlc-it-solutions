@@ -5,7 +5,7 @@ import { SECURITY_HEADERS } from '../../server/security-headers';
 interface Env { PHOTOS: R2Bucket }
 
 const NOT_FOUND = () => new Response('Not found', { status: 404 });
-const REST = /^[a-z]+\/[0-9]+-[a-z0-9]{8}\.(jpg|png|webp)$/;
+const REST = /^[a-z]+\/[0-9]+-[a-z0-9]{8}\.(jpg|png|webp)$|^music\/[0-9]+-[a-z0-9]{8}\.mp3$/;
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const path = new URL(request.url).pathname;

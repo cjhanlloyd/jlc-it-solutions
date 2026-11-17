@@ -53,6 +53,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const url = new URL(request.url);
   const route = `${request.method} ${url.pathname.replace(/\/+$/, '')}`;
   try {
+    if (route === 'GET /api/invitations/music') {
+      const { results } = await env.DB.prepare('SELECT id, title, credit, r2_key FROM music_tracks WHERE active = 1 ORDER BY sort_order, id').all<any>();
+      return json({ tracks: (results || []).map((t) => ({ id: t.id, title: t.title, credit: t.credit, url: mediaUrl(t.r2_key) })) });
+    }
     if (route === 'GET /api/invitations/designs') {
       const { results } = await env.DB.prepare(
         'SELECT id, slug, name, product_type, layout_key, price_centavos, packages, color_schemes, preview_images, sample_photos, sample_details, description, featured FROM products_designs WHERE active = 1 ORDER BY sort_order, id',
