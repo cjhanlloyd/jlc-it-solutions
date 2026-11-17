@@ -13,7 +13,7 @@ import Minimal from './Minimal';
 import Starlight from './Starlight';
 import Pastel from './Pastel';
 
-export type LayoutProps<D = any> = { details: D; scheme: Scheme; photos: string[]; style: InvitationStyle; rsvpSlot?: ReactNode };
+export type LayoutProps<D = any> = { details: D; scheme: Scheme; photos: string[]; style: InvitationStyle; rsvpSlot?: ReactNode; giftQr?: string };
 export type LayoutKey = 'classic' | 'garden' | 'modern' | 'confetti' | 'golden' | 'blush' | 'portrait' | 'editorial' | 'minimal' | 'starlight' | 'pastel';
 
 export const LAYOUTS: Record<LayoutKey, ComponentType<LayoutProps>> = { classic: Classic, garden: Garden, modern: Modern, confetti: Confetti, golden: Golden, blush: Blush, portrait: Portrait,

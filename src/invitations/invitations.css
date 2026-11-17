@@ -559,3 +559,5 @@ main.inv[tabindex="-1"]:focus { outline: none; }
   .is-opening .intro-top, .is-opening .intro-bottom { transform: none; }
   .is-opening .intro-seal { transform: translate(-50%, -50%); }
 }
+.inv-gift-qr { display: block; box-sizing: border-box; width: clamp(180px, 60cqw, 240px); margin: 14px auto 0; padding: 12px; background: #fff; border-radius: 14px; }
+.inv .inv-gift-qr img { width: 100%; background: #fff; image-rendering: auto; }

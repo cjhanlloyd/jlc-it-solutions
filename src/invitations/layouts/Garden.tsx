@@ -1,7 +1,7 @@
 // Garden: soft and botanical, leafy sprigs, rounded cards, a vine timeline and arched photos.
 import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, MapLink, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
+import { Cover, Countdown, MapLink, GiftQr, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
 
 const LEAVES: [number, number, number][] = [[46, 37, -50], [70, 33, 35], [100, 24, -40], [126, 23, 40], [156, 13, -35], [176, 12, 30]];
@@ -16,7 +16,7 @@ const Sprig = ({ className }: { className: string }) => (
   </svg>
 );
 
-export default function Garden({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Garden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   return (
     <main className="inv gd" style={schemeVars(scheme, style)}>
@@ -54,11 +54,11 @@ export default function Garden({ details: d, scheme, photos: all, style, rsvpSlo
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote) && (
+        {(d.dressCode || d.giftsNote || giftQr) && (
           <section className="gd-card" aria-labelledby="gd-notes">
             <h2 id="gd-notes">A few notes</h2>
             {d.dressCode && <p><span className="gd-small">Attire</span>{d.dressCode}</p>}
-            {d.giftsNote && <p><span className="gd-small">Gifts</span>{d.giftsNote}</p>}
+            {(d.giftsNote || giftQr) && <><p><span className="gd-small">Gifts</span>{d.giftsNote}</p><GiftQr src={giftQr} /></>}
           </section>
         )}
 

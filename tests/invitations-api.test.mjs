@@ -540,3 +540,64 @@ test('guest API returns style with the cover as an index into its photos list; {
   sql(`UPDATE invitations SET photos = '["inv/1/0.png"]'`);
   assert.deepEqual((await (await get(`/api/invitations/i/${w.slug}`)).json()).style, { v: 1, font: 'modern' });
 });
+
+// --- Gift QR ---
+const manage = (extra) => call('POST', '/api/invitations/manage', { ...editBody(), ...extra }, TOKEN);
+
+test('checkout stores the gift QR at inv/<id>/gift.<ext>; without one gift_qr stays NULL', async () => {
+  assert.equal((await post('/api/invitations/checkout', goodCheckout({ giftQr: PNG }))).status, 200);
+  assert.equal(inv().gift_qr, 'inv/1/gift.png');
+  assert.ok(r2.map.has('inv/1/gift.png'));
+  assert.ok(!JSON.parse(inv().photos).includes('inv/1/gift.png'));
+});
+
+test('checkout without a gift QR leaves gift_qr NULL', async () => {
+  assert.equal((await post('/api/invitations/checkout', goodCheckout())).status, 200);
+  assert.equal(inv().gift_qr, null);
+});
+
+test('checkout with a bad gift QR → 400 with a clear message and nothing stored', async () => {
+  for (const [giftQr, msg] of [['data:text/html;base64,PGI+', 'Gift QR code must be a JPEG, PNG or WebP image.'], [42, 'Gift QR code must be a JPEG, PNG or WebP image.'],
+    ['data:image/png;base64,' + 'A'.repeat(3_000_000), 'The gift QR code is too large.']]) {
+    const res = await post('/api/invitations/checkout', goodCheckout({ giftQr }));
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, msg);
+  }
+  assert.equal(q('SELECT COUNT(*) c FROM invitations')[0].c, 0);
+  assert.equal(r2.map.size, 0);
+});
+
+test('manage: gift QR is kept when absent, replaced (old extension deleted), then removed (object deleted)', async () => {
+  live();
+  sql("UPDATE invitations SET gift_qr = 'inv/1/gift.png' WHERE id = 1");
+  r2.map.set('inv/1/gift.png', { body: 'qr', bytes: Buffer.from('qr'), httpMetadata: { contentType: 'image/png' } });
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, TOKEN).then((r) => r.json())).giftQr, 'inv/1/gift.png');
+  let res = await manage({});
+  assert.equal(res.status, 200);
+  assert.equal(inv().gift_qr, 'inv/1/gift.png');
+  assert.ok(r2.map.has('inv/1/gift.png'));
+  res = await manage({ giftQr: JPG });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).giftQr, 'inv/1/gift.jpg');
+  assert.equal(inv().gift_qr, 'inv/1/gift.jpg');
+  assert.ok(r2.map.has('inv/1/gift.jpg') && !r2.map.has('inv/1/gift.png'));
+  res = await manage({ giftQr: JPG }); // same extension overwrites in place
+  assert.equal(inv().gift_qr, 'inv/1/gift.jpg');
+  assert.ok(r2.map.has('inv/1/gift.jpg'));
+  res = await manage({ giftQr: null });
+  assert.equal(res.status, 200);
+  assert.equal(inv().gift_qr, null);
+  assert.ok(!r2.map.has('inv/1/gift.jpg'));
+  assert.ok(r2.map.has('inv/1/0.png'), 'photos untouched');
+});
+
+test('manage: a bad gift QR → 400 and the stored one is untouched', async () => {
+  live();
+  sql("UPDATE invitations SET gift_qr = 'inv/1/gift.png' WHERE id = 1");
+  for (const giftQr of ['data:text/html;base64,PGI+', 'inv/1/gift.png', 7]) {
+    const res = await manage({ giftQr });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, 'Gift QR code must be a JPEG, PNG or WebP image.');
+  }
+  assert.equal(inv().gift_qr, 'inv/1/gift.png');
+});

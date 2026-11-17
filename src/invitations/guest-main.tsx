@@ -27,7 +27,7 @@ function loadTurnstile(): Promise<void> {
 }
 
 type Data =
-  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
+  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; giftQr?: string | null; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
       tier?: 'standard' | 'premium'; intro?: boolean; music?: Music | null }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
@@ -183,7 +183,7 @@ function Guest() {
           {card && <IntroCover card={card} scheme={scheme} onOpen={() => audio.current?.play().catch(() => {})} onDone={onDone} />}
           {/* Behind the aria-modal cover the page is inert, so keyboard and screen readers cannot reach it */}
           <div inert={!!card && !opened} aria-hidden={card && !opened ? true : undefined}>
-          <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} style={data.style}
+          <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} giftQr={data.giftQr ?? undefined} style={data.style}
             rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
           {data.music && <MusicToggle ref={audio} music={data.music} scheme={scheme} />}
           </div>

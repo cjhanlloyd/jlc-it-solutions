@@ -2,10 +2,10 @@
 // a cover photo sits as an inset framed hero rather than full-bleed.
 import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, displayVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Minimal({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Minimal({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const places = venues(d);
   return (
@@ -47,11 +47,11 @@ export default function Minimal({ details: d, scheme, photos: all, style, rsvpSl
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote) && (
+        {(d.dressCode || d.giftsNote || giftQr) && (
           <section className="mn-sec" aria-labelledby="mn-notes">
             <h2 id="mn-notes">Good to know</h2>
             {d.dressCode && <><h3 className="mn-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {d.giftsNote && <><h3 className="mn-kicker">Gifts</h3><p>{d.giftsNote}</p></>}
+            {(d.giftsNote || giftQr) && <><h3 className="mn-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
 

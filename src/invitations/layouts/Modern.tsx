@@ -1,10 +1,10 @@
 // Modern: minimal and asymmetric, bold sans type, a color bar, labelled rows and an offset feature photo.
 import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, MapLink, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues, heroAttrs } from '../parts';
+import { Cover, Countdown, MapLink, GiftQr, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Modern({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Modern({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   return (
     <main className="inv md" style={schemeVars(scheme, style)}>
@@ -55,10 +55,11 @@ export default function Modern({ details: d, scheme, photos: all, style, rsvpSlo
             <p>{d.dressCode}</p>
           </section>
         )}
-        {d.giftsNote && (
+        {(d.giftsNote || giftQr) && (
           <section className="md-row" aria-labelledby="md-gifts">
             <h2 id="md-gifts" className="md-label">Gifts</h2>
-            <p>{d.giftsNote}</p>
+            {d.giftsNote && <p>{d.giftsNote}</p>}
+            <GiftQr src={giftQr} />
           </section>
         )}
 

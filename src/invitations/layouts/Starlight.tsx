@@ -4,10 +4,10 @@ import type { LayoutProps } from '.';
 import type { CSSProperties } from 'react';
 import { displaySafe, isDark } from '../../../shared/invitation-style';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
-import { Cover, Countdown, fieldVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, fieldVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Starlight({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<DebutDetails>) {
+export default function Starlight({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<DebutDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const traditions = TRADITIONS.filter((t) => d[t.key]?.length);
   // A dark scheme keeps its sky; a light one is turned to night.
@@ -61,11 +61,11 @@ export default function Starlight({ details: d, scheme, photos: all, style, rsvp
             </section>
           )}
 
-          {(d.dressCode || d.giftsNote) && (
+          {(d.dressCode || d.giftsNote || giftQr) && (
             <section aria-labelledby="st-notes">
               <h2 id="st-notes">Good to know</h2>
               {d.dressCode && <><h3 className="st-kicker">Attire</h3><p>{d.dressCode}</p></>}
-              {d.giftsNote && <><h3 className="st-kicker">Gifts</h3><p>{d.giftsNote}</p></>}
+              {(d.giftsNote || giftQr) && <><h3 className="st-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
             </section>
           )}
 

@@ -9,12 +9,13 @@ import { effectiveScheme, resolveCoverIndex } from './style-render';
 import type { InvitationStyle } from '../../shared/invitation-style';
 import DesignTab from './studio/DesignTab';
 import PhotosTab from './studio/PhotosTab';
+import GiftQrField from './studio/GiftQrField';
 import PreviewFrame from './studio/PreviewFrame';
 import { useTracks } from './studio/PremiumExtras';
 import { photoLimit, type Tier } from '../../shared/tiers';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
-type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; rsvps: Rsvp[] };
+type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; giftQr?: string | null; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -68,6 +69,7 @@ export default function ManagePage({ btn }: { btn: string }) {
   const [data, setData] = React.useState<Manage | null | 'missing' | 'offline'>(token ? null : 'missing');
   const [draft, setDraft] = React.useState<any>(null);
   const [photos, setPhotos] = React.useState<string[]>([]);
+  const [giftQr, setGiftQr] = React.useState<string | null>(null); // stored key or a new data URL
   // style.cover.photo is kept as an index into photos while editing; the server stores it as the photo key.
   const [style, setStyle] = React.useState<InvitationStyle>({});
   const [scheme, setScheme] = React.useState('');
@@ -89,6 +91,7 @@ export default function ManagePage({ btn }: { btn: string }) {
       setData(d);
       setDraft(formOf(d.productType)?.toDraft(d.details) ?? null);
       setPhotos(d.photos);
+      setGiftQr(d.giftQr ?? null);
       setStyle(resolveCoverIndex(d.style ?? {}, d.photos));
       setScheme(d.colorScheme.name ?? '');
     }).catch(() => setData('offline'));
@@ -126,11 +129,12 @@ export default function ManagePage({ btn }: { btn: string }) {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos, style, ...(chosen.name !== data.colorScheme.name ? { colorScheme: chosen.name } : {}) }) });
+      const res = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ details: draft, photos, giftQr, style, ...(chosen.name !== data.colorScheme.name ? { colorScheme: chosen.name } : {}) }) });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
         setDraft(form!.toDraft(body.details));
         setPhotos(body.photos);
+        setGiftQr(body.giftQr ?? null);
         setStyle(resolveCoverIndex(body.style ?? {}, body.photos));
         setData({ ...data, colorScheme: chosen, style: body.style });
         setMsg({ kind: 'success', text: 'Saved. Your guests see the changes right away.' });
@@ -213,6 +217,7 @@ export default function ManagePage({ btn }: { btn: string }) {
         <form onSubmit={save} noValidate className={`${view === 'edit' ? 'block' : 'hidden'} lg:block bg-white lg:rounded-3xl lg:border lg:border-slate-200 p-5 sm:p-8 space-y-6`}>
           <h2 className="text-lg font-extrabold text-slate-900 font-display">Edit details</h2>
           <form.Form draft={draft} onChange={setDraft} lockNames />
+          <GiftQrField value={giftQr} onChange={setGiftQr} />
           <section aria-label="Design" className="border-t border-slate-200 pt-6">
             <DesignTab schemes={schemes} scheme={chosen.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active tier={data.tier === 'premium' ? 'premium' : undefined} tracks={tracks} />
           </section>
@@ -236,7 +241,7 @@ export default function ManagePage({ btn }: { btn: string }) {
             )}
             {/* The drag handle blocks scrolling, so it is only there while positioning. */}
             <PreviewFrame cover={style.cover} onFocus={positioning ? (f) => style.cover && setStyle({ ...style, cover: { ...style.cover, ...f } }) : undefined}>
-              <InvitationView layoutKey={data.design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} style={style} />
+              <InvitationView layoutKey={data.design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(data.details))} photos={photos.map(photoSrc)} style={style} giftQr={giftQr ? photoSrc(giftQr) : undefined} />
             </PreviewFrame>
           </div>
         </section>

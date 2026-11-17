@@ -115,6 +115,10 @@ export const Photos = ({ photos, title, className, start = 0 }: { photos: string
   ) : null;
 
 // 7 -> 7<sup>th</sup>
+export const GiftQr = ({ src }: { src?: string }) => src ? (
+  <a href={src} target="_blank" rel="noopener" className="inv-gift-qr" aria-label="Open the gift QR code full size"><img src={src} alt="Gift QR code" loading="lazy" /></a>
+) : null;
+
 export const Ordinal = ({ n }: { n: number }) => <>{n}<sup>{ordinal(n).slice(String(n).length)}</sup></>;
 
 export const Ornament = ({ className }: { className: string }) => (

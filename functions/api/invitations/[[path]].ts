@@ -101,7 +101,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
         title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key, colorSchemes: parse(inv.design_color_schemes, []) },
         // style.cover.photo is one of the photos keys
-        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), tier: tierOf(inv), rsvps,
+        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), giftQr: inv.gift_qr ?? null, tier: tierOf(inv), rsvps,
       });
     }
 
@@ -116,8 +116,12 @@ const photoError = (p: unknown): string | null =>
   typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Photos must be JPEG, PNG or WebP images.'
     : p.length > LIMITS.photoChars ? 'A photo is too large.' : null;
 
+const giftQrError = (p: unknown): string | null =>
+  typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Gift QR code must be a JPEG, PNG or WebP image.'
+    : p.length > LIMITS.photoChars ? 'The gift QR code is too large.' : null;
+
 // Stores a checked data URL in R2 as inv/<invitationId>/<n>.<ext> and returns the key.
-async function putPhoto(env: Env, invitationId: number, n: number, p: string): Promise<string> {
+async function putPhoto(env: Env, invitationId: number, n: number | string, p: string): Promise<string> {
   const [, type] = p.match(PHOTO_RE)!;
   const key = `inv/${invitationId}/${n}.${type === 'jpeg' ? 'jpg' : type}`;
   const bin = atob(p.slice(p.indexOf(',') + 1));
@@ -171,6 +175,11 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
     const err = photoError(p);
     if (err) return json({ error: err }, 400);
   }
+  const giftQr: unknown = body.giftQr ?? undefined;
+  if (giftQr !== undefined) {
+    const err = giftQrError(giftQr);
+    if (err) return json({ error: err }, 400);
+  }
   // cover.photo is an index into photos here; it becomes the photo's R2 key once stored
   const sv = validateStyle(body.style, { photoCount: photos.length, tier, trackIds: await activeTrackIds(env.DB) });
   if ('error' in sv) return json({ error: sv.error }, 400);
@@ -202,16 +211,19 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
   const orderId = ord.meta.last_row_id;
 
   const keys: string[] = [];
+  let giftKey: string | null = null;
   let start;
   try {
     for (const [n, p] of (photos as string[]).entries()) keys.push(await putPhoto(env, invitationId, n, p));
-    await env.DB.prepare('UPDATE invitations SET photos = ?, style = ? WHERE id = ?')
-      .bind(JSON.stringify(keys), JSON.stringify(coverIndexToKey(sv.style, keys)), invitationId).run();
+    if (giftQr !== undefined) giftKey = await putPhoto(env, invitationId, 'gift', giftQr as string);
+    await env.DB.prepare('UPDATE invitations SET photos = ?, style = ?, gift_qr = ? WHERE id = ?')
+      .bind(JSON.stringify(keys), JSON.stringify(coverIndexToKey(sv.style, keys)), giftKey, invitationId).run();
     start = await provider.start({ id: orderId, reference, amountCentavos: pkg.priceCentavos, email, itemName: `${occasion.label} invitation: ${design.name}` }, { env, origin });
     if (start.kind === 'redirect') await env.DB.prepare('UPDATE orders SET paymongo_checkout_id = ? WHERE id = ?').bind(start.providerRef, orderId).run();
   } catch (e) {
     console.error('checkout failed:', e instanceof Error ? e.message : e);
-    if (keys.length) await env.PHOTOS.delete(keys);
+    const doomed = giftKey ? [...keys, giftKey] : keys;
+    if (doomed.length) await env.PHOTOS.delete(doomed);
     await env.DB.batch([
       env.DB.prepare('DELETE FROM order_events WHERE order_id = ?').bind(orderId),
       env.DB.prepare('DELETE FROM orders WHERE id = ?').bind(orderId),
@@ -252,6 +264,13 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
     if (err) return json({ error: err }, 400);
   }
 
+  // giftQr: absent keeps the stored QR, null removes it, a data URL replaces it
+  const giftQr: unknown = body.giftQr;
+  if (giftQr !== undefined && giftQr !== null) {
+    const err = giftQrError(giftQr);
+    if (err) return json({ error: err }, 400);
+  }
+
   const stored: InvitationStyle = parse(inv.style, {});
   let style = stored;
   if (body.style !== undefined) {
@@ -271,6 +290,7 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
 
   const added: string[] = [];
   const keys: string[] = [];
+  let giftKey: string | null = inv.gift_qr ?? null;
   try {
     // New photos get a time-based index so a deleted key is never reused (the photo route caches for a day)
     const base = Date.now() * 10;
@@ -280,16 +300,22 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
       added.push(key);
       keys.push(key);
     }
+    if (giftQr === null) giftKey = null;
+    else if (giftQr !== undefined) {
+      giftKey = await putPhoto(env, inv.id, 'gift', giftQr as string);
+      if (giftKey !== inv.gift_qr) added.push(giftKey);
+    }
     style = body.style !== undefined ? coverIndexToKey(style, keys) : remapCover(stored, current, keys);
-    await env.DB.prepare('UPDATE invitations SET details = ?, event_date = ?, photos = ?, style = ?, color_scheme = ? WHERE id = ?')
-      .bind(JSON.stringify(v.details), v.details.eventDate, JSON.stringify(keys), JSON.stringify(style), scheme, inv.id).run();
+    await env.DB.prepare('UPDATE invitations SET details = ?, event_date = ?, photos = ?, style = ?, color_scheme = ?, gift_qr = ? WHERE id = ?')
+      .bind(JSON.stringify(v.details), v.details.eventDate, JSON.stringify(keys), JSON.stringify(style), scheme, giftKey, inv.id).run();
   } catch (e) {
     if (added.length) await env.PHOTOS.delete(added);
     throw e;
   }
   const removed = current.filter((k) => !keys.includes(k));
+  if (inv.gift_qr && inv.gift_qr !== giftKey) removed.push(inv.gift_qr);
   if (removed.length) await env.PHOTOS.delete(removed);
-  return json({ ok: true, details: v.details, photos: keys, style });
+  return json({ ok: true, details: v.details, photos: keys, giftQr: giftKey, style });
 }
 
 // Quotes every cell; a leading = + - @ gets a ' so spreadsheets do not run it as a formula.
@@ -325,6 +351,7 @@ async function guest(env: Env, slug: string | null): Promise<Response> {
     state: 'live', tier: tierOf(inv), intro: premium && style.intro !== false,
     music: track ? { url: mediaUrl(track.r2_key), title: track.title, credit: track.credit } : null, productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
     photos: keys.map((k) => `/photos/${k}`),
+    giftQr: inv.gift_qr ? `/photos/${inv.gift_qr}` : null,
     style: coverIndex < 0 ? style : { ...style, cover: { ...cover, photo: coverIndex } },
     // Same rule as the RSVP route below: open through the deadline day (UTC)
     rsvpOpen: !details.rsvpDeadline || todayUtc() <= details.rsvpDeadline,

@@ -3,10 +3,10 @@
 import type { LayoutProps } from '.';
 import type { Venue } from '../../../shared/invitation-fields';
 import { occasionForDetails } from '../../../shared/occasions';
-import { Cover, Countdown, displayVars, MapLink, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Portrait({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps) {
+export default function Portrait({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps) {
   const { cover, gallery: photos } = coverFor(style, all);
   const occasion = occasionForDetails(d);
   const c = occasion.card(d);
@@ -57,11 +57,11 @@ export default function Portrait({ details: d, scheme, photos: all, style, rsvpS
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote) && (
+        {(d.dressCode || d.giftsNote || giftQr) && (
           <section aria-labelledby="pt-notes">
             <h2 id="pt-notes">Good to know</h2>
             {d.dressCode && <><h3 className="pt-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {d.giftsNote && <><h3 className="pt-kicker">Gifts</h3><p>{d.giftsNote}</p></>}
+            {(d.giftsNote || giftQr) && <><h3 className="pt-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
 

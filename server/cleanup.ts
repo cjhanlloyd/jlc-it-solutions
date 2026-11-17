@@ -34,10 +34,10 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
 
   // Cancelled orders whose invitation is still pending: an earlier R2 delete failed, or an admin cancelled.
   const { results: stuck } = await db.prepare(
-    "SELECT o.id, i.id AS invitation_id, i.photos FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.status = 'cancelled' AND i.status = 'pending'",
+    "SELECT o.id, i.id AS invitation_id, i.photos, i.gift_qr FROM orders o JOIN invitations i ON i.id = o.product_id WHERE o.status = 'cancelled' AND i.status = 'pending'",
   ).all<any>();
   for (const o of stuck || []) {
-    if (!await deletePhotos(photos, keysOf(o.photos), `order ${o.id}`)) continue;
+    if (!await deletePhotos(photos, [...keysOf(o.photos), ...(o.gift_qr ? [o.gift_qr] : [])], `order ${o.id}`)) continue;
     await db.prepare("DELETE FROM invitations WHERE id = ? AND status = 'pending'").bind(o.invitation_id).run();
   }
 

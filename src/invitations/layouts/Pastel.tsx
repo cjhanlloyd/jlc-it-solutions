@@ -2,10 +2,10 @@
 // All text sits on the scheme background inside the cards, so it keeps the scheme's contrast.
 import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
-import { Cover, Countdown, displayVars, MapLink, Ordinal, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, Ordinal, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<BirthdayDetails>) {
+export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<BirthdayDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   return (
     <main className="inv ps" style={{ ...schemeVars(scheme, style), ...displayVars(scheme) }}>
@@ -41,11 +41,11 @@ export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlo
         </section>
       )}
 
-      {(d.dressCode || d.giftsNote) && (
+      {(d.dressCode || d.giftsNote || giftQr) && (
         <section className="ps-card" aria-labelledby="ps-notes">
           <h2 id="ps-notes">Good to know</h2>
           {d.dressCode && <><h3 className="ps-small">Attire</h3><p>{d.dressCode}</p></>}
-          {d.giftsNote && <><h3 className="ps-small">Gifts</h3><p>{d.giftsNote}</p></>}
+          {(d.giftsNote || giftQr) && <><h3 className="ps-small">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
         </section>
       )}
 

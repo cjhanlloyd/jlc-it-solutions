@@ -135,9 +135,9 @@ export async function expireIfOverdue(db: D1Database, photos: R2Bucket, order: {
   const at = now.toISOString();
   const [upd] = await db.batch(move(db, order.id, 'pending_payment', 'cancelled', { actor: 'system', note: 'Payment deadline passed' }, at, ' AND payment_deadline < ?5', [at]));
   if (!upd.meta.changes) return false;
-  const inv = await db.prepare("SELECT photos FROM invitations WHERE id = ? AND status = 'pending'").bind(order.invitation_id).first<any>();
+  const inv = await db.prepare("SELECT photos, gift_qr FROM invitations WHERE id = ? AND status = 'pending'").bind(order.invitation_id).first<any>();
   // Photos first: if R2 fails the row stays, so its keys are not lost
-  if (inv && await deletePhotos(photos, keysOf(inv.photos), `order ${order.id}`)) {
+  if (inv && await deletePhotos(photos, [...keysOf(inv.photos), ...(inv.gift_qr ? [inv.gift_qr] : [])], `order ${order.id}`)) {
     await db.prepare("DELETE FROM invitations WHERE id = ? AND status = 'pending'").bind(order.invitation_id).run();
   }
   return true;

@@ -25,3 +25,29 @@ export function resizePhoto(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+// Payment QR codes: long edge down to 800 px (sharp edges matter for scanning), PNG stays PNG, anything else JPEG at 0.92.
+export function resizeQr(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.onload = () => {
+        const k = Math.min(1, 800 / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * k);
+        canvas.height = Math.round(img.height * k);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('No canvas'));
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(file.type === 'image/png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}

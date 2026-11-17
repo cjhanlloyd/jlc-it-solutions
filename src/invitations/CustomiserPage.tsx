@@ -16,6 +16,7 @@ import { reviewRows, switchTo } from './studio/review';
 import StudioTabs, { type StudioTab } from './studio/StudioTabs';
 import DesignTab from './studio/DesignTab';
 import PhotosTab from './studio/PhotosTab';
+import GiftQrField from './studio/GiftQrField';
 import { useTracks } from './studio/PremiumExtras';
 import { forTier, photoLimit, tierOf } from '../../shared/tiers';
 import PreviewFrame from './studio/PreviewFrame';
@@ -45,6 +46,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [review, setReview] = React.useState(false);
   const [reviewed, setReviewed] = React.useState(false); // the review step stays mounted once shown, so Turnstile keeps its token
   const [photos, setPhotos] = React.useState<string[]>([]);
+  const [giftQr, setGiftQr] = React.useState<string | null>(null); // never autosaved, like photos
   const [awaitPhotos, setAwaitPhotos] = React.useState(!!saved?.hadPhotos);
   const [email, setEmail] = React.useState(saved?.email ?? '');
   const [name, setName] = React.useState(saved?.name ?? '');
@@ -163,7 +165,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
+        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.reference) {
@@ -208,6 +210,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
             {!review && error && <Alert>{error}</Alert>}
             <div id="studio-details" tabIndex={-1} role="region" aria-label={TAB_NAMES.details} className="focus:outline-none space-y-6" hidden={tab !== 'details'}>
               <form.Form draft={draft} onChange={setDraft} />
+              <GiftQrField value={giftQr} onChange={setGiftQr} />
               {pkg.kind === 'custom' && (
                 <div className="space-y-1 border-t border-slate-200 pt-6">
                   <label htmlFor="designer-notes" className="block text-sm font-extrabold text-slate-900 font-display">Notes for the designer *</label>
@@ -286,7 +289,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
         <section aria-label={review ? 'Preview of your invitation' : 'Live preview'} className={`${view === 'preview' ? 'block' : 'hidden'} lg:block min-w-0`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
             <PreviewFrame cover={style.cover} onFocus={review || tab !== 'photos' ? undefined : (f) => setStyle((s) => (s.cover ? { ...s, cover: { ...s.cover, ...f } } : s))}>
-              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} />}
+              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} giftQr={giftQr ?? undefined} />}
             </PreviewFrame>
           </div>
         </section>

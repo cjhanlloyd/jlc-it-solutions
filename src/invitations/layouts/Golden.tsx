@@ -1,10 +1,10 @@
 // Golden: an elegant milestone look, dark scheme background, gold accent rules, serif type, centred, big age.
 import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
-import { Cover, Countdown, MapLink, Ordinal, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
+import { Cover, Countdown, MapLink, Ordinal, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Golden({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<BirthdayDetails>) {
+export default function Golden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<BirthdayDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   return (
     <main className="inv gl" style={schemeVars(scheme, style)}>
@@ -40,11 +40,11 @@ export default function Golden({ details: d, scheme, photos: all, style, rsvpSlo
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote) && (
+        {(d.dressCode || d.giftsNote || giftQr) && (
           <section aria-labelledby="gl-notes">
             <h2 id="gl-notes">Good to know</h2>
             {d.dressCode && <><h3 className="gl-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {d.giftsNote && <><h3 className="gl-kicker">Gifts</h3><p>{d.giftsNote}</p></>}
+            {(d.giftsNote || giftQr) && <><h3 className="gl-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
 

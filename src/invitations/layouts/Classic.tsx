@@ -1,10 +1,10 @@
 // Classic: formal and centered, serif type, double-ruled frame and ornamental dividers.
 import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, MapLink, Ornament, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
+import { Cover, Countdown, MapLink, Ornament, GiftQr, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Classic({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Classic({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const divider = <Ornament className="cl-orn" />;
   return (
@@ -52,12 +52,12 @@ export default function Classic({ details: d, scheme, photos: all, style, rsvpSl
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote) && (
+        {(d.dressCode || d.giftsNote || giftQr) && (
           <section aria-labelledby="cl-notes">
             {divider}
             <h2 id="cl-notes">Good to know</h2>
             {d.dressCode && <><h3 className="cl-kicker">Attire</h3><p>{d.dressCode}</p></>}
-            {d.giftsNote && <><h3 className="cl-kicker">Gifts</h3><p>{d.giftsNote}</p></>}
+            {(d.giftsNote || giftQr) && <><h3 className="cl-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></>}
           </section>
         )}
 

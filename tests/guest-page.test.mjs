@@ -41,9 +41,11 @@ beforeEach(() => {
     { ...inv(6, 'mia-bday', 'live', '2027-03-14', { celebrant: 'Mia', age: 7 }), product_type: 'birthday_invitation' },
     { ...inv(7, 'rob-bday', 'live', '2027-03-14', { celebrant: 'Roberto' }), product_type: 'birthday_invitation' },
     { ...inv(8, 'old-bday', 'live', '2020-01-01', { celebrant: 'Mia', age: 7 }), product_type: 'birthday_invitation' },
+    { ...inv(9, 'gift-one', 'live', '2099-06-12'), gift_qr: 'inv/9/gift.png' },
+    { ...inv(10, 'gift-refunded', 'refunded', '2099-06-12'), gift_qr: 'inv/10/gift.png' },
   ];
   r2.clear();
-  for (const k of ['inv/1/0.png', 'inv/2/0.png', 'inv/3/0.png']) r2.set(k, 'bytes-' + k);
+  for (const k of ['inv/9/gift.png', 'inv/10/gift.png', 'inv/1/0.png', 'inv/2/0.png', 'inv/3/0.png']) r2.set(k, 'bytes-' + k);
 });
 function exec(sql, a) {
   if (/^SELECT i\.\*, d.layout_key, d.product_type FROM invitations i JOIN products_designs d ON d\.id = i\.design_id WHERE i\.slug = \?/.test(sql)) {
@@ -56,7 +58,7 @@ function exec(sql, a) {
     if (i) i.status = 'expired';
     return { meta: { changes: i ? 1 : 0 } };
   }
-  if (/^SELECT status, event_date, tier, photos FROM invitations WHERE id = \?/.test(sql)) return db.find(x => x.id === a[0]) ?? null;
+  if (/^SELECT status, event_date, tier, photos, gift_qr FROM invitations WHERE id = \?/.test(sql)) return db.find(x => x.id === a[0]) ?? null;
   throw new Error('Unexpected SQL: ' + sql);
 }
 const stmt = (sql) => {
@@ -181,7 +183,7 @@ test('API: live → layout, colors, details, photo URLs, rsvpOpen', async () => 
   const res = await ctx(api, '/api/invitations/i/live-one');
   assert.equal(res.status, 200);
   const data = await res.json();
-  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'colorScheme', 'details', 'intro', 'layoutKey', 'music', 'photos', 'productType', 'rsvpOpen', 'state', 'style', 'tier']);
+  assert.deepEqual(Object.keys(data).sort(), ['askKids', 'colorScheme', 'details', 'giftQr', 'intro', 'layoutKey', 'music', 'photos', 'productType', 'rsvpOpen', 'state', 'style', 'tier']);
   assert.deepEqual(data.style, {}, 'a row without a style reads as {}');
   assert.equal(data.state, 'live');
   assert.equal(data.layoutKey, 'classic');
@@ -230,6 +232,15 @@ test('photo of a live invitation → body, content type and a day of caching', a
   assert.equal(res.headers.get('Content-Type'), 'image/png');
   assert.equal(res.headers.get('Cache-Control'), 'public, max-age=300');
   assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
+});
+
+test('photo route serves the gift QR key only while its invitation is live', async () => {
+  assert.equal((await ctx(photo, '/photos/inv/9/gift.png', { key: ['inv', '9', 'gift.png'] })).status, 200);
+  assert.equal((await ctx(photo, '/photos/inv/9/other.png', { key: ['inv', '9', 'other.png'] })).status, 404);
+  assert.equal((await ctx(photo, '/photos/inv/10/gift.png', { key: ['inv', '10', 'gift.png'] })).status, 404);
+  const g = await (await ctx(api, '/api/invitations/i/gift-one')).json();
+  assert.equal(g.giftQr, '/photos/inv/9/gift.png');
+  assert.equal((await (await ctx(api, '/api/invitations/i/live-one')).json()).giftQr, null);
 });
 
 test('photo of a refunded invitation → 404', async () => {

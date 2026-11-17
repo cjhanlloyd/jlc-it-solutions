@@ -7,7 +7,7 @@ import { effectiveScheme } from './style-render';
 import './invitations.css';
 
 // style.cover.photo must already be an index into photos (see resolveCoverIndex for stored keys).
-type Props = { layoutKey: string; scheme: Scheme; details: any; photos: string[]; style?: InvitationStyle | null; rsvpSlot?: ReactNode };
+type Props = { layoutKey: string; scheme: Scheme; details: any; photos: string[]; style?: InvitationStyle | null; rsvpSlot?: ReactNode; giftQr?: string };
 
 export default function InvitationView({ layoutKey, scheme, style, ...rest }: Props) {
   const s = style ?? {};

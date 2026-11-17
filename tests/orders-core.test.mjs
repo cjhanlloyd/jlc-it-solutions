@@ -138,6 +138,16 @@ test('expireIfOverdue cancels an overdue order and purges its pending invitation
   assert.equal(await photos.get('inv/1/a.jpg'), null);
 });
 
+test('expireIfOverdue also deletes the gift QR object', async () => {
+  const { db, photos } = await seed();
+  await photos.put('inv/1/gift.png', 'qr');
+  db.exec.exec("UPDATE invitations SET gift_qr = 'inv/1/gift.png'");
+  const order = { id: 1, status: 'pending_payment', payment_deadline: '2026-11-12T00:00:00.000Z', invitation_id: 1 };
+  assert.equal(await O.expireIfOverdue(db, photos, order, NOW), true);
+  assert.equal(one(db, 'SELECT COUNT(*) c FROM invitations').c, 0);
+  assert.equal(await photos.get('inv/1/gift.png'), null);
+});
+
 test('expireIfOverdue leaves an order in payment verification alone', async () => {
   const { db, photos } = await seed();
   await toVerification(db);

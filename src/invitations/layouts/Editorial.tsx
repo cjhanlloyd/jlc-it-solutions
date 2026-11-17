@@ -2,10 +2,10 @@
 // a date and venue band, then numbered sections between thin rules.
 import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
-import { Cover, Countdown, displayVars, MapLink, Photos, formatDate, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
+import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, formatDate, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
 
-export default function Editorial({ details: d, scheme, photos: all, style, rsvpSlot }: LayoutProps<InvitationDetails>) {
+export default function Editorial({ details: d, scheme, photos: all, style, rsvpSlot, giftQr }: LayoutProps<InvitationDetails>) {
   const { cover, gallery: photos } = coverFor(style, all);
   const places = venues(d);
   return (
@@ -64,12 +64,12 @@ export default function Editorial({ details: d, scheme, photos: all, style, rsvp
           </section>
         )}
 
-        {(d.dressCode || d.giftsNote) && (
+        {(d.dressCode || d.giftsNote || giftQr) && (
           <section className="ed-sec" aria-labelledby="ed-notes">
             <h2 id="ed-notes">Good to know</h2>
             <div className="ed-cols">
               {d.dressCode && <div><h3 className="ed-kicker">Attire</h3><p>{d.dressCode}</p></div>}
-              {d.giftsNote && <div><h3 className="ed-kicker">Gifts</h3><p>{d.giftsNote}</p></div>}
+              {(d.giftsNote || giftQr) && <div><h3 className="ed-kicker">Gifts</h3>{d.giftsNote && <p>{d.giftsNote}</p>}<GiftQr src={giftQr} /></div>}
             </div>
           </section>
         )}
