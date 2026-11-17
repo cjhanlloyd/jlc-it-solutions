@@ -16,7 +16,7 @@ const InvitationView = lazy(() => import('../invitations/InvitationView'));
 
 type Payment = { id: number; status: string; amountCentavos: number; customerReference: string | null; submittedAt: string; verifiedBy: string | null; verifiedAt: string | null; adminReference: string | null; note: string | null; receiptUrl?: string };
 type Detail = {
-  order: { id: number; reference: string; status: OrderStatus; title: string; designName: string; amountCentavos?: number; packageName?: string; packageKind?: string; designerNotes?: string | null; createdAt: string; paymentDeadline: string | null; deliveredAt: string | null; assignedTo: string | null };
+  order: { id: number; reference: string; status: OrderStatus; title: string; designName: string; amountCentavos?: number; packageName?: string; packageKind?: string; tier?: string; designerNotes?: string | null; createdAt: string; paymentDeadline: string | null; deliveredAt: string | null; assignedTo: string | null };
   customerId?: number | null;
   customer: { name: string; email?: string; phone?: string };
   invitation: { slug: string; status: string; layoutKey: string; colorScheme: any; style?: InvitationStyle; details: any; photos: string[] } | null;
@@ -183,6 +183,7 @@ export default function OrderDetail({ session, id }: { session: Session; id: num
         </div>
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div><dt className="inline text-slate-500">Order: </dt><dd className="inline">{order.title || '—'} · {order.designName}</dd></div>
+          <div><dt className="inline text-slate-500">Tier: </dt><dd className="inline">{order.tier === 'premium' ? 'Premium' : 'Standard'}</dd></div>
           <div><dt className="inline text-slate-500">Customer: </dt><dd className="inline">
             {data.customerId && customer.name && can(role, 'customers.view')
               ? <><a href={`#/customers/${data.customerId}`} className="text-brand-800 underline">{customer.name}</a>{[customer.email, customer.phone].filter(Boolean).map((s) => ` · ${s}`).join('')}</>

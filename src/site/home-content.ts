@@ -25,7 +25,7 @@ export const INCLUDES = [
   { label: 'RSVP with guest count', detail: 'Guests reply on the page and tell you how many are coming.' },
   { label: 'Map and directions', detail: 'One tap opens the venue in their maps app.' },
   { label: 'Countdown', detail: 'A live countdown to your event.' },
-  { label: 'Photo gallery', detail: 'Share up to 6 of your favourite photos.' },
+  { label: 'Photo gallery', detail: 'Share up to 6 of your favourite photos (12 with Premium).' },
   { label: 'Private manage link', detail: 'Edit your details and see RSVPs any time.' },
   { label: 'Online until 60 days after the event (6 months with Premium)', detail: 'Your guests can revisit it long after the day.' },
 ];

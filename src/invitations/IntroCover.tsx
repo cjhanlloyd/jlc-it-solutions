@@ -7,9 +7,9 @@ import { schemeVars, type Scheme } from './parts';
 export const monogram = (headline: string) =>
   headline.split('&').map((s) => Array.from(s.trim())[0] ?? '').filter(Boolean).join('&').toUpperCase();
 
-type Props = { card: Card; scheme: Scheme; onOpen: () => void };
+type Props = { card: Card; scheme: Scheme; onOpen: () => void; onDone: () => void };
 
-export default function IntroCover({ card, scheme, onOpen }: Props) {
+export default function IntroCover({ card, scheme, onOpen, onDone }: Props) {
   const [opening, setOpening] = useState(false);
   const [gone, setGone] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -27,11 +27,10 @@ export default function IntroCover({ card, scheme, onOpen }: Props) {
     const ms = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 200 : 900;
     const t = setTimeout(() => {
       setGone(true);
-      const main = document.querySelector<HTMLElement>('.inv-root main');
-      if (main) { main.tabIndex = -1; main.focus({ preventScroll: true }); }
+      onDone();
     }, ms);
     return () => clearTimeout(t);
-  }, [opening]);
+  }, [opening, onDone]);
 
   if (gone) return null;
   const open = () => { if (!opening) { onOpen(); setOpening(true); } };

@@ -62,6 +62,12 @@ export default function PremiumExtras({ tracks, style, onStyle, active = true }:
               <input type="radio" name="studio-music" className={radio} checked={style.music === undefined} onChange={() => onStyle(noMusic)} />
               No music
             </label>
+            {style.music !== undefined && !tracks.some((t) => t.id === style.music) && (
+              <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-2 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">
+                <input type="radio" name="studio-music" className={radio} checked readOnly />
+                Current track (no longer available)
+              </label>
+            )}
             {tracks.map((t) => (
               <div key={t.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2">
                 <label className="flex min-w-0 flex-1 items-center gap-3 text-sm text-slate-800 cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-slate-900">

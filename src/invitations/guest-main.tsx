@@ -156,6 +156,14 @@ const Plain = ({ title, children }: { title: string; children: ReactNode }) => (
 function Guest() {
   const [data, setData] = useState<Data>({ state: 'loading' });
   const audio = useRef<HTMLAudioElement>(null);
+  const [opened, setOpened] = useState(false);
+  const onDone = useCallback(() => setOpened(true), []);
+  // Once the cover is gone the invitation is no longer inert, so focus can move into it.
+  useEffect(() => {
+    if (!opened) return;
+    const main = document.querySelector<HTMLElement>('.inv-root main');
+    if (main) { main.tabIndex = -1; main.focus({ preventScroll: true }); }
+  }, [opened]);
   useEffect(() => {
     if (!slug) return setData({ state: 'missing' });
     fetch(`/api/invitations/i/${slug}`)
@@ -172,10 +180,13 @@ function Guest() {
       const card = data.intro ? occasionOf(data.productType)?.card(data.details) : undefined;
       return (
         <>
-          {card && <IntroCover card={card} scheme={scheme} onOpen={() => audio.current?.play().catch(() => {})} />}
+          {card && <IntroCover card={card} scheme={scheme} onOpen={() => audio.current?.play().catch(() => {})} onDone={onDone} />}
+          {/* Behind the aria-modal cover the page is inert, so keyboard and screen readers cannot reach it */}
+          <div inert={!!card && !opened} aria-hidden={card && !opened ? true : undefined}>
           <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} style={data.style}
             rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
           {data.music && <MusicToggle ref={audio} music={data.music} scheme={scheme} />}
+          </div>
         </>
       );
     }

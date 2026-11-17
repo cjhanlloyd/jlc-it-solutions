@@ -40,6 +40,7 @@ test('0012 prices and tiers all eight designs with valid packages, and is re-run
     assert.equal(pk[0].tier, tier);
     assert.equal(pk[0].priceCentavos, price);
     assert.ok(r.description.length > 0 && r.description.length < 300);
+    assert.ok(!/bubbly/i.test(r.description), 'no design-specific animation claims');
     const v = validateDesign({ slug: r.slug, name: r.name, productType: r.product_type, layoutKey: r.layout_key, colorSchemes: JSON.parse(r.color_schemes),
       previewImages: JSON.parse(r.preview_images), description: r.description, sampleDetails: JSON.parse(r.sample_details), packages: pk, active: !!r.active });
     assert.equal(v.ok, true, `${r.slug}: ${v.error}`);

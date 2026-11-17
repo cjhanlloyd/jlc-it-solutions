@@ -71,7 +71,7 @@ export default function MusicPage({ session }: { session: Session }) {
       <Card className="mt-4 max-w-2xl">
         <form onSubmit={upload} className="space-y-3">
           <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} required />
-          <TextField label="Credit (optional)" value={credit} onChange={(e) => setCredit(e.target.value)} maxLength={120} hint="Artist and source, shown to guests." />
+          <TextField label="Credit (optional)" value={credit} onChange={(e) => setCredit(e.target.value)} maxLength={120} hint="Artist and source, shown to guests next to the music button once it plays." />
           <TextField label="MP3 file (up to 8 MB)" type="file" accept="audio/mpeg,.mp3" key={fileKey} onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
           <Button type="submit" loading={busy} disabled={busy || !title.trim()}>Upload track</Button>
         </form>

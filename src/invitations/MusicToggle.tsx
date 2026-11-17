@@ -8,6 +8,7 @@ type Props = { music: Music; scheme: Scheme; ref: RefObject<HTMLAudioElement | n
 
 export default function MusicToggle({ music, scheme, ref }: Props) {
   const [playing, setPlaying] = useState(false);
+  const [started, setStarted] = useState(false); // the credit shows once the music has been started
 
   // Pause while the page is hidden; resume only if it was playing (a guest who muted stays muted).
   useEffect(() => {
@@ -31,11 +32,12 @@ export default function MusicToggle({ music, scheme, ref }: Props) {
 
   return (
     <>
-      <audio ref={ref} src={music.url} loop preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
+      <audio ref={ref} src={music.url} loop preload="none" onPlay={() => { setPlaying(true); setStarted(true); }} onPause={() => setPlaying(false)} />
       <button type="button" className="music-toggle" style={schemeVars(scheme)} onClick={toggle}
-        aria-pressed={playing} aria-label={playing ? 'Mute music' : 'Play music'} title={`♪ ${music.title}`}>
+        aria-label={playing ? 'Mute music' : 'Play music'} title={`♪ ${music.title}`}>
         {playing ? <Volume2 aria-hidden="true" size={20} /> : <VolumeX aria-hidden="true" size={20} />}
       </button>
+      {started && <p className="music-credit" style={schemeVars(scheme)}>♪ {music.title}{music.credit ? ` — ${music.credit}` : ''}</p>}
     </>
   );
 }
