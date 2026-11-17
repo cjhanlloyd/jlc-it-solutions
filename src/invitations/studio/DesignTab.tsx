@@ -6,6 +6,9 @@ import { resolveOrderPackage } from '../../../shared/packages';
 import { peso } from '../kit';
 import { LivePreview } from '../../site/DesignCard';
 import type { Design } from '../../site/designs-api';
+import { isPremium } from '../../site/design-tier';
+import type { Tier } from '../../../shared/tiers';
+import PremiumExtras, { type Tracks } from './PremiumExtras';
 
 const legendCls = 'text-sm font-extrabold text-slate-900 font-display pr-3';
 const cardCls = 'relative block rounded-2xl border border-slate-200 p-3 cursor-pointer hover:border-slate-400 has-[:checked]:border-slate-900 has-[:checked]:ring-1 has-[:checked]:ring-slate-900 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-slate-900';
@@ -22,9 +25,9 @@ function FontCard({ value, label, serif, sans, checked, load, onPick }: { key?: 
 }
 
 // Without designs (the manage page), there is no switcher: switching design after payment changes the product.
-type Props = { designs?: Design[]; slug?: string; packageKey?: string; onSwitch?: (d: Design) => void; schemes: Scheme[]; scheme: string; onScheme: (name: string) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active: boolean };
+type Props = { designs?: Design[]; slug?: string; packageKey?: string; onSwitch?: (d: Design) => void; schemes: Scheme[]; scheme: string; onScheme: (name: string) => void; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; active: boolean; tier?: Tier; tracks?: Tracks };
 
-export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes, scheme, onScheme, style, onStyle, active }: Props) {
+export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes, scheme, onScheme, style, onStyle, active, tier, tracks = null }: Props) {
   // Sample fonts load the first time the tab is shown, not on every page view.
   const [load, setLoad] = React.useState(active);
   React.useEffect(() => { if (active) setLoad(true); }, [active]);
@@ -40,6 +43,7 @@ export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes
   const derived = custom ? deriveScheme(custom.primary, custom.accent) : null;
   const ratio = derived ? contrast(derived.text, derived.background) : 0;
   const { font, ...noFont } = style;
+  const premiumNames = (designs ?? []).filter(isPremium).map((d) => d.name).join(', ');
 
   return (
     <div className="space-y-6">
@@ -64,6 +68,11 @@ export default function DesignTab({ designs, slug, packageKey, onSwitch, schemes
             })}
           </div>
         </fieldset>
+      )}
+
+      {tier === 'premium' && <PremiumExtras tracks={tracks} style={style} onStyle={onStyle} active={active} />}
+      {tier === 'standard' && premiumNames && (
+        <p className="text-xs text-slate-600">Opening animation and background music come with Premium designs: {premiumNames}.</p>
       )}
 
       <fieldset className="space-y-3">

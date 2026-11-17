@@ -10,9 +10,11 @@ import type { InvitationStyle } from '../../shared/invitation-style';
 import DesignTab from './studio/DesignTab';
 import PhotosTab from './studio/PhotosTab';
 import PreviewFrame from './studio/PreviewFrame';
+import { useTracks } from './studio/PremiumExtras';
+import { photoLimit, type Tier } from '../../shared/tiers';
 
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount: number; message: string; submitted: string };
-type Manage = { slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; rsvps: Rsvp[] };
+type Manage = { tier?: Tier; slug: string; productType: string; askKids: boolean; title: string; design: { name: string; layoutKey: string; colorSchemes?: Scheme[] }; colorScheme: Scheme; style?: InvitationStyle; details: any; photos: string[]; rsvps: Rsvp[] };
 
 // Read once and drop the fragment from the address bar and history right away.
 let memoryToken: string | null = null;
@@ -75,6 +77,7 @@ export default function ManagePage({ btn }: { btn: string }) {
   const [copied, setCopied] = React.useState(false);
   const [view, setView] = React.useState<'edit' | 'preview'>('edit');
 
+  const tracks = useTracks(typeof data === 'object' && data?.tier === 'premium');
   const api = (path: string, init?: RequestInit) => fetch(`/api/invitations/manage${path}`, { ...init, headers: { ...init?.headers, 'X-Manage-Token': token } });
 
   React.useEffect(() => {
@@ -211,10 +214,10 @@ export default function ManagePage({ btn }: { btn: string }) {
           <h2 className="text-lg font-extrabold text-slate-900 font-display">Edit details</h2>
           <form.Form draft={draft} onChange={setDraft} lockNames />
           <section aria-label="Design" className="border-t border-slate-200 pt-6">
-            <DesignTab schemes={schemes} scheme={chosen.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active />
+            <DesignTab schemes={schemes} scheme={chosen.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active tier={data.tier === 'premium' ? 'premium' : undefined} tracks={tracks} />
           </section>
           <section aria-label="Photos and cover" className="border-t border-slate-200 pt-6">
-            <PhotosTab photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />
+            <PhotosTab limit={photoLimit(data.tier ?? 'standard')} photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />
           </section>
           {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
           <button type="submit" disabled={saving} className={`w-full px-6 py-3.5 rounded-full text-sm font-bold uppercase tracking-wider font-display text-white shadow-lg cursor-pointer disabled:opacity-60 ${btn}`}>

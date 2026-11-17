@@ -1,6 +1,7 @@
 // Pure studio rules: what carries over when switching designs, and the Review & checkout summary rows.
 import { FONT_PAIRS, type InvitationStyle } from '../../../shared/invitation-style.ts';
 import { resolveOrderPackage, type Package } from '../../../shared/packages.ts';
+import { photoLimit, type Tier } from '../../../shared/tiers.ts';
 import type { StudioTab } from './StudioTabs.tsx';
 
 type Target = { slug: string; packages: Package[]; colorSchemes: { name: string }[] };
@@ -21,6 +22,7 @@ export type ReviewRow = { label: string; value: string; tab: StudioTab; edit?: s
 type ReviewInput = {
   design: string; pkg: { name: string; kind: Package['kind'] }; price: string; scheme: string; style: InvitationStyle; photos: number;
   title: string; date: string; venue: string; notes: string;
+  tier?: Tier; trackTitle?: string; // trackTitle: the chosen music track's title, when known
 };
 
 const longDate = (d: string) =>
@@ -28,6 +30,7 @@ const longDate = (d: string) =>
 
 export function reviewRows(i: ReviewInput): ReviewRow[] {
   const c = i.style.cover;
+  const tier = i.tier ?? 'standard';
   const rows: ReviewRow[] = [
     { label: 'Design', value: i.design, tab: 'design' },
     { label: 'Package', value: `${i.pkg.name} · ${i.price}`, tab: 'design', edit: 'Edit design' }, // the studio has no package control
@@ -39,7 +42,11 @@ export function reviewRows(i: ReviewInput): ReviewRow[] {
         ? ['On', `photo ${c.photo + 1}`, `zoom ${Math.round(c.zoom * 100)}%`, `${c.tone} overlay ${Math.round(c.strength * 100)}%`, ...(c.fade ? ['fade'] : [])].join(' · ')
         : 'Off',
     },
-    { label: 'Photos', value: i.photos ? String(i.photos) : 'None', tab: 'photos' },
+    { label: 'Photos', value: `${i.photos} of ${photoLimit(tier)}`, tab: 'photos' },
+    ...(tier === 'premium' ? [
+      { label: 'Opening animation', value: i.style.intro === false ? 'Off' : 'On', tab: 'design' as const },
+      { label: 'Music', value: i.style.music === undefined ? 'None' : i.trackTitle ?? 'Selected track', tab: 'design' as const },
+    ] : []),
     { label: 'Details', value: [i.title, i.date && longDate(i.date), i.venue].filter(Boolean).join(' · '), tab: 'details' },
   ];
   if (i.pkg.kind === 'custom') rows.push({ label: 'Designer notes', value: i.notes, tab: 'details' });

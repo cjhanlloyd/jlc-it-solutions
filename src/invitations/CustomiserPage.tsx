@@ -16,6 +16,8 @@ import { reviewRows, switchTo } from './studio/review';
 import StudioTabs, { type StudioTab } from './studio/StudioTabs';
 import DesignTab from './studio/DesignTab';
 import PhotosTab from './studio/PhotosTab';
+import { useTracks } from './studio/PremiumExtras';
+import { forTier, photoLimit, tierOf } from '../../shared/tiers';
 import PreviewFrame from './studio/PreviewFrame';
 
 import { resolveOrderPackage } from '../../shared/packages';
@@ -53,6 +55,8 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [paying, setPaying] = React.useState(false);
   const [view, setView] = React.useState<'edit' | 'preview'>('edit');
   const turnstile = useTurnstile();
+  const tierNow = tierOf(Array.isArray(designs) ? resolveOrderPackage(designs.find((x) => x.slug === cur)?.packages ?? [], packageKey) : null);
+  const tracks = useTracks(tierNow === 'premium'); // lazily, once, only for Premium
   const visited = React.useRef([slug]); // every design shown here; each keeps the latest draft (state is per occasion)
   const focusNext = React.useRef<string | null>(null); // element to focus after the next render (entering or leaving Review)
   const saveDraft = (state: Parameters<typeof draftEntries>[2]) => {
@@ -109,6 +113,9 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const chosen = scheme === 'Custom' && style.colors && base ? { ...base, name: 'Custom' } : base;
   const pkg = resolveOrderPackage(design.packages, packageKey);
   if (!pkg) return <p className="py-24 px-4 text-center text-sm text-slate-600">This design can't be ordered online yet. Please contact us.</p>;
+  const tier = tierOf(pkg);
+  const limit = photoLimit(tier);
+  const out = forTier(style, tier); // a Standard design never sends Premium extras, even if picked on a Premium one before switching
   const check = form.check(draft);
   const siblings = (designs as Design[]).filter((d) => d.productType === design.productType);
 
@@ -125,10 +132,13 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   // Details (and designer notes) must be valid before Review; any problem sends the customer to the Details tab.
   const detailsProblem = () =>
     check.ok === false ? `Please fix this first: ${check.error}.` : pkg.kind === 'custom' && !notes.trim() ? 'Please add notes for the designer.' : '';
+  const photosProblem = () => (photos.length > limit ? `Standard designs take up to ${limit} photos: remove ${photos.length - limit} to continue.` : '');
+  const toPhotos = (msg: string) => { focusNext.current = 'studio-photos'; setReview(false); setTab('photos'); setView('edit'); setError(msg); window.scrollTo({ top: 0 }); };
   const toDetails = (msg: string) => { focusNext.current = 'studio-details'; setReview(false); setTab('details'); setView('edit'); setError(msg); window.scrollTo({ top: 0 }); };
   const enterReview = () => {
     const p = detailsProblem();
     if (p) return toDetails(p);
+    if (photosProblem()) return toPhotos(photosProblem());
     setError('');
     focusNext.current = 'review-heading';
     setReview(true);
@@ -142,6 +152,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     if (!review) return enterReview();
     const p = detailsProblem();
     if (p) return toDetails(p);
+    if (photosProblem()) return toPhotos(photosProblem());
     if (!name.trim()) return setError('Please enter your name.');
     if (!terms) return setError('Please agree to the Terms, Refund Policy and Privacy Notice.');
     if (!turnstile.token) return setError('Please wait for the anti-spam check to finish, then try again.');
@@ -152,7 +163,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style, details: draft, photos, email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
+        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.reference) {
@@ -173,7 +184,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
 
   const details = check.ok ? check.details : null;
   const rows = details ? reviewRows({
-    design: design.name, pkg, price: peso(pkg.priceCentavos), scheme: chosen?.name ?? '', style, photos: photos.length,
+    design: design.name, pkg, price: peso(pkg.priceCentavos), scheme: chosen?.name ?? '', style: out, photos: photos.length, tier, trackTitle: Array.isArray(tracks) ? tracks.find((t) => t.id === out.music)?.title : undefined,
     title: occasionOf(design.productType)?.title(details) ?? '', date: details.eventDate ?? '', venue: (details.ceremony ?? details.venue)?.name ?? '', notes: notes.trim(),
   }) : [];
   const submitCls = `w-full inline-flex items-center justify-center px-6 py-3.5 rounded-full text-sm font-bold uppercase tracking-wider font-display text-white shadow-lg cursor-pointer disabled:opacity-60 ${btn}`;
@@ -188,7 +199,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
               <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to design
             </Link>
             <h1 className="text-2xl font-extrabold text-slate-900 font-display">{design.name}</h1>
-            <p className="text-sm text-slate-600">Package: {pkg.name} — {peso(pkg.priceCentavos)} · one-time payment · your invitation stays online until 60 days after the event</p>
+            <p className="text-sm text-slate-600">Package: {pkg.name} — {peso(pkg.priceCentavos)} · one-time payment · your invitation stays online until {tier === 'premium' ? '6 months' : '60 days'} after the event</p>
           </div>
 
           <div hidden={review} className="space-y-6">
@@ -209,10 +220,10 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
             </div>
             <div id="studio-design" tabIndex={-1} role="region" aria-label={TAB_NAMES.design} className="focus:outline-none" hidden={tab !== 'design'}>
               <DesignTab designs={siblings} slug={cur} packageKey={pkg.key} onSwitch={switchDesign}
-                schemes={design.colorSchemes} scheme={chosen?.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active={tab === 'design'} />
+                schemes={design.colorSchemes} scheme={chosen?.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active={tab === 'design'} tier={tier} tracks={tracks} />
             </div>
             <div id="studio-photos" tabIndex={-1} role="region" aria-label={TAB_NAMES.photos} className="focus:outline-none" hidden={tab !== 'photos'}>
-              {chosen && <PhotosTab photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />}
+              {chosen && <PhotosTab limit={limit} photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />}
             </div>
             <div className="space-y-2 border-t border-slate-200 pt-6">
               {check.ok === false && !error && <p className="text-xs text-amber-800">Still needed: {check.error}.</p>}
@@ -275,7 +286,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
         <section aria-label={review ? 'Preview of your invitation' : 'Live preview'} className={`${view === 'preview' ? 'block' : 'hidden'} lg:block min-w-0`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
             <PreviewFrame cover={style.cover} onFocus={review || tab !== 'photos' ? undefined : (f) => setStyle((s) => (s.cover ? { ...s, cover: { ...s.cover, ...f } } : s))}>
-              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={style} />}
+              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} />}
             </PreviewFrame>
           </div>
         </section>

@@ -38,9 +38,9 @@ function useCoverAverage(src: string | null, c: Cover | undefined) {
   return avg;
 }
 
-type Props = { photos: string[]; onPhotos: React.Dispatch<React.SetStateAction<string[]>>; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; primary: string };
+type Props = { photos: string[]; onPhotos: React.Dispatch<React.SetStateAction<string[]>>; style: InvitationStyle; onStyle: (s: InvitationStyle) => void; primary: string; limit?: number };
 
-export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }: Props) {
+export default function PhotosTab({ photos, onPhotos, style, onStyle, primary, limit = 6 }: Props) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const dragFrom = React.useRef<number | null>(null);
@@ -63,7 +63,7 @@ export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }:
     setBusy(true);
     setError('');
     const added: string[] = [];
-    for (const f of Array.from(files).slice(0, LIMITS.photos - photos.length)) {
+    for (const f of Array.from(files).slice(0, limit - photos.length)) {
       try {
         const url = await resizePhoto(f);
         if (!PHOTO_RE.test(url)) setError('Please use JPEG, PNG or WebP photos.');
@@ -73,9 +73,9 @@ export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }:
         setError('We could not read one of the photos. Please use JPEG or PNG photos.');
       }
     }
-    if (files.length > LIMITS.photos - photos.length) setError(`You can add up to ${LIMITS.photos} photos.`);
+    if (files.length > limit - photos.length) setError(`You can add up to ${limit} photos.`);
     // Appending never moves the cover, so only photos change: style edits made while resizing are kept.
-    onPhotos((cur) => [...cur, ...added].slice(0, LIMITS.photos));
+    onPhotos((cur) => [...cur, ...added].slice(0, limit));
     setBusy(false);
   };
 
@@ -85,7 +85,8 @@ export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }:
   return (
     <div className="space-y-6">
       <fieldset className="space-y-3">
-        <legend className={legendCls}>Photos (up to {LIMITS.photos})</legend>
+        <legend className={legendCls}>Photos (up to {limit})</legend>
+        {photos.length > limit && <p role="alert" className="text-xs font-semibold text-red-700">Standard designs take up to {limit} photos: remove {photos.length - limit} to continue.</p>}
         <p className="text-xs text-slate-600">Drag photos or use the arrows to change their order. Pick one as the cover of your invitation.</p>
         <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {photos.map((p, i) => (
@@ -107,7 +108,7 @@ export default function PhotosTab({ photos, onPhotos, style, onStyle, primary }:
               </div>
             </li>
           ))}
-          {photos.length < LIMITS.photos && (
+          {photos.length < limit && (
             <li>
               <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-500 flex flex-col items-center justify-center text-slate-600 text-xs font-bold cursor-pointer text-center p-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-slate-900">
                 <ImagePlus className="h-6 w-6 mb-1" />

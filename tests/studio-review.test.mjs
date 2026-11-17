@@ -54,7 +54,7 @@ test('the review summary lists every choice with the tab that edits it', () => {
   assert.equal(row(rows, 'Font').value, 'Design default');
   assert.equal(row(rows, 'Colours').value, 'Sage');
   assert.equal(row(rows, 'Cover').value, 'Off');
-  assert.equal(row(rows, 'Photos').value, 'None');
+  assert.equal(row(rows, 'Photos').value, '0 of 6');
   assert.equal(row(rows, 'Details').value, 'Anna & Ben · Sunday, March 14, 2027 · Manila Cathedral');
 });
 
@@ -66,7 +66,7 @@ test('the review summary describes custom colours, the cover settings and design
   assert.equal(row(rows, 'Font').value, 'Elegant');
   assert.equal(row(rows, 'Colours').value, 'Custom (#7a1f3d, #d4af37)');
   assert.equal(row(rows, 'Cover').value, 'On · photo 1 · zoom 150% · dark overlay 50% · fade');
-  assert.equal(row(rows, 'Photos').value, '3');
+  assert.equal(row(rows, 'Photos').value, '3 of 6');
   assert.equal(row(rows, 'Details').value, 'Anna & Ben · Sunday, March 14, 2027');
   assert.deepEqual(row(rows, 'Designer notes'), { label: 'Designer notes', value: 'Gold foil please', tab: 'details' });
 });
@@ -77,4 +77,25 @@ test('the draft is saved under every design visited, so Back after a switch rest
   const entries = draftEntries('k:', ['classic', 'garden'], state);
   assert.deepEqual(entries.map(([k]) => k), ['k:classic', 'k:garden']);
   for (const [k, raw] of entries) assert.equal(parseDraft(raw, k.slice(2)).draft.partner1, 'Latest');
+});
+
+test('the review summary shows photos against the tier cap, and the Premium extras only for Premium', () => {
+  const std = reviewRows({ ...input, photos: 3 });
+  assert.equal(row(std, 'Photos').value, '3 of 6');
+  assert.equal(row(std, 'Opening animation'), undefined);
+  assert.equal(row(std, 'Music'), undefined);
+  const prem = reviewRows({ ...input, tier: 'premium', photos: 0 });
+  assert.equal(row(prem, 'Photos').value, '0 of 12');
+  assert.equal(row(prem, 'Opening animation').value, 'On');
+  assert.equal(row(prem, 'Music').value, 'None');
+  const off = reviewRows({ ...input, tier: 'premium', style: { intro: false, music: 4 }, trackTitle: 'Morning Light' });
+  assert.equal(row(off, 'Opening animation').value, 'Off');
+  assert.equal(row(off, 'Music').value, 'Morning Light');
+});
+
+test('forTier drops the Premium extras for Standard and leaves Premium alone', async () => {
+  const { forTier } = await import('../shared/tiers.ts');
+  const s = { v: 1, font: 'modern', intro: false, music: 3 };
+  assert.deepEqual(forTier(s, 'standard'), { v: 1, font: 'modern' });
+  assert.equal(forTier(s, 'premium'), s);
 });
