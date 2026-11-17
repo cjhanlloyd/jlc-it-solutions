@@ -13,10 +13,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try { rest = decodeURIComponent(path.slice('/media/'.length)); } catch { return NOT_FOUND(); }
   // The strict pattern alone rules out '..', leading '/', backslashes and encoded traversal
   if (!path.startsWith('/media/') || !REST.test(rest)) return NOT_FOUND();
-  const obj = await env.PHOTOS.get('media/' + rest);
+  // R2 reads the Range header itself; iOS Safari needs 206 to play and seek audio
+  let obj: R2ObjectBody | null;
+  try { obj = await env.PHOTOS.get('media/' + rest, { range: request.headers }); } catch { return new Response('Range not satisfiable', { status: 416 }); }
   if (!obj) return NOT_FOUND();
-  return new Response(obj.body, { headers: {
+  const r = obj.range as { offset?: number; length?: number } | undefined;
+  const slice = r && obj.size > 0 ? { start: r.offset ?? 0, len: r.length ?? obj.size - (r.offset ?? 0) } : null;
+  return new Response(obj.body, { status: slice ? 206 : 200, headers: {
     ...SECURITY_HEADERS,
+    'Accept-Ranges': 'bytes',
+    ...(slice ? { 'Content-Range': `bytes ${slice.start}-${slice.start + slice.len - 1}/${obj.size}`, 'Content-Length': String(slice.len) } : {}),
     'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream',
     'Cache-Control': 'public, max-age=31536000, immutable',
     'X-Content-Type-Options': 'nosniff',

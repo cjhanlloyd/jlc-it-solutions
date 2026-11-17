@@ -54,9 +54,19 @@ export function makeD1({ migrations = true } = {}) {
 
 export function makeR2({ pageSize = 1000 } = {}) {
   const m = new Map();
-  const view = (key) => {
+  // Handles `bytes=a-b` and `bytes=a-` from a Headers range; a start past the end throws like R2
+  const view = (key, opts = {}) => {
     const o = m.get(key);
-    return o && { key, body: o.body, httpMetadata: o.httpMetadata, size: o.bytes.byteLength, uploaded: o.uploaded,
+    const r = /^bytes=(\d+)-(\d*)$/.exec(opts.range?.get?.('range') ?? '');
+    let range, body = o?.body;
+    if (o && r) {
+      const start = Number(r[1]), size = o.bytes.byteLength;
+      if (start >= size) throw new Error('range not satisfiable');
+      const end = Math.min(r[2] === '' ? size - 1 : Number(r[2]), size - 1);
+      range = { offset: start, length: end - start + 1 };
+      body = o.bytes.slice(start, end + 1);
+    }
+    return o && { key, body, range, httpMetadata: o.httpMetadata, size: o.bytes.byteLength, uploaded: o.uploaded,
       arrayBuffer: async () => o.bytes.buffer.slice(o.bytes.byteOffset, o.bytes.byteOffset + o.bytes.byteLength) };
   };
   return {
@@ -65,7 +75,7 @@ export function makeR2({ pageSize = 1000 } = {}) {
       const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : new Uint8Array(body instanceof ArrayBuffer ? body : body.buffer ? body : await new Response(body).arrayBuffer());
       m.set(key, { body, bytes, httpMetadata: opts.httpMetadata || {}, uploaded: new Date() });
     },
-    async get(key) { return view(key) || null; },
+    async get(key, opts) { return view(key, opts) || null; },
     async head(key) { return view(key) || null; },
     async delete(k) { for (const key of [].concat(k)) m.delete(key); },
     async list({ prefix = '', limit = pageSize, cursor } = {}) {

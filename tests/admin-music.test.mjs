@@ -98,3 +98,21 @@ test('an Editor is refused and no token is 401', async () => {
   assert.equal((await post({ action: 'create', title: 'x', credit: '', file: mp3Url() }, 'ed')).status, 403);
   assert.equal((await call(musicFn, '/api/admin/music')).status, 401);
 });
+
+test('media route honours Range for audio: 206 slice, 200 without, 416 when unsatisfiable', async () => {
+  await create();
+  const [t] = await list();
+  const get = (range) => mediaFn({ request: new Request('https://shop.test' + t.url, { headers: range ? { Range: range } : {} }), env: { PHOTOS: r2 } });
+  const full = await get();
+  assert.equal(full.status, 200);
+  assert.equal(full.headers.get('Accept-Ranges'), 'bytes');
+  const part = await get('bytes=0-3');
+  assert.equal(part.status, 206);
+  assert.equal(part.headers.get('Content-Range'), 'bytes 0-3/10');
+  assert.equal(part.headers.get('Content-Length'), '4');
+  assert.deepEqual([...new Uint8Array(await part.arrayBuffer())], [0x49, 0x44, 0x33, 4]);
+  const open = await get('bytes=6-');
+  assert.equal(open.headers.get('Content-Range'), 'bytes 6-9/10');
+  assert.equal((await get('bytes=500-')).status, 416);
+  assert.equal((await get('garbage')).status, 200);
+});
