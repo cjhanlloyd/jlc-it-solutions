@@ -6,6 +6,7 @@ import { NavLink } from './NavLink';
 import { peso, useInvitationFonts } from '../invitations/kit';
 import { formOf } from '../invitations/forms';
 import { occasionLabel } from '../invitations/occasions';
+import { sampleStyle } from '../../shared/invitation-style';
 
 const InvitationView = React.lazy(() => import('../invitations/InvitationView'));
 
@@ -47,7 +48,7 @@ export function LivePreview({ design, eager = false }: { design: Design; eager?:
         {(near || eager) && scale > 0 && scheme && (
           <div style={{ width: RENDER_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
             <React.Suspense fallback={null}>
-              <InvitationView layoutKey={design.layoutKey} scheme={scheme} details={sampleOf(design)} photos={[]} />
+              <InvitationView layoutKey={design.layoutKey} scheme={scheme} details={sampleOf(design)} photos={design.samplePhotos ?? []} style={sampleStyle(design.samplePhotos?.length ?? 0)} />
             </React.Suspense>
           </div>
         )}

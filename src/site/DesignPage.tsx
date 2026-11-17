@@ -2,6 +2,7 @@
 import React from 'react';
 import { ArrowLeft, ArrowRight, Check, Smartphone } from 'lucide-react';
 import InvitationView from '../invitations/InvitationView';
+import { sampleStyle } from '../../shared/invitation-style';
 import { peso, useInvitationFonts } from '../invitations/kit';
 import { formOf } from '../invitations/forms';
 import { occasionLabel } from '../invitations/occasions';
@@ -138,7 +139,7 @@ export default function DesignPage({ slug }: { slug: string }) {
   const pkg = pickPackage(design.packages, pkgKey);
   const custom = pkg?.kind === 'custom';
   const orderable = formOf(design.productType) !== null;
-  const preview = scheme && <InvitationView layoutKey={design.layoutKey} scheme={scheme} details={sampleOf(design)} photos={[]} />;
+  const preview = scheme && <InvitationView layoutKey={design.layoutKey} scheme={scheme} details={sampleOf(design)} photos={design.samplePhotos ?? []} style={sampleStyle(design.samplePhotos?.length ?? 0)} />;
 
   return (
     <div className="bg-ivory font-sans text-ink select-text">

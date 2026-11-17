@@ -48,14 +48,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   try {
     if (route === 'GET /api/invitations/designs') {
       const { results } = await env.DB.prepare(
-        'SELECT id, slug, name, product_type, layout_key, price_centavos, packages, color_schemes, preview_images, sample_details, description, featured FROM products_designs WHERE active = 1 ORDER BY sort_order, id',
+        'SELECT id, slug, name, product_type, layout_key, price_centavos, packages, color_schemes, preview_images, sample_photos, sample_details, description, featured FROM products_designs WHERE active = 1 ORDER BY sort_order, id',
       ).all<any>();
       return json({ designs: (results || []).filter((d) => occasionOf(d.product_type)).map((d) => {
         const packages = packagesOf(d);
         return {
           slug: d.slug, name: d.name, productType: d.product_type, layoutKey: d.layout_key,
           packages, fromPriceCentavos: fromPrice(packages), priceCentavos: fromPrice(packages), // priceCentavos: older clients
-          colorSchemes: parse(d.color_schemes, []), previewImages: parse(d.preview_images, []), sampleDetails: parse(d.sample_details, {}),
+          colorSchemes: parse(d.color_schemes, []), previewImages: parse(d.preview_images, []), samplePhotos: parse(d.sample_photos, []), sampleDetails: parse(d.sample_details, {}),
           description: d.description, featured: !!d.featured,
         };
       }) });

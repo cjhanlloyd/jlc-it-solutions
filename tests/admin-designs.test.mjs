@@ -185,3 +185,28 @@ test('Editor → 403; no token → 401; old invitations designs route gone', asy
   const overview = await (await call(invitationsFn, '/api/admin/invitations/overview', { as: 'boss' })).json();
   assert.equal(overview.designs, undefined);
 });
+
+test('sample photos: stored as /media/design/…, returned by the admin and shop APIs, removed objects deleted', async () => {
+  const { onRequest: shopFn } = await bundle('functions/api/invitations/[[path]].ts');
+  const id = await create({ samplePhotos: [pngUrl, 'https://cdn.test/s.jpg'] });
+  const samples = JSON.parse(row(id).sample_photos);
+  assert.match(samples[0], /^\/media\/design\/\d+-[a-z0-9]{8}\.png$/);
+  assert.equal(samples[1], 'https://cdn.test/s.jpg');
+  assert.deepEqual(JSON.parse(row(id).preview_images), ['https://cdn.test/a.jpg']);
+  assert.deepEqual((await (await get(`/${id}`)).json()).design.samplePhotos, samples);
+  const shop = await shopFn({ request: new Request('http://x/api/invitations/designs'), env: { DB: db, PHOTOS: r2 } });
+  assert.deepEqual((await shop.json()).designs.find((d) => d.slug === good.slug).samplePhotos, samples);
+  const key = 'media' + samples[0].slice('/media'.length);
+  // Moving a sample photo into the preview images keeps the object
+  assert.equal((await post({ ...good, action: 'update', id, previewImages: [samples[0]], samplePhotos: [] })).status, 200);
+  assert.ok(r2.map.has(key));
+  assert.equal((await post({ ...good, action: 'update', id, previewImages: [], samplePhotos: [] })).status, 200);
+  assert.equal(r2.map.has(key), false);
+});
+
+test('sample photos: bad entries and more than 6 → 400; omitted means none', async () => {
+  assert.match((await (await post({ ...good, samplePhotos: ['http://insecure/a.jpg'] })).json()).error, /Sample photos/);
+  assert.equal((await (await post({ ...good, samplePhotos: Array(7).fill('https://cdn.test/a.jpg') })).json()).error, 'A design can have up to 6 sample photos.');
+  const id = await create();
+  assert.equal(row(id).sample_photos, '[]');
+});

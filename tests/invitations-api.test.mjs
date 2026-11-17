@@ -82,7 +82,7 @@ test('designs lists active designs with public fields only', async () => {
   assert.equal(res.status, 200);
   const { designs } = await res.json();
   assert.equal(designs.length, 2);
-  assert.deepEqual(Object.keys(designs[0]).sort(), ['colorSchemes', 'description', 'featured', 'fromPriceCentavos', 'layoutKey', 'name', 'packages', 'previewImages', 'priceCentavos', 'productType', 'sampleDetails', 'slug']);
+  assert.deepEqual(Object.keys(designs[0]).sort(), ['colorSchemes', 'description', 'featured', 'fromPriceCentavos', 'layoutKey', 'name', 'packages', 'previewImages', 'priceCentavos', 'productType', 'sampleDetails', 'samplePhotos', 'slug']);
   assert.equal(designs[0].productType, 'wedding_invitation');
   assert.equal(designs[0].colorSchemes[0].name, 'Blush');
 });

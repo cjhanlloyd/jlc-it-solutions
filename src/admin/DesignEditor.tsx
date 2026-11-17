@@ -9,18 +9,19 @@ import { slugify } from './design-form';
 import { ImagesEditor, NEW_SCHEME, SchemesEditor, type NamedScheme } from './DesignParts';
 import PackagesEditor, { newRow, packagesError, toPackages, toRows, type PackageRow } from './PackagesEditor';
 
+import { sampleStyle } from '../../shared/invitation-style';
 const InvitationView = lazy(() => import('../invitations/InvitationView'));
 
 type Form = {
   name: string; slug: string; slugEdited: boolean; productType: string; layoutKey: string; description: string;
-  featured: boolean; active: boolean; schemes: NamedScheme[]; images: string[]; sampleText: string; packages: PackageRow[];
+  featured: boolean; active: boolean; schemes: NamedScheme[]; images: string[]; samples: string[]; sampleText: string; packages: PackageRow[];
 };
 
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
 const FIRST_TYPE = Object.keys(OCCASIONS)[0];
 const blank = (productType = FIRST_TYPE): Form => ({
   name: '', slug: '', slugEdited: false, productType, layoutKey: OCCASIONS[productType].layouts[0], description: '',
-  featured: false, active: true, schemes: [NEW_SCHEME], images: [], sampleText: pretty(SAMPLES[productType] ?? {}), packages: [newRow('Standard', '999')],
+  featured: false, active: true, schemes: [NEW_SCHEME], images: [], samples: [], sampleText: pretty(SAMPLES[productType] ?? {}), packages: [newRow('Standard', '999')],
 });
 
 // Sample details JSON → the occasion's cleaned details, or an error message
@@ -52,7 +53,7 @@ export default function DesignEditor({ session, id }: { session: Session; id: nu
     const { design: d } = await session.api(`/api/admin/designs/${id}`);
     return { orderCount: d.orderCount, f: {
       name: d.name, slug: d.slug, slugEdited: true, productType: d.productType, layoutKey: d.layoutKey, description: d.description,
-      featured: d.featured, active: d.active, schemes: d.colorSchemes, images: d.previewImages, sampleText: pretty(d.sampleDetails), packages: toRows(d.packages),
+      featured: d.featured, active: d.active, schemes: d.colorSchemes, images: d.previewImages, samples: d.samplePhotos ?? [], sampleText: pretty(d.sampleDetails), packages: toRows(d.packages),
     } };
   }
   useEffect(() => {
@@ -105,14 +106,14 @@ export default function DesignEditor({ session, id }: { session: Session; id: nu
       const r = await session.api<{ id: number }>('/api/admin/designs', {
         action: id ? 'update' : 'create', ...(id ? { id } : {}),
         name: form.name, slug: form.slug, productType: form.productType, layoutKey: form.layoutKey, description: form.description,
-        featured: form.featured, active: form.active, colorSchemes: form.schemes, previewImages: form.images,
+        featured: form.featured, active: form.active, colorSchemes: form.schemes, previewImages: form.images, samplePhotos: form.samples,
         sampleDetails: s.ok ? s.details : null, packages: toPackages(form.packages),
       });
       if (id) {
         // Adopt only server-owned values (uploaded images as /media/ paths, normalised packages, order count); keep the rest as typed
         try {
           const { f: srv, orderCount: n } = await fetchDesign();
-          const next = { ...form, images: srv.images, packages: srv.packages };
+          const next = { ...form, images: srv.images, samples: srv.samples, packages: srv.packages };
           setForm(next);
           setClean(JSON.stringify(next));
           setOrderCount(n);
@@ -190,6 +191,12 @@ export default function DesignEditor({ session, id }: { session: Session; id: nu
           </Card>
 
           <Card>
+            <h2 className="font-display text-lg font-semibold">Sample photos</h2>
+            <p className="mt-1 text-sm text-slate-600">Shown in the shop's live previews: the first is the cover, the rest fill the gallery. Customers replace them with their own photos when they customise.</p>
+            <div className="mt-4"><ImagesEditor images={form.samples} onChange={(samples) => set({ samples })} label="Sample photo" hint="JPEG, PNG or WebP. Photos are resized before upload; portrait photos work best for the cover." /></div>
+          </Card>
+
+          <Card>
             <h2 className="font-display text-lg font-semibold">Packages</h2>
             <p className="mt-1 text-sm text-slate-600">The lowest Template price is the design's “From” price.</p>
             <div className="mt-4"><PackagesEditor rows={form.packages} onChange={(packages) => set({ packages })} /></div>
@@ -219,7 +226,7 @@ export default function DesignEditor({ session, id }: { session: Session; id: nu
             <div className="mt-3 max-h-[75vh] overflow-y-auto rounded-control border border-slate-200">
               {previewDetails?.type === form.productType ? (
                 <Suspense fallback={<p className="flex items-center gap-2 p-4 text-sm text-slate-600"><Spinner /> Loading preview…</p>}>
-                  <InvitationView key={form.productType} layoutKey={form.layoutKey} scheme={scheme} details={previewDetails.details} photos={[]} />
+                  <InvitationView key={form.productType} layoutKey={form.layoutKey} scheme={scheme} details={previewDetails.details} photos={form.samples} style={sampleStyle(form.samples.length)} />
                 </Suspense>
               ) : <p className="p-4 text-sm text-slate-600">Fix the sample details to see a preview.</p>}
             </div>

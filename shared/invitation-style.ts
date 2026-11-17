@@ -4,6 +4,10 @@ export type Cover = { photo: number | string; x: number; y: number; zoom: number
 export type InvitationStyle = { v?: 1; font?: FontKey; colors?: { primary: string; accent: string }; cover?: Cover };
 export type FontKey = 'classic' | 'modern' | 'romantic' | 'playful' | 'elegant';
 
+// Shop previews: a design's first sample photo becomes the cover, under a soft dark overlay so the names stay readable.
+export const sampleStyle = (photoCount: number): InvitationStyle =>
+  photoCount > 0 ? { v: 1, cover: { photo: 0, x: 50, y: 40, zoom: 1, tone: 'dark', strength: 0.35, fade: false } } : {};
+
 const pair = (label: string, serif: string, sans: string, serifW = ':wght@400;600', sansW = ':wght@400;600') => ({
   label, serif, sans,
   googleFamilies: [serif.replace(/ /g, '+') + serifW, sans.replace(/ /g, '+') + sansW],

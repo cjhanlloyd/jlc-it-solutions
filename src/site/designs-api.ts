@@ -3,7 +3,7 @@ import type { Package } from '../../shared/packages.ts';
 export type Design = {
   slug: string; name: string; productType: string; layoutKey: string; priceCentavos: number; packages: Package[]; fromPriceCentavos: number;
   colorSchemes: { name: string; primary: string; accent: string; background: string; text: string }[];
-  previewImages: string[]; sampleDetails: any; description: string; featured: boolean;
+  previewImages: string[]; samplePhotos?: string[]; sampleDetails: any; description: string; featured: boolean;
 };
 
 let memo: Promise<Design[]> | null = null;

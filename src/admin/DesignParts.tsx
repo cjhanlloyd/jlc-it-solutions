@@ -42,7 +42,7 @@ export function SchemesEditor({ schemes, onChange }: { schemes: NamedScheme[]; o
 
 const MAX_IMAGES = 6;
 
-export function ImagesEditor({ images, onChange }: { images: string[]; onChange: (i: string[]) => void }) {
+export function ImagesEditor({ images, onChange, label = 'Preview image', hint = 'JPEG, PNG or WebP. Images are resized before upload; the first one is the shop thumbnail.' }: { images: string[]; onChange: (i: string[]) => void; label?: string; hint?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function add(e: ChangeEvent<HTMLInputElement>) {
@@ -66,11 +66,11 @@ export function ImagesEditor({ images, onChange }: { images: string[]; onChange:
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {images.map((src, i) => (
             <li key={i} className="rounded-control border border-slate-200 p-2">
-              <img src={src} alt={`Preview image ${i + 1}`} className="aspect-[4/5] w-full rounded object-cover" />
+              <img src={src} alt={`${label} ${i + 1}`} className="aspect-[4/5] w-full rounded object-cover" />
               <div className="mt-2 flex flex-wrap gap-1">
-                <Button size="sm" variant="secondary" disabled={busy || i === 0} onClick={() => onChange(move(images, i, -1))} aria-label={`Move image ${i + 1} earlier`}>←</Button>
-                <Button size="sm" variant="secondary" disabled={busy || i === images.length - 1} onClick={() => onChange(move(images, i, 1))} aria-label={`Move image ${i + 1} later`}>→</Button>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => onChange(images.filter((_, j) => j !== i))} aria-label={`Remove image ${i + 1}`}>Remove</Button>
+                <Button size="sm" variant="secondary" disabled={busy || i === 0} onClick={() => onChange(move(images, i, -1))} aria-label={`Move ${label.toLowerCase()} ${i + 1} earlier`}>←</Button>
+                <Button size="sm" variant="secondary" disabled={busy || i === images.length - 1} onClick={() => onChange(move(images, i, 1))} aria-label={`Move ${label.toLowerCase()} ${i + 1} later`}>→</Button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => onChange(images.filter((_, j) => j !== i))} aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}>Remove</Button>
               </div>
             </li>
           ))}
@@ -83,7 +83,7 @@ export function ImagesEditor({ images, onChange }: { images: string[]; onChange:
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={add} className="sr-only" />
           </label>
         ) : <p className="text-sm text-slate-600">Up to {MAX_IMAGES} images.</p>}
-        <p className="mt-1 text-xs text-slate-600">JPEG, PNG or WebP. Images are resized before upload; the first one is the shop thumbnail.</p>
+        <p className="mt-1 text-xs text-slate-600">{hint}</p>
         {error && <p role="alert" className="mt-1 text-sm font-medium text-red-700">{error}</p>}
       </div>
     </div>

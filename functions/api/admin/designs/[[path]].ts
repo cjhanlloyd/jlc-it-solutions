@@ -23,7 +23,7 @@ const keyOf = (path: string) => 'media/' + path.slice('/media/'.length);
 const SELECT = 'SELECT d.*, (SELECT COUNT(*) FROM orders o JOIN invitations i ON i.id = o.product_id WHERE i.design_id = d.id) AS orderCount FROM products_designs d';
 const summary = (d: any) => ({
   id: d.id, slug: d.slug, name: d.name, productType: d.product_type, layoutKey: d.layout_key, active: !!d.active, featured: !!d.featured,
-  sortOrder: d.sort_order, fromPriceCentavos: d.price_centavos, previewImages: parse(d.preview_images, []), packages: parse(d.packages, []), orderCount: d.orderCount,
+  sortOrder: d.sort_order, fromPriceCentavos: d.price_centavos, previewImages: parse(d.preview_images, []), samplePhotos: parse(d.sample_photos, []), packages: parse(d.packages, []), orderCount: d.orderCount,
 });
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -85,25 +85,32 @@ async function action(env: Env, me: Admin, b: any): Promise<Response> {
     // Live invitations read layout_key and product_type from their design, so both are fixed for life
     if (stored.layout_key !== d.layout_key || stored.product_type !== d.product_type) return json({ error: "A design's layout and type can't be changed; add a new design instead." }, 409);
     if (stored.slug !== d.slug && stored.orderCount > 0) return json({ error: "This design already has orders, so its web address can't change." }, 409);
-    oldImages = parse(stored.preview_images, []);
+    oldImages = [...parse(stored.preview_images, []), ...parse(stored.sample_photos, [])];
   }
   // A /media/ path may only be one this design already has (never on create), so no design can claim and later delete another's image
-  if ((d.images as string[]).some((u) => MEDIA_PATH_RE.test(u) && !oldImages.includes(u))) return json({ error: "That image doesn't belong to this design." }, 400);
+  if ([...d.images, ...d.samples].some((u: string) => MEDIA_PATH_RE.test(u) && !oldImages.includes(u))) return json({ error: "That image doesn't belong to this design." }, 400);
   const taken = await env.DB.prepare('SELECT id FROM products_designs WHERE slug = ? AND id != ?').bind(d.slug, b.action === 'update' ? b.id : 0).first();
   if (taken) return SLUG_TAKEN();
 
   // Upload new images; on any failure remove what this request already stored
   const uploaded: string[] = [];
   const dropUploaded = () => Promise.all(uploaded.map((k) => deleteMedia(env.PHOTOS, k)));
-  const images: string[] = [];
-  try {
-    for (const img of d.images as string[]) {
-      if (!img.startsWith('data:')) { images.push(img); continue; }
+  // New data-URL images go to R2; existing paths and URLs stay as they are. Returns an error message on a bad image.
+  const store = async (list: string[], out: string[]): Promise<string | null> => {
+    for (const img of list) {
+      if (!img.startsWith('data:')) { out.push(img); continue; }
       const r = await putMedia(env.PHOTOS, 'design', img);
-      if ('error' in r) { await dropUploaded(); return json({ error: r.error }, 400); }
+      if ('error' in r) return r.error;
       uploaded.push(r.key);
-      images.push(mediaUrl(r.key));
+      out.push(mediaUrl(r.key));
     }
+    return null;
+  };
+  const images: string[] = [];
+  const samples: string[] = [];
+  try {
+    const err = (await store(d.images, images)) ?? (await store(d.samples, samples));
+    if (err) { await dropUploaded(); return json({ error: err }, 400); }
   } catch (e) {
     await dropUploaded(); // R2 put threw: remove what this request already stored
     throw e;
@@ -111,15 +118,15 @@ async function action(env: Env, me: Admin, b: any): Promise<Response> {
 
   let newId = b.id;
   try {
-    const fields = [d.slug, d.name, d.price_centavos, d.color_schemes, JSON.stringify(images), d.sample_details, d.active, d.description, d.featured, d.packages];
+    const fields = [d.slug, d.name, d.price_centavos, d.color_schemes, JSON.stringify(images), JSON.stringify(samples), d.sample_details, d.active, d.description, d.featured, d.packages];
     if (b.action === 'create') {
       const r = await env.DB.prepare(
-        'INSERT INTO products_designs (slug, name, price_centavos, color_schemes, preview_images, sample_details, active, description, featured, packages, layout_key, product_type, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM products_designs))',
+        'INSERT INTO products_designs (slug, name, price_centavos, color_schemes, preview_images, sample_photos, sample_details, active, description, featured, packages, layout_key, product_type, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM products_designs))',
       ).bind(...fields, d.layout_key, d.product_type).run();
       newId = r.meta.last_row_id;
     } else {
       const r = await env.DB.prepare(
-        'UPDATE products_designs SET slug = ?, name = ?, price_centavos = ?, color_schemes = ?, preview_images = ?, sample_details = ?, active = ?, description = ?, featured = ?, packages = ? WHERE id = ?',
+        'UPDATE products_designs SET slug = ?, name = ?, price_centavos = ?, color_schemes = ?, preview_images = ?, sample_photos = ?, sample_details = ?, active = ?, description = ?, featured = ?, packages = ? WHERE id = ?',
       ).bind(...fields, b.id).run();
       if (!r.meta.changes) { await dropUploaded(); return NOT_FOUND(); }
     }
@@ -130,7 +137,7 @@ async function action(env: Env, me: Admin, b: any): Promise<Response> {
   }
 
   // Saved: now remove uploaded images the admin took out of the list
-  const removed = oldImages.filter((u) => MEDIA_PATH_RE.test(u) && !images.includes(u));
+  const removed = oldImages.filter((u) => MEDIA_PATH_RE.test(u) && !images.includes(u) && !samples.includes(u));
   try { await Promise.all(removed.map((u) => deleteMedia(env.PHOTOS, keyOf(u)))); } catch (e) { console.error('design media cleanup failed:', e); }
   await audit(`${b.action === 'create' ? 'created' : 'updated'} design ${d.slug}`);
   return json({ ok: true, id: newId });
