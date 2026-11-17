@@ -165,7 +165,7 @@ test('manage with the correct token returns details and RSVPs', async () => {
   assert.equal(data.title, 'Maria & Juan');
   assert.equal(data.askKids, false);
   assert.deepEqual(data.photos, ['inv/1/0.png']);
-  assert.deepEqual(data.rsvps, [{ guestName: 'Ana', attending: true, partySize: 2, message: 'Yay', submitted: '2026-11-10 08:00:00', kidsCount: 0 }]);
+  assert.deepEqual(data.rsvps, [{ guestName: 'Ana', attending: true, partySize: 2, message: 'Yay', submitted: '2026-11-10 08:00:00', kidsCount: 0, guestId: null }]);
 });
 
 test('manage: renaming partner2 → 400, nothing stored', async () => {

@@ -83,16 +83,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     const guestSlug = route.match(/^GET \/api\/invitations\/i\/([^/]+)$/)?.[1];
-    if (guestSlug) return await guest(env, decodeSegment(guestSlug));
+    if (guestSlug) return await guest(env, decodeSegment(guestSlug), url.searchParams.get('g'));
 
-    if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv') {
+    if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv'
+      || route === 'GET /api/invitations/manage/guests' || route === 'POST /api/invitations/manage/guests') {
       const inv = await findManagedInvitation(env.DB, request);
       if (!inv) return NOT_FOUND();
+      if (url.pathname.replace(/\/+$/, '').endsWith('/guests')) return request.method === 'POST' ? await manageGuests(request, env, inv) : await listGuests(env, inv);
       if (request.method === 'POST') return await manageEdit(request, env, inv);
       const { results } = await env.DB.prepare(
-        'SELECT guest_name, attending, party_size, kids_count, message, created_at FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
+        'SELECT guest_name, attending, party_size, kids_count, message, created_at, guest_id FROM rsvps WHERE invitation_id = ? ORDER BY created_at, id',
       ).bind(inv.id).all<any>();
-      const rsvps = (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, kidsCount: r.kids_count ?? 0, message: r.message ?? '', submitted: r.created_at }));
+      const rsvps = (results || []).map((r) => ({ guestName: r.guest_name, attending: !!r.attending, partySize: r.party_size, kidsCount: r.kids_count ?? 0, message: r.message ?? '', submitted: r.created_at, guestId: r.guest_id ?? null }));
       const occasion = occasionOf(inv.product_type);
       if (url.pathname.endsWith('.csv')) return csv(rsvps, inv.slug, !!occasion?.askKids);
       return json({
@@ -329,8 +331,68 @@ function csv(rsvps: { guestName: string; attending: boolean; partySize: number; 
   });
 }
 
+const TOKEN_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+// 12 chars from 64 symbols: 256 % 64 === 0, so masking a byte has no modulo bias
+const guestToken = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => TOKEN_CHARS[b & 63]).join('');
+
+// Guests ordered by name (case-insensitive), then id. rsvp is null until the guest replies.
+async function listGuests(env: Env, inv: any): Promise<Response> {
+  const { results } = await env.DB.prepare(
+    `SELECT g.id, g.name, g.seats, g.token, g.created_at, r.attending, r.party_size, r.kids_count, r.created_at AS submitted
+     FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id
+     WHERE g.invitation_id = ? ORDER BY lower(g.name), g.id`,
+  ).bind(inv.id).all<any>();
+  return json({ guests: (results || []).map((g) => ({
+    id: g.id, name: g.name, seats: g.seats, token: g.token, createdAt: g.created_at,
+    rsvp: g.submitted == null ? null : { attending: !!g.attending, partySize: g.party_size, kidsCount: g.kids_count ?? 0, submitted: g.submitted },
+  })) });
+}
+
+// Body: { action: 'add', name, seats } | { action: 'update', id, name?, seats? } | { action: 'delete', id }
+async function manageGuests(request: Request, env: Env, inv: any): Promise<Response> {
+  const body: any = await request.json().catch(() => ({}));
+  const name = typeof body.name === 'string' ? body.name.trim() : undefined;
+  if (body.name !== undefined && (!name || name.length > 80)) return json({ error: 'Please enter the guest name (up to 80 characters).' }, 400);
+  if (body.seats !== undefined && (!Number.isInteger(body.seats) || body.seats < 1 || body.seats > LIMITS.partySizeMax)) return json({ error: `Seats must be 1 to ${LIMITS.partySizeMax}.` }, 400);
+
+  if (body.action === 'add') {
+    if (name === undefined || body.seats === undefined) return json({ error: 'Please enter a name and the number of seats.' }, 400);
+    for (let attempt = 0; ; attempt++) {
+      const token = guestToken();
+      try {
+        // One statement, so the 300 cap holds under concurrent adds
+        const ins = await env.DB.prepare(
+          'INSERT INTO invitation_guests (invitation_id, token, name, seats) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM invitation_guests WHERE invitation_id = ?) < 300',
+        ).bind(inv.id, token, name, body.seats, inv.id).run();
+        if (!ins.meta.changes) return json({ error: 'You can add up to 300 guests.' }, 400);
+        return json({ ok: true, id: ins.meta.last_row_id, token });
+      } catch (e) {
+        if (attempt > 0 || !/UNIQUE/i.test(String(e))) throw e; // a token clash is astronomically rare: retry once
+      }
+    }
+  }
+  const id = body.id;
+  if (!Number.isInteger(id)) return json({ error: 'Guest not found.' }, 404);
+  if (body.action === 'update') {
+    if (name === undefined && body.seats === undefined) return json({ error: 'Nothing to change.' }, 400);
+    const up = await env.DB.prepare('UPDATE invitation_guests SET name = COALESCE(?, name), seats = COALESCE(?, seats) WHERE id = ? AND invitation_id = ?')
+      .bind(name ?? null, body.seats ?? null, id, inv.id).run();
+    return up.meta.changes ? json({ ok: true }) : json({ error: 'Guest not found.' }, 404);
+  }
+  if (body.action === 'delete') {
+    // Their reply stays in the list as a general reply
+    const [, del] = await env.DB.batch([
+      env.DB.prepare('UPDATE rsvps SET guest_id = NULL WHERE guest_id = ? AND invitation_id = ?').bind(id, inv.id),
+      env.DB.prepare('DELETE FROM invitation_guests WHERE id = ? AND invitation_id = ?').bind(id, inv.id),
+    ]);
+    return del.meta.changes ? json({ ok: true }) : json({ error: 'Guest not found.' }, 404);
+  }
+  return json({ error: 'Unknown action.' }, 400);
+}
+
 // Expired invitations show only the title: no details, photos or RSVP state.
-async function guest(env: Env, slug: string | null): Promise<Response> {
+// A ?g= token of one of this invitation's guests adds guest: { name, seats, rsvp }; any other token is ignored.
+async function guest(env: Env, slug: string | null, token: string | null): Promise<Response> {
   const inv = slug === null ? null : await findGuestInvitation(env.DB, slug);
   if (!inv) return NOT_FOUND();
   const occasion = occasionOf(inv.product_type);
@@ -345,7 +407,11 @@ async function guest(env: Env, slug: string | null): Promise<Response> {
   // A deactivated or deleted track just means no music; the page still opens
   const track = premium && style.music !== undefined
     ? await env.DB.prepare('SELECT r2_key, title, credit FROM music_tracks WHERE id = ? AND active = 1').bind(style.music).first<any>() : null;
+  const g = token ? await env.DB.prepare(
+    'SELECT g.name, g.seats, r.attending, r.party_size FROM invitation_guests g LEFT JOIN rsvps r ON r.guest_id = g.id AND r.invitation_id = g.invitation_id WHERE g.token = ? AND g.invitation_id = ?',
+  ).bind(token, inv.id).first<any>() : null;
   return json({
+    ...(g ? { guest: { name: g.name, seats: g.seats, rsvp: g.attending == null ? null : { attending: !!g.attending, partySize: g.party_size } } } : {}),
     state: 'live', tier: tierOf(inv), intro: premium && style.intro !== false,
     music: track ? { url: mediaUrl(track.r2_key), title: track.title, credit: track.credit } : null, productType: inv.product_type, askKids: occasion.askKids, layoutKey: inv.layout_key, colorScheme: parse(inv.color_scheme, {}), details,
     photos: keys.map((k) => `/photos/${k}`),
@@ -367,13 +433,21 @@ async function rsvp(request: Request, env: Env, slug: string): Promise<Response>
   const deadline = parse(inv.details, {}).rsvpDeadline;
   if (deadline && todayUtc() > deadline) return json({ error: 'RSVPs are closed.' }, 400);
 
-  const v = validateRsvp({ guestName: body.guestName, attending: body.attending, partySize: body.partySize, kidsCount: body.kidsCount, message: body.message }, { askKids: occasion.askKids });
+  // An unknown guestToken is a general RSVP (no error), like an unknown ?g= on the page
+  const g = typeof body.guestToken === 'string' && body.guestToken
+    ? await env.DB.prepare('SELECT id, name, seats FROM invitation_guests WHERE token = ? AND invitation_id = ?').bind(body.guestToken, inv.id).first<any>() : null;
+  const v = validateRsvp({ guestName: g ? g.name : body.guestName, attending: body.attending, partySize: body.partySize, kidsCount: body.kidsCount, message: body.message }, { askKids: occasion.askKids });
   if (v.ok === false) return json({ error: v.error }, 400);
   const r = v.rsvp;
-  // One statement, so the 300 cap holds even with concurrent submissions
-  const ins = await env.DB.prepare(
-    'INSERT INTO rsvps (invitation_id, guest_name, attending, party_size, kids_count, message) SELECT ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM rsvps WHERE invitation_id = ?) < 300',
-  ).bind(inv.id, r.guestName, r.attending ? 1 : 0, r.partySize, r.kidsCount, r.message, inv.id).run();
+  if (g && r.partySize > g.seats) return json({ error: `You can reply for up to ${g.seats} guests.` }, 400);
+  // One statement, so the 300 cap holds even with concurrent submissions. A guest's earlier reply is deleted in the
+  // same batch (one reply per guest); it is gone before the count, so a replacement is never blocked by the cap.
+  const [, ins] = await env.DB.batch([
+    env.DB.prepare('DELETE FROM rsvps WHERE guest_id = ? AND invitation_id = ?').bind(g?.id ?? null, inv.id),
+    env.DB.prepare(
+      'INSERT INTO rsvps (invitation_id, guest_name, attending, party_size, kids_count, message, guest_id) SELECT ?, ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM rsvps WHERE invitation_id = ?) < 300',
+    ).bind(inv.id, r.guestName, r.attending ? 1 : 0, r.partySize, r.kidsCount, r.message, g?.id ?? null, inv.id),
+  ]);
   if (!ins.meta.changes) return json({ error: 'This invitation is no longer accepting RSVPs.' }, 400);
   return json({ ok: true });
 }
