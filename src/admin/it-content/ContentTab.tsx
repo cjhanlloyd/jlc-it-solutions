@@ -84,18 +84,18 @@ export default function ContentTab({ db, setDb, adminToken, adminUser, isSaving,
   return (
     <>
     <div className="space-y-6" id="panel-content">
-      <div className="border-b border-gray-100 pb-4 mb-4">
-        <h2 className="text-xl font-bold text-gray-900 font-sans">Customize Website Pages</h2>
-        <p className="text-xs text-gray-500 font-sans mt-1">Directly edit the headlines, paragraphs, mission text, and service details rendered on the public site.</p>
+      <div className="border-b border-slate-100 pb-4 mb-4">
+        <h2 className="text-xl font-bold text-slate-900">Customize Website Pages</h2>
+        <p className="text-xs text-slate-600 mt-1">Directly edit the headlines, paragraphs, mission text, and service details rendered on the public site.</p>
       </div>
 
       {/* Sub-Navigation for Content Categories */}
-      <div className="flex border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
+      <div className="flex border-b border-slate-200 mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
         <button
           type="button"
           onClick={() => { setActiveContentSection('home'); setApiError(''); }}
-          className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeContentSection === 'home' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+            activeContentSection === 'home' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           Home Page
@@ -103,8 +103,8 @@ export default function ContentTab({ db, setDb, adminToken, adminUser, isSaving,
         <button
           type="button"
           onClick={() => { setActiveContentSection('about'); setApiError(''); }}
-          className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeContentSection === 'about' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+            activeContentSection === 'about' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           About Us Page
@@ -112,8 +112,8 @@ export default function ContentTab({ db, setDb, adminToken, adminUser, isSaving,
         <button
           type="button"
           onClick={() => { setActiveContentSection('services'); setApiError(''); }}
-          className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeContentSection === 'services' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+            activeContentSection === 'services' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           Services Page
@@ -121,8 +121,8 @@ export default function ContentTab({ db, setDb, adminToken, adminUser, isSaving,
         <button
           type="button"
           onClick={() => { setActiveContentSection('pricing'); setApiError(''); }}
-          className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeContentSection === 'pricing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+            activeContentSection === 'pricing' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           Pricing Page
@@ -130,8 +130,8 @@ export default function ContentTab({ db, setDb, adminToken, adminUser, isSaving,
         <button
           type="button"
           onClick={() => { setActiveContentSection('contact'); setApiError(''); }}
-          className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeContentSection === 'contact' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+            activeContentSection === 'contact' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           Contact Us Page
@@ -139,8 +139,8 @@ export default function ContentTab({ db, setDb, adminToken, adminUser, isSaving,
         <button
           type="button"
           onClick={() => { setActiveContentSection('why'); setApiError(''); }}
-          className={`py-2.5 px-4 font-sans text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeContentSection === 'why' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-900'
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+            activeContentSection === 'why' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           Why Choose Us Page

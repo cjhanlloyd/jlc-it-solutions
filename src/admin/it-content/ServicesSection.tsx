@@ -147,76 +147,76 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
     <>
       <div className="space-y-8">
         {/* Services Page layout form */}
-        <form onSubmit={onSave} className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6">
+        <form onSubmit={onSave} className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Services Page Header</h3>
-            <p className="text-xs text-gray-400 font-sans mt-0.5">Customize the main headlines rendered on the Services page.</p>
+            <h3 className="font-display text-lg font-semibold text-slate-900">Services Page Header</h3>
+            <p className="text-xs text-slate-600 mt-0.5">Customize the main headlines rendered on the Services page.</p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Services Heading</label>
+              <label className="text-sm font-medium text-slate-800">Services Heading</label>
               <input aria-label="Services Heading"
                 type="text"
                 required
                 value={contentForm.servicesHeader || ''}
                 onChange={(e) => setContentForm({ ...contentForm, servicesHeader: e.target.value })}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Services Subtitle Description</label>
+              <label className="text-sm font-medium text-slate-800">Services Subtitle Description</label>
               <textarea aria-label="Services Subtitle Description"
                 required
                 value={contentForm.servicesSubtitle || ''}
                 onChange={(e) => setContentForm({ ...contentForm, servicesSubtitle: e.target.value })}
                 rows={2}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-gray-100">
-            <button type="submit" disabled={isSaving} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer">
+          <div className="flex justify-end pt-4 border-t border-slate-100">
+            <button type="submit" disabled={isSaving} className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-control text-sm font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
               {isSaving ? 'Saving Changes...' : 'Save Services Page Layout Overrides'}
             </button>
           </div>
         </form>
 
         {/* Dynamic Services Catalog manager */}
-        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6 mt-8">
+        <div className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6 mt-8">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 font-sans">Manage Corporate Services Catalog</h3>
-            <p className="text-xs text-gray-500 font-sans mt-1">Add, update, or remove service category details instantly.</p>
+            <h3 className="font-display text-lg font-semibold text-slate-900">Manage Corporate Services Catalog</h3>
+            <p className="text-xs text-slate-600 mt-1">Add, update, or remove service category details instantly.</p>
           </div>
 
           {/* Add / Edit Form */}
-          <form id="editor-service" onSubmit={handleAddOrEditService} className="bg-gray-50 p-5 rounded-2xl border border-gray-200/60 space-y-4">
-            <h4 className="text-xs font-bold text-gray-900 font-sans">
+          <form id="editor-service" onSubmit={handleAddOrEditService} className="bg-slate-50 p-5 rounded-card border border-slate-200/60 space-y-4">
+            <h4 className="text-xs font-bold text-slate-900">
               {editingServiceId ? 'Edit Selected Service' : 'Add New Technology Service'}
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Title */}
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Service Title</label>
+                <label className="text-sm font-medium text-slate-800">Service Title</label>
                 <input aria-label="Service Title"
                   type="text"
                   required
                   value={serviceForm.title}
                   onChange={(e) => setServiceForm({ ...serviceForm, title: e.target.value })}
                   placeholder="e.g. Cybersecurity Solutions"
-                  className="w-full border border-gray-200 p-2 rounded-lg text-xs text-gray-900 bg-white"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 />
               </div>
 
               {/* Icon Name selection */}
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Lucide Icon ID</label>
+                <label className="text-sm font-medium text-slate-800">Lucide Icon ID</label>
                 <select aria-label="Lucide Icon ID"
                   value={serviceForm.iconName}
                   onChange={(e) => setServiceForm({ ...serviceForm, iconName: e.target.value })}
-                  className="w-full border border-gray-200 p-2 rounded-lg text-xs text-gray-900 bg-white cursor-pointer"
+                  className="w-full cursor-pointer rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 >
                   <option value="Code">Code</option>
                   <option value="Cloud">Cloud</option>
@@ -234,20 +234,20 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
 
             {/* Description */}
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Service Description</label>
+              <label className="text-sm font-medium text-slate-800">Service Description</label>
               <textarea aria-label="Service Description"
                 required
                 value={serviceForm.description}
                 onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
                 placeholder="Provide a comprehensive operational description of the service and the problems it solves..."
                 rows={3}
-                className="w-full border border-gray-200 p-2 rounded-lg text-xs text-gray-900 bg-white"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
 
             {/* Specific Capabilities */}
             <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono block">Key Capabilities / Sub-features</label>
+              <label className="block text-sm font-medium text-slate-800">Key Capabilities / Sub-features</label>
               {serviceForm.features?.map((feat, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <input
@@ -260,7 +260,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                       setServiceForm({ ...serviceForm, features: updated });
                     }}
                     placeholder={`Sub-feature #${index + 1}`}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs text-gray-900 bg-white"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   />
                   <button
                     type="button"
@@ -268,7 +268,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                       const updated = (serviceForm.features || []).filter((_, idx) => idx !== index);
                       setServiceForm({ ...serviceForm, features: updated });
                     }}
-                    className="p-2 border border-gray-200 text-gray-450 hover:text-red-500 rounded-lg hover:bg-white cursor-pointer"
+                    className="p-2 border border-slate-200 text-slate-600 hover:text-red-500 rounded-control hover:bg-white cursor-pointer"
                   >
                     <Trash className="h-3.5 w-3.5" />
                   </button>
@@ -277,7 +277,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
               <button
                 type="button"
                 onClick={() => setServiceForm({ ...serviceForm, features: [...(serviceForm.features || []), ''] })}
-                className="inline-flex items-center text-[10px] uppercase font-bold text-blue-650 font-mono hover:underline cursor-pointer"
+                className="inline-flex items-center hover:underline cursor-pointer text-sm font-medium text-slate-800"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" /> Add capability bullet
               </button>
@@ -292,7 +292,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                     setEditingServiceId(null);
                     setServiceForm({ title: '', description: '', iconName: 'Code', features: [''] });
                   }}
-                  className="px-4 py-2 border border-gray-200 text-gray-550 rounded-lg text-xs font-semibold cursor-pointer hover:bg-gray-100"
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-control text-sm font-semibold cursor-pointer hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                 >
                   Cancel Edit
                 </button>
@@ -300,7 +300,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white rounded-control text-sm font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
               >
                 {isSaving ? 'Saving...' : editingServiceId ? 'Update Service Details' : 'Publish Technology Service'}
               </button>
@@ -309,9 +309,9 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
 
           {/* Active Services List */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-xs uppercase font-extrabold text-gray-400 font-mono tracking-widest">Active Service Portfolio ({activeServices.length})</h3>
-              <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-150 px-2 py-0.5 rounded font-mono">Vertical Order Priority</span>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold font-display text-lg font-semibold text-slate-900">Active Service Portfolio ({activeServices.length})</h3>
+              <span className="text-xs text-slate-600 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">Vertical Order Priority</span>
             </div>
             
             <div className="space-y-3">
@@ -328,34 +328,34 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                     onDragOver={handleServiceDragOver}
                     onDragEnd={() => setDraggedServiceIndex(null)}
                     onDrop={(e) => handleServiceDrop(e, index)}
-                    className={`border p-4 rounded-xl flex items-center justify-between bg-white shadow-xs transition-all duration-205 ${
+                    className={`border p-4 rounded-card flex items-center justify-between bg-white shadow-card transition-all duration-200 ${
                       isDragged 
-                        ? 'opacity-40 border-blue-500 scale-[0.98] border-dashed bg-slate-50' 
-                        : 'border-gray-200/80 hover:border-gray-300'
+                        ? 'opacity-40 border-brand-600 scale-[0.98] border-dashed bg-slate-50' 
+                        : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     
                     {/* Left Side: Grip Handle & Service Metadata */}
                     <div className="flex items-center space-x-4 flex-1 min-w-0 pr-4">
                       {/* Grip Handle */}
-                      <div className="text-gray-300 shrink-0 cursor-grab active:cursor-grabbing hover:text-blue-500 transition-colors p-1" title="Use drag and drop or arrows to reorder">
+                      <div className="text-slate-600 shrink-0 cursor-grab active:cursor-grabbing hover:text-brand-700 transition-colors p-1" title="Use drag and drop or arrows to reorder">
                         <GripVertical className="h-4.5 w-4.5" />
                       </div>
                       
                       {/* Service Icon */}
-                      <div className="p-2 rounded-lg bg-gray-50 border border-gray-100 text-blue-600 shrink-0">
+                      <div className="p-2 rounded-control bg-slate-50 border border-slate-100 text-brand-700 shrink-0">
                         <StoredIcon name={srv.iconName} fallback={Cpu} className="h-5 w-5" />
                       </div>
                       
                       {/* Title & Description */}
                       <div className="space-y-0.5 min-w-0 pr-4">
                         <div className="flex items-center space-x-2">
-                          <h4 className="text-sm font-bold text-gray-900 font-sans truncate">{srv.title}</h4>
-                          <span className="text-[9px] font-mono text-gray-405 bg-gray-50 border border-gray-100 px-1.5 py-0.2 rounded-md uppercase">
+                          <h4 className="text-sm font-bold text-slate-900 truncate">{srv.title}</h4>
+                          <span className="bg-slate-50 border border-slate-100 px-1.5 py-0.2 rounded-control text-xs font-medium text-slate-600">
                             {srv.features?.length || 0} specs
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 font-sans truncate max-w-lg md:max-w-2xl">{srv.description}</p>
+                        <p className="text-xs text-slate-600 truncate max-w-lg md:max-w-2xl">{srv.description}</p>
                       </div>
                     </div>
 
@@ -366,7 +366,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                         type="button"
                         disabled={isFirst || isSaving}
                         onClick={() => handleMoveService(srv.id, 'up')}
-                        className="p-1.5 border border-gray-200/80 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all cursor-pointer"
+                        className="p-1.5 border border-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-control disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all cursor-pointer"
                         title="Move Up"
                       >
                         <ArrowUp className="h-4 w-4" />
@@ -377,13 +377,13 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                         type="button"
                         disabled={isLast || isSaving}
                         onClick={() => handleMoveService(srv.id, 'down')}
-                        className="p-1.5 border border-gray-200/80 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all cursor-pointer"
+                        className="p-1.5 border border-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-control disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all cursor-pointer"
                         title="Move Down"
                       >
                         <ArrowDown className="h-4 w-4" />
                       </button>
 
-                      <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                      <div className="h-4 w-px bg-slate-200 mx-1"></div>
 
                       {/* Edit */}
                       <button
@@ -393,7 +393,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                           setServiceForm(srv);
                           document.getElementById('editor-service')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }}
-                        className="p-1.5 border border-gray-200/80 text-gray-500 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all cursor-pointer"
+                        className="p-1.5 border border-slate-200/80 text-slate-600 hover:text-brand-700 hover:bg-brand-50/50 rounded-control transition-all cursor-pointer"
                         title="Edit"
                       >
                         <Edit3 className="h-4 w-4" />
@@ -403,7 +403,7 @@ export default function ServicesSection({ db, setDb, adminToken, adminUser, isSa
                       <button
                         type="button"
                         onClick={() => handleDeleteService(srv.id)}
-                        className="p-1.5 border border-gray-200/80 text-gray-500 hover:text-red-500 hover:bg-red-50/50 rounded-lg transition-all cursor-pointer"
+                        className="p-1.5 border border-slate-200/80 text-slate-600 hover:text-red-500 hover:bg-red-50/50 rounded-control transition-all cursor-pointer"
                         title="Delete"
                       >
                         <Trash className="h-4 w-4" />

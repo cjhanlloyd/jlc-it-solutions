@@ -290,7 +290,7 @@ function BrandingTab({ session, data, reload }: Props) {
         <option value="image">Image</option>
       </Select>
       <Select label="Theme colour (emails)" value={f.themeColor} onChange={(e) => set({ themeColor: e.target.value })}>
-        {[['deepblue', 'Deep blue'], ['emerald', 'Emerald'], ['slate', 'Slate'], ['indigo', 'Indigo'], ['violet', 'Violet']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        {[['brand', 'Brand green (matches the site)'], ['deepblue', 'Deep blue'], ['emerald', 'Emerald'], ['slate', 'Slate'], ['indigo', 'Indigo'], ['violet', 'Violet']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </Select>
       <TextField label="Icon name" maxLength={40} required value={f.logoIcon} onChange={(e) => set({ logoIcon: e.target.value })} />
       <div>

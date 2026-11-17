@@ -2,6 +2,7 @@
 import React from 'react';
 import { ArrowRight, CalendarCheck, Heart, Images, KeyRound, MapPin, Plus, Timer, Users } from 'lucide-react';
 import DesignCard from './DesignCard';
+import DesignShowcase from './DesignShowcase';
 import { NavLink } from './NavLink';
 import { fetchDesigns, type Design } from './designs-api';
 import { fetchSite, type SiteContent } from './site-api';
@@ -63,7 +64,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Decorative invitation card */}
+          {/* Live showcase of every design; the decorative card stands in while loading or when there are none */}
+          {list.length > 0 ? <DesignShowcase designs={list} /> : (
           <div className="relative mx-auto w-full max-w-sm" aria-hidden="true">
             <div className="absolute -inset-4 rotate-3 rounded-card bg-sand" />
             <div className="absolute -inset-4 -rotate-2 rounded-card border border-gold-light bg-brand-50" />
@@ -81,6 +83,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </section>
 

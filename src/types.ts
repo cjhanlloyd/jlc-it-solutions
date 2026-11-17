@@ -42,7 +42,7 @@ export interface BrandingSettings {
   logoText: string;
   logoIcon: string; // Lucide icon name
   logoImageBase64?: string; // Stored logo image
-  themeColor: 'deepblue' | 'emerald' | 'slate' | 'indigo' | 'violet';
+  themeColor: 'brand' | 'deepblue' | 'emerald' | 'slate' | 'indigo' | 'violet';
 }
 
 export interface WhyChooseUsPoint {

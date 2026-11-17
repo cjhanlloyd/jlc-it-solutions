@@ -30,7 +30,7 @@ export default function ItContentPage({ session }: { session: Session }) {
       {flash && <p role="status" className="mt-4 text-sm font-medium text-emerald-800">{flash}</p>}
       {!db && !error && <p className="mt-6 flex items-center gap-2 text-sm text-slate-600"><Spinner /> Loading…</p>}
       {db && (
-        <div className="mt-4 rounded-card border border-slate-200 bg-white p-4 md:p-6">
+        <div className="mt-4">
           <ContentTab db={db} setDb={setDb} adminToken={session.token} adminUser={{ ...session.user, role: session.user.role as AdminRole }}
             isSaving={isSaving} run={run} showFlashMsg={showFlashMsg} setApiError={setError} />
         </div>

@@ -127,3 +127,8 @@ test('branding saves themeColor; unknown values are refused; omitting it keeps t
   await ok(b);
   assert.equal(db.exec.prepare("SELECT themeColor t FROM branding").get().t, 'violet');
 });
+
+test('branding accepts the brand green email colour', async () => {
+  await ok({ section: 'branding', companyName: 'New', tagline: '', logoType: 'icon', logoIcon: 'Activity', themeColor: 'brand' });
+  assert.equal((await (await getAdmin()).json()).branding.themeColor, 'brand');
+});

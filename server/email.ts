@@ -3,6 +3,7 @@ import { connect } from 'cloudflare:sockets';
 // SMTP Transmission Client using cloudflare:sockets
 export function getThemeColorHex(themeColor?: string): string {
   switch (themeColor) {
+    case 'brand': return '#1f3d2b'; // the site's green
     case 'emerald': return '#059669';
     case 'slate': return '#475569';
     case 'indigo': return '#4f46e5';
@@ -63,15 +64,15 @@ export function parseTextToHtml(text: string, themeColorHex: string): { html: st
           
           tableRows += `
             <tr>
-              <td style="padding: 6px 12px 6px 0; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #475569; width: 140px; vertical-align: top;">${key}</td>
-              <td style="padding: 6px 0; font-family: 'Inter', sans-serif; font-size: 14px; color: #1e293b; vertical-align: top;">${val}</td>
+              <td style="padding: 6px 12px 6px 0; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #5c5049; width: 140px; vertical-align: top;">${key}</td>
+              <td style="padding: 6px 0; font-family: 'Inter', sans-serif; font-size: 14px; color: #2b2420; vertical-align: top;">${val}</td>
             </tr>
           `;
         }
       }
 
       htmlResult += `
-        <div style="margin: 20px 0; background-color: #f8fafc; border-left: 4px solid ${themeColorHex}; border-radius: 4px; padding: 12px 16px;">
+        <div style="margin: 20px 0; background-color: #f3ece0; border-left: 4px solid ${themeColorHex}; border-radius: 4px; padding: 12px 16px;">
           <table border="0" cellpadding="0" cellspacing="0" width="100%">
             ${tableRows}
           </table>
@@ -83,7 +84,7 @@ export function parseTextToHtml(text: string, themeColorHex: string): { html: st
     // Check if it's a quoted description/quote block
     if (rawPara.startsWith('"') && rawPara.endsWith('"')) {
       htmlResult += `
-        <div style="border-left: 4px solid #cbd5e1; padding: 4px 0 4px 16px; margin: 18px 0; font-style: italic; color: #475569; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6;">
+        <div style="border-left: 4px solid #e7dcc7; padding: 4px 0 4px 16px; margin: 18px 0; font-style: italic; color: #5c5049; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6;">
           ${trimmedPara}
         </div>
       `;
@@ -99,7 +100,7 @@ export function parseTextToHtml(text: string, themeColorHex: string): { html: st
     
     if (displayPara) {
       const formattedText = displayPara.replace(/\n/g, '<br/>');
-      htmlResult += `<p style="margin-top: 0; margin-bottom: 16px; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">${formattedText}</p>`;
+      htmlResult += `<p style="margin-top: 0; margin-bottom: 16px; font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6; color: #3d342e;">${formattedText}</p>`;
     }
   }
 
@@ -131,11 +132,11 @@ export function buildHtmlEmail(branding: any, content: any, subject: string, pla
     const remainingWords = parts.slice(1).join(' ') || '';
     headerLogoHtml = `
       <a href="${websiteUrl}" target="_blank" style="text-decoration: none; display: inline-block; margin-bottom: 8px;">
-        <span style="font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; line-height: 1.2;">
+        <span style="font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; font-size: 30px; font-weight: 600; color: #2b2420; letter-spacing: 0; line-height: 1.2;">
           ${firstWord} <span style="color: ${themeColorHex};">${remainingWords}</span>
         </span>
       </a>
-      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; font-weight: 600; margin-top: 4px;">
+      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #6b5f55; font-weight: 600; margin-top: 4px;">
         ${branding.tagline || ''}
       </div>
     `;
@@ -154,7 +155,7 @@ export function buildHtmlEmail(branding: any, content: any, subject: string, pla
 
   const ctaButtonHtml = actionUrl ? `
     <div style="text-align: center; margin: 28px 0 12px 0;">
-      <a href="${actionUrl}" target="_blank" style="background-color: ${themeColorHex}; color: #ffffff; font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 6px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); text-transform: uppercase; letter-spacing: 0.5px;">
+      <a href="${actionUrl}" target="_blank" style="background-color: ${themeColorHex}; color: #ffffff; font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 13px 30px; border-radius: 999px; display: inline-block;">
         ${buttonText}
       </a>
     </div>
@@ -172,7 +173,7 @@ export function buildHtmlEmail(branding: any, content: any, subject: string, pla
     socialLinks.push(`<a href="${content.viberUrl}" target="_blank" style="color: ${themeColorHex}; text-decoration: none; margin: 0 8px; font-weight: 600; font-family: 'Inter', sans-serif; font-size: 13px;">Viber</a>`);
   }
   const socialHtml = socialLinks.length > 0 
-    ? `<div style="margin: 16px 0;">${socialLinks.join(' <span style="color: #cbd5e1;">|</span> ')}</div>`
+    ? `<div style="margin: 16px 0;">${socialLinks.join(' <span style="color: #e7dcc7;">|</span> ')}</div>`
     : '';
 
   const html = `
@@ -183,12 +184,12 @@ export function buildHtmlEmail(branding: any, content: any, subject: string, pla
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(oneLine(subject))}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; padding: 20px 0;">
+<body style="margin: 0; padding: 0; background-color: #fbf7f0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fbf7f0; padding: 20px 0;">
     <tr>
       <td align="center">
         <!-- Main Card Container -->
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; border-top: 4px solid ${themeColorHex}; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.025); margin: 0 auto; overflow: hidden;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e7dcc7; border-radius: 12px; border-top: 4px solid ${themeColorHex}; box-shadow: 0 1px 2px rgba(60, 40, 10, 0.08), 0 4px 12px rgba(60, 40, 10, 0.08); margin: 0 auto; overflow: hidden;">
           
           <!-- Header Area -->
           <tr>
@@ -200,7 +201,7 @@ export function buildHtmlEmail(branding: any, content: any, subject: string, pla
           <!-- Divider -->
           <tr>
             <td style="padding: 0 32px;">
-              <div style="border-bottom: 1px solid #e2e8f0; height: 1px; line-height: 1px;">&nbsp;</div>
+              <div style="border-bottom: 1px solid #e7dcc7; height: 1px; line-height: 1px;">&nbsp;</div>
             </td>
           </tr>
           
@@ -216,26 +217,26 @@ export function buildHtmlEmail(branding: any, content: any, subject: string, pla
           
           <!-- Footer Area -->
           <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 32px; text-align: center;">
-              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 13px; color: #475569; font-weight: 700; display: block; margin-bottom: 4px;">
+            <td style="background-color: #f3ece0; border-top: 1px solid #e7dcc7; padding: 32px; text-align: center;">
+              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 13px; color: #5c5049; font-weight: 700; display: block; margin-bottom: 4px;">
                 ${branding.companyName}
               </span>
-              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 11px; color: #64748b; font-style: italic; display: block; margin-bottom: 16px;">
+              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 11px; color: #6b5f55; font-style: italic; display: block; margin-bottom: 16px;">
                 ${branding.tagline || ''}
               </span>
               
               ${socialHtml}
               
-              <div style="border-bottom: 1px solid #e2e8f0; margin: 16px 0; height: 1px; line-height: 1px;">&nbsp;</div>
+              <div style="border-bottom: 1px solid #e7dcc7; margin: 16px 0; height: 1px; line-height: 1px;">&nbsp;</div>
               
-              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; color: #64748b; line-height: 1.5; display: block;">
+              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; color: #6b5f55; line-height: 1.5; display: block;">
                 ${content.contactAddress || ''}
               </span>
-              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; color: #64748b; line-height: 1.5; display: block; margin-top: 4px;">
+              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; color: #6b5f55; line-height: 1.5; display: block; margin-top: 4px;">
                 Email: <a href="mailto:${content.contactEmail}" style="color: ${themeColorHex}; text-decoration: none; font-weight: 500;">${content.contactEmail}</a>
                 ${content.contactPhone ? ` | Phone: <a href="tel:${content.contactPhone}" style="color: ${themeColorHex}; text-decoration: none; font-weight: 500;">${content.contactPhone}</a>` : ''}
               </span>
-              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 11px; color: #94a3b8; display: block; margin-top: 24px;">
+              <span style="font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 11px; color: #6b5f55; display: block; margin-top: 24px;">
                 &copy; ${new Date().getFullYear()} ${branding.companyName}. All rights reserved.
               </span>
             </td>

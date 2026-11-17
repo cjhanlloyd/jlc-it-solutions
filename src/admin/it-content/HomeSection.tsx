@@ -195,59 +195,59 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
     <>
       <div className="space-y-8">
         {/* Home Page Layout Overrides form */}
-        <form onSubmit={onSave} className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6">
+        <form onSubmit={onSave} className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Homepage Hero Header</h3>
-            <p className="text-xs text-gray-400 font-sans mt-0.5">Customize the landing page banner details.</p>
+            <h3 className="font-display text-lg font-semibold text-slate-900">Homepage Hero Header</h3>
+            <p className="text-xs text-slate-600 mt-0.5">Customize the landing page banner details.</p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Hero Badge Text</label>
+              <label className="text-sm font-medium text-slate-800">Hero Badge Text</label>
               <input aria-label="Hero Badge Text"
                 type="text"
                 required
                 value={contentForm.heroBadge || ''}
                 onChange={(e) => setContentForm({ ...contentForm, heroBadge: e.target.value })}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 placeholder="Ready for Inquiries"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Main Hero Title</label>
+              <label className="text-sm font-medium text-slate-800">Main Hero Title</label>
               <input aria-label="Main Hero Title"
                 type="text"
                 required
                 value={contentForm.heroTitle || ''}
                 onChange={(e) => setContentForm({ ...contentForm, heroTitle: e.target.value })}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Hero Subtitle</label>
+              <label className="text-sm font-medium text-slate-800">Hero Subtitle</label>
               <textarea aria-label="Hero Subtitle"
                 required
                 value={contentForm.heroSubtitle || ''}
                 onChange={(e) => setContentForm({ ...contentForm, heroSubtitle: e.target.value })}
                 rows={3}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
 
             {/* Hero Banner Image Customizer */}
-            <div className="space-y-2 pt-2 border-t border-gray-100 mt-4">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono block">Hero Banner Photo</label>
+            <div className="space-y-2 pt-2 border-t border-slate-100 mt-4">
+              <label className="block text-sm font-medium text-slate-800">Hero Banner Photo</label>
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-40 h-24 bg-slate-100 border border-slate-200/80 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                <div className="w-40 h-24 bg-slate-100 border border-slate-200/80 rounded-card overflow-hidden flex items-center justify-center shrink-0">
                   {contentForm.bannerImageUrl ? (
                     <img src={contentForm.bannerImageUrl} alt="Banner Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <Image className="h-8 w-8 text-slate-350" />
+                    <Image className="h-8 w-8 text-slate-600" />
                   )}
                 </div>
                 <div className="flex-grow w-full space-y-2">
                   <div className="flex items-center space-x-2">
-                    <label className="inline-flex items-center px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                    <label className="inline-flex items-center px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                       <Upload className="h-4.5 w-4.5 mr-2" />
                       Choose Banner Photo
                       <input
@@ -261,13 +261,13 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                       <button
                         type="button"
                         onClick={handleRemoveHeroBanner}
-                        className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-655 text-xs font-bold rounded-xl cursor-pointer shadow-xs"
+                        className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                       >
                         Remove Image
                       </button>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-450 block">Upload a high-resolution background banner. Optimized dynamically for web performance.</span>
+                  <span className="text-xs text-slate-600 block">Upload a high-resolution background banner. Optimized dynamically for web performance.</span>
                 </div>
               </div>
             </div>
@@ -275,130 +275,130 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
 
           <div className="border-t border-slate-100 pt-6 space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">Homepage Section Headings</h3>
-              <p className="text-xs text-gray-400 font-sans mt-0.5">Customize headers and description texts for home page sections.</p>
+              <h3 className="font-display text-lg font-semibold text-slate-900">Homepage Section Headings</h3>
+              <p className="text-xs text-slate-600 mt-0.5">Customize headers and description texts for home page sections.</p>
             </div>
 
             {/* Portfolio Showcase section */}
-            <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 space-y-3">
-              <span className="text-[10px] uppercase font-mono font-bold text-blue-650">Portfolio Showcase Section</span>
+            <div className="p-4 bg-slate-50/50 rounded-card border border-slate-100 space-y-3">
+              <span className="text-sm font-medium text-slate-800">Portfolio Showcase Section</span>
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Heading</label>
+                  <label className="text-xs font-medium text-slate-600">Heading</label>
                   <input aria-label="Heading"
                     type="text"
                     required
                     value={contentForm.portfolioHeader || ''}
                     onChange={(e) => setContentForm({ ...contentForm, portfolioHeader: e.target.value })}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Subtitle Description</label>
+                  <label className="text-xs font-medium text-slate-600">Subtitle Description</label>
                   <textarea aria-label="Subtitle Description"
                     required
                     value={contentForm.portfolioSubtitle || ''}
                     onChange={(e) => setContentForm({ ...contentForm, portfolioSubtitle: e.target.value })}
                     rows={2}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   ></textarea>
                 </div>
               </div>
             </div>
 
             {/* Process Timeline section */}
-            <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 space-y-3">
-              <span className="text-[10px] uppercase font-mono font-bold text-blue-650">Operational Lifecycle Section</span>
+            <div className="p-4 bg-slate-50/50 rounded-card border border-slate-100 space-y-3">
+              <span className="text-sm font-medium text-slate-800">Operational Lifecycle Section</span>
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Heading</label>
+                  <label className="text-xs font-medium text-slate-600">Heading</label>
                   <input aria-label="Heading"
                     type="text"
                     required
                     value={contentForm.processHeader || ''}
                     onChange={(e) => setContentForm({ ...contentForm, processHeader: e.target.value })}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Subtitle Description</label>
+                  <label className="text-xs font-medium text-slate-600">Subtitle Description</label>
                   <textarea aria-label="Subtitle Description"
                     required
                     value={contentForm.processSubtitle || ''}
                     onChange={(e) => setContentForm({ ...contentForm, processSubtitle: e.target.value })}
                     rows={2}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   ></textarea>
                 </div>
               </div>
             </div>
 
             {/* FAQ Section */}
-            <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 space-y-3">
-              <span className="text-[10px] uppercase font-mono font-bold text-blue-650">FAQ Accordion Section</span>
+            <div className="p-4 bg-slate-50/50 rounded-card border border-slate-100 space-y-3">
+              <span className="text-sm font-medium text-slate-800">FAQ Accordion Section</span>
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Heading</label>
+                  <label className="text-xs font-medium text-slate-600">Heading</label>
                   <input aria-label="Heading"
                     type="text"
                     required
                     value={contentForm.faqHeader || ''}
                     onChange={(e) => setContentForm({ ...contentForm, faqHeader: e.target.value })}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Subtitle Description</label>
+                  <label className="text-xs font-medium text-slate-600">Subtitle Description</label>
                   <textarea aria-label="Subtitle Description"
                     required
                     value={contentForm.faqSubtitle || ''}
                     onChange={(e) => setContentForm({ ...contentForm, faqSubtitle: e.target.value })}
                     rows={2}
-                    className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                    className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                   ></textarea>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-gray-100">
-            <button type="submit" disabled={isSaving} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer">
+          <div className="flex justify-end pt-4 border-t border-slate-100">
+            <button type="submit" disabled={isSaving} className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-control text-sm font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
               {isSaving ? 'Saving Changes...' : 'Save Home Page Layout Overrides'}
             </button>
           </div>
         </form>
 
         {/* Dynamic Project Gallery Customizer */}
-        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6 mt-8">
-          <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-lg font-bold text-gray-900 font-sans">Homepage Project Showcase Gallery</h3>
-            <p className="text-xs text-gray-500 font-sans mt-1">Upload and showcase photos of completed projects, hardware installations, and other featured work on the website homepage.</p>
+        <div className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6 mt-8">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="font-display text-lg font-semibold text-slate-900">Homepage Project Showcase Gallery</h3>
+            <p className="text-xs text-slate-600 mt-1">Upload and showcase photos of completed projects, hardware installations, and other featured work on the website homepage.</p>
           </div>
 
           {/* Add/Edit Project Gallery form */}
-          <form id="editor-gallery" onSubmit={handleAddOrEditGalleryItem} className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 space-y-4">
-            <h4 className="text-xs font-bold text-slate-800">
+          <form id="editor-gallery" onSubmit={handleAddOrEditGalleryItem} className="bg-slate-50 p-5 rounded-card border border-slate-200/60 space-y-4">
+            <h4 className="text-sm font-semibold text-slate-800">
               {editingGalleryItemId ? 'Edit Project Showcase Item' : 'Add New Project Showcase Item'}
             </h4>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Project Title</label>
+                <label className="text-xs font-medium text-slate-600">Project Title</label>
                 <input aria-label="Project Title"
                   type="text"
                   required
                   value={galleryForm.title}
                   onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
                   placeholder="e.g. Structured Rack Installation"
-                  className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Category Tag</label>
+                <label className="text-xs font-medium text-slate-600">Category Tag</label>
                 <select aria-label="Category Tag"
                   value={galleryForm.category}
                   onChange={(e) => setGalleryForm({ ...galleryForm, category: e.target.value })}
-                  className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-800 cursor-pointer"
+                  className="w-full cursor-pointer rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 >
                   <option value="Software Engineering">Software Engineering</option>
                   <option value="Network Installation">Network Installation</option>
@@ -409,32 +409,32 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Project Description</label>
+              <label className="text-xs font-medium text-slate-600">Project Description</label>
               <textarea aria-label="Project Description"
                 required
                 value={galleryForm.description}
                 onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
                 placeholder="Describe the scope, technical specifications, and outcome of the work..."
                 rows={3}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-900"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[9px] uppercase font-bold text-gray-400 font-mono block">Showcase Photo</label>
+              <label className="block text-xs font-medium text-slate-600">Showcase Photo</label>
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 {/* Image Preview */}
-                <div className="w-32 h-20 bg-slate-100 border border-slate-200/80 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                <div className="w-32 h-20 bg-slate-100 border border-slate-200/80 rounded-card overflow-hidden flex items-center justify-center shrink-0">
                   {galleryForm.imageBase64 ? (
                     <img src={galleryForm.imageBase64} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <Image className="h-6 w-6 text-slate-350" />
+                    <Image className="h-6 w-6 text-slate-600" />
                   )}
                 </div>
                 
                 {/* Input file button */}
                 <div className="flex-1 w-full">
-                  <label className="inline-flex items-center px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                  <label className="inline-flex items-center px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                     <Upload className="h-4.5 w-4.5 mr-2" />
                     Choose Image File
                     <input
@@ -444,7 +444,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                       className="hidden"
                     />
                   </label>
-                  <span className="text-[10px] text-gray-400 block mt-1">Accepts PNG, JPG, or SVG. Automatically converted to persistent Base64 representation.</span>
+                  <span className="text-xs text-slate-600 block mt-1">Accepts PNG, JPG, or SVG. Automatically converted to persistent Base64 representation.</span>
                 </div>
               </div>
             </div>
@@ -457,12 +457,12 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                     setEditingGalleryItemId(null);
                     setGalleryForm({ title: '', description: '', category: 'Software Engineering', imageBase64: '' });
                   }}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-650 rounded-xl text-xs font-bold hover:bg-slate-100 cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-control text-sm font-semibold hover:bg-slate-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                 >
                   Cancel Edit
                 </button>
               )}
-              <button type="submit" disabled={isSaving} className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+              <button type="submit" disabled={isSaving} className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                 {editingGalleryItemId ? 'Update Showcase Item' : 'Add Showcase Item'}
               </button>
             </div>
@@ -470,18 +470,18 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
 
           {/* Showcase List */}
           <div className="space-y-3 pt-4 max-h-[500px] overflow-y-auto divide-y divide-slate-100">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">Current Homepage Showcase Items</h4>
+            <h4 className="font-display text-lg font-semibold text-slate-900">Current Homepage Showcase Items</h4>
             {(db?.projectGallery || []).length > 0 ? (
               (db?.projectGallery || []).map((item) => (
                 <div key={item.id} className="pt-4 border-t border-slate-100 first:border-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start space-x-4">
-                    <img src={item.imageBase64} alt="" className="w-20 h-14 object-cover rounded-lg bg-slate-100 border border-slate-200/60 shrink-0" />
+                    <img src={item.imageBase64} alt="" className="w-20 h-14 object-cover rounded-control bg-slate-100 border border-slate-200/60 shrink-0" />
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-[9px] font-mono font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-800 uppercase">{item.category}</span>
-                        <h4 className="text-xs font-bold text-slate-950 font-display">{item.title}</h4>
+                        <span className="bg-slate-200 px-2 py-0.5 rounded text-xs font-medium text-slate-600">{item.category}</span>
+                        <h4 className="text-sm font-semibold text-slate-900">{item.title}</h4>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-sans mt-1 leading-relaxed line-clamp-2">{item.description}</p>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">{item.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
@@ -497,7 +497,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                         });
                         document.getElementById('editor-gallery')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }}
-                      className="p-2 border border-gray-150 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl cursor-pointer"
+                      className="p-2 border border-slate-100 text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-card cursor-pointer"
                       title="Edit Showcase Item"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -505,7 +505,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                     <button
                       type="button"
                       onClick={() => handleDeleteGalleryItem(item.id)}
-                      className="p-2 border border-gray-150 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-xl cursor-pointer"
+                      className="p-2 border border-slate-100 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-card cursor-pointer"
                       title="Delete Showcase Item"
                     >
                       <Trash className="h-4 w-4" />
@@ -514,51 +514,51 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-400 italic py-4">No completed projects have been added to the homepage showcase yet.</p>
+              <p className="text-xs text-slate-600 italic py-4">No completed projects have been added to the homepage showcase yet.</p>
             )}
           </div>
         </div>
 
         {/* Dynamic Collaboration Process Customizer */}
-        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6 mt-8">
-          <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-lg font-bold text-gray-900 font-sans">Collaboration Process Steps</h3>
-            <p className="text-xs text-gray-500 font-sans mt-1">Manage the collaboration timeline steps shown in the onboarding process of the homepage.</p>
+        <div className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6 mt-8">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="font-display text-lg font-semibold text-slate-900">Collaboration Process Steps</h3>
+            <p className="text-xs text-slate-600 mt-1">Manage the collaboration timeline steps shown in the onboarding process of the homepage.</p>
           </div>
 
           {/* Add/Edit Collaboration Step form */}
-          <form id="editor-process" onSubmit={handleAddOrEditProcessStep} className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800">
+          <form id="editor-process" onSubmit={handleAddOrEditProcessStep} className="bg-slate-50 p-4 rounded-card border border-slate-200/60 space-y-3">
+            <h4 className="text-sm font-semibold text-slate-800">
               {editingProcessStepId ? 'Edit Process Step' : 'Add New Process Step'}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Step Number (Optional)</label>
+                <label className="text-xs font-medium text-slate-600">Step Number (Optional)</label>
                 <input aria-label="Step Number (Optional)"
                   type="text"
                   value={processForm.stepNumber}
                   onChange={(e) => setProcessForm({ ...processForm, stepNumber: e.target.value })}
                   placeholder="e.g. 06"
-                  className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Step Title</label>
+                <label className="text-xs font-medium text-slate-600">Step Title</label>
                 <input aria-label="Step Title"
                   type="text"
                   required
                   value={processForm.title}
                   onChange={(e) => setProcessForm({ ...processForm, title: e.target.value })}
                   placeholder="e.g. Quality Assurance"
-                  className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Icon Name</label>
+                <label className="text-xs font-medium text-slate-600">Icon Name</label>
                 <select aria-label="Icon Name"
                   value={processForm.iconName}
                   onChange={(e) => setProcessForm({ ...processForm, iconName: e.target.value })}
-                  className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-805 cursor-pointer"
+                  className="w-full cursor-pointer rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 >
                   <option value="MessageSquare">MessageSquare (Chat)</option>
                   <option value="Layers">Layers (Infrastructure)</option>
@@ -571,14 +571,14 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Step Description</label>
+              <label className="text-xs font-medium text-slate-600">Step Description</label>
               <textarea aria-label="Step Description"
                 required
                 value={processForm.description}
                 onChange={(e) => setProcessForm({ ...processForm, description: e.target.value })}
                 placeholder="Briefly state key activities or outputs of this phase..."
                 rows={2}
-                className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
             <div className="flex justify-end space-x-2">
@@ -589,12 +589,12 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                     setEditingProcessStepId(null);
                     setProcessForm({ title: '', description: '', iconName: 'Cpu', stepNumber: '' });
                   }}
-                  className="px-3.5 py-1.5 border border-gray-200 text-slate-655 text-xs font-bold rounded-lg cursor-pointer"
+                  className="px-3.5 py-1.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                 >
                   Cancel
                 </button>
               )}
-              <button type="submit" disabled={isSaving} className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer">
+              <button type="submit" disabled={isSaving} className="px-3.5 py-1.5 bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                 {editingProcessStepId ? 'Update Process Step' : 'Add Process Step'}
               </button>
             </div>
@@ -606,11 +606,11 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
               <div key={step.id} className="pt-3 border-t border-slate-100 first:border-0 flex items-center justify-between">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-mono font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-800">Step {step.stepNumber}</span>
-                    <h4 className="text-xs font-bold text-slate-955 font-display">{step.title}</h4>
-                    <span className="text-[9px] uppercase font-mono font-bold text-slate-400">({step.iconName})</span>
+                    <span className="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-800">Step {step.stepNumber}</span>
+                    <h4 className="text-sm font-semibold text-slate-900">{step.title}</h4>
+                    <span className="text-xs font-medium text-slate-600">({step.iconName})</span>
                   </div>
-                  <p className="text-xs text-slate-500 font-sans mt-1 leading-relaxed">{step.description}</p>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{step.description}</p>
                 </div>
                 <div className="flex items-center space-x-2 shrink-0 ml-4">
                   <button
@@ -625,7 +625,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                       });
                       document.getElementById('editor-process')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }}
-                    className="p-1.5 border border-gray-100 text-gray-450 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                    className="p-1.5 border border-slate-100 text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-control cursor-pointer"
                     title="Edit Step"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
@@ -633,7 +633,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                   <button
                     type="button"
                     onClick={() => handleDeleteProcessStep(step.id)}
-                    className="p-1.5 border border-gray-100 text-gray-450 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                    className="p-1.5 border border-slate-100 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-control cursor-pointer"
                     title="Delete Step"
                   >
                     <Trash className="h-3.5 w-3.5" />
@@ -645,37 +645,37 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
         </div>
 
         {/* Dynamic FAQ Customizer */}
-        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6 mt-8">
-          <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-lg font-bold text-gray-900 font-sans">Frequently Asked Questions (FAQ)</h3>
-            <p className="text-xs text-gray-500 font-sans mt-1">Add, review, and delete custom FAQ cards shown on the website homepage.</p>
+        <div className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6 mt-8">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="font-display text-lg font-semibold text-slate-900">Frequently Asked Questions (FAQ)</h3>
+            <p className="text-xs text-slate-600 mt-1">Add, review, and delete custom FAQ cards shown on the website homepage.</p>
           </div>
 
           {/* Add/Edit FAQ form */}
-          <form id="editor-faq" onSubmit={handleAddOrEditFaq} className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800">
+          <form id="editor-faq" onSubmit={handleAddOrEditFaq} className="bg-slate-50 p-4 rounded-card border border-slate-200/60 space-y-3">
+            <h4 className="text-sm font-semibold text-slate-800">
               {editingFaqId ? 'Edit FAQ Card' : 'Add New FAQ Card'}
             </h4>
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Question</label>
+              <label className="text-xs font-medium text-slate-600">Question</label>
               <input aria-label="Question"
                 type="text"
                 required
                 value={faqForm.question}
                 onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
                 placeholder="e.g. Do you support remote offices?"
-                className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Answer</label>
+              <label className="text-xs font-medium text-slate-600">Answer</label>
               <textarea aria-label="Answer"
                 required
                 value={faqForm.answer}
                 onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
                 placeholder="Provide a realistic and direct technical answer..."
                 rows={3}
-                className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
             <div className="flex justify-end space-x-2">
@@ -686,12 +686,12 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                     setEditingFaqId(null);
                     setFaqForm({ question: '', answer: '' });
                   }}
-                  className="px-3.5 py-1.5 border border-gray-200 text-slate-655 text-xs font-bold rounded-lg cursor-pointer"
+                  className="px-3.5 py-1.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                 >
                   Cancel
                 </button>
               )}
-              <button type="submit" disabled={isSaving} className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer">
+              <button type="submit" disabled={isSaving} className="px-3.5 py-1.5 bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                 {editingFaqId ? 'Update FAQ Card' : 'Add FAQ Card'}
               </button>
             </div>
@@ -702,8 +702,8 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
             {(db?.faqs || []).map((faq) => (
               <div key={faq.id} className="pt-3 border-t border-slate-100 first:border-0 flex items-start justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-950 font-display">{faq.question}</h4>
-                  <p className="text-xs text-slate-500 font-sans mt-1 leading-relaxed">{faq.answer}</p>
+                  <h4 className="text-sm font-semibold text-slate-900">{faq.question}</h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{faq.answer}</p>
                 </div>
                 <div className="flex items-center space-x-2 shrink-0 ml-4">
                   <button
@@ -713,7 +713,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                       setFaqForm({ question: faq.question, answer: faq.answer });
                       document.getElementById('editor-faq')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }}
-                    className="p-1.5 border border-gray-100 text-gray-450 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                    className="p-1.5 border border-slate-100 text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-control cursor-pointer"
                     title="Edit FAQ"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
@@ -721,7 +721,7 @@ export default function HomeSection({ db, setDb, adminToken, adminUser, isSaving
                   <button
                     type="button"
                     onClick={() => handleDeleteFaq(faq.id)}
-                    className="p-1.5 border border-gray-100 text-gray-450 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                    className="p-1.5 border border-slate-100 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-control cursor-pointer"
                     title="Delete FAQ"
                   >
                     <Trash className="h-3.5 w-3.5" />

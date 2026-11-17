@@ -20,7 +20,8 @@ export const hasFrom = (d: Design) => d.packages.filter((p) => p.kind === 'templ
 
 const RENDER_WIDTH = 400; // the layout renders at phone width, then scales to the frame
 
-export function LivePreview({ design }: { design: Design }) {
+// eager: mount now (the hero showcase passes it for the visible slide and its neighbours, which a horizontal scroller hides from the observer).
+export function LivePreview({ design, eager = false }: { design: Design; eager?: boolean }) {
   useInvitationFonts();
   const ref = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(0);
@@ -43,7 +44,7 @@ export function LivePreview({ design }: { design: Design }) {
     <>
       <span className="sr-only">{design.name} invitation design</span>
       <div ref={ref} className="pointer-events-none absolute inset-0 overflow-hidden select-none" aria-hidden="true" inert data-nosnippet>
-        {near && scale > 0 && scheme && (
+        {(near || eager) && scale > 0 && scheme && (
           <div style={{ width: RENDER_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
             <React.Suspense fallback={null}>
               <InvitationView layoutKey={design.layoutKey} scheme={scheme} details={sampleOf(design)} photos={[]} />

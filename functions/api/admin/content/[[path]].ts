@@ -15,7 +15,7 @@ const isId = (n: unknown): n is number => Number.isInteger(n) && (n as number) >
 const str = (v: unknown, max: number, required = false) => (typeof v === 'string' && v.trim().length <= max && (!required || v.trim()) ? v.trim() : null);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // Keys getThemeColorHex (server/email.ts) knows
-const THEME_COLORS = ['emerald', 'slate', 'indigo', 'violet', 'deepblue'];
+const THEME_COLORS = ['brand', 'emerald', 'slate', 'indigo', 'violet', 'deepblue'];
 const HOME_DEFAULT = { eyebrow: '', headline: '', subheadline: '' };
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {

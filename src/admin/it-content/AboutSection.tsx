@@ -95,93 +95,93 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
     <>
       <div className="space-y-8">
         {/* About Us Page Layout Overrides form */}
-        <form onSubmit={onSave} className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6">
+        <form onSubmit={onSave} className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest font-mono">About Us Page Details</h3>
-            <p className="text-xs text-gray-400 font-sans mt-0.5">Edit company overview headlines, profile values, and mission vision text.</p>
+            <h3 className="font-display text-lg font-semibold text-slate-900">About Us Page Details</h3>
+            <p className="text-xs text-slate-600 mt-0.5">Edit company overview headlines, profile values, and mission vision text.</p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Main About Header</label>
+              <label className="text-sm font-medium text-slate-800">Main About Header</label>
               <input aria-label="Main About Header"
                 type="text"
                 required
                 value={contentForm.aboutHeader || ''}
                 onChange={(e) => setContentForm({ ...contentForm, aboutHeader: e.target.value })}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 placeholder="Your Strategic Technical Partner"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">About Subheader Title</label>
+              <label className="text-sm font-medium text-slate-800">About Subheader Title</label>
               <input aria-label="About Subheader Title"
                 type="text"
                 required
                 value={contentForm.aboutSubheader || ''}
                 onChange={(e) => setContentForm({ ...contentForm, aboutSubheader: e.target.value })}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 placeholder="Establishing a Strong, Trustworthy Foundation for Future Tech Growth"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Primary Introduction Paragraph</label>
+              <label className="text-sm font-medium text-slate-800">Primary Introduction Paragraph</label>
               <textarea aria-label="Primary Introduction Paragraph"
                 required
                 value={contentForm.aboutText || ''}
                 onChange={(e) => setContentForm({ ...contentForm, aboutText: e.target.value })}
                 rows={4}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Secondary Paragraph</label>
+              <label className="text-sm font-medium text-slate-800">Secondary Paragraph</label>
               <textarea aria-label="Secondary Paragraph"
                 required
                 value={contentForm.aboutText2 || ''}
                 onChange={(e) => setContentForm({ ...contentForm, aboutText2: e.target.value })}
                 rows={4}
-                className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Mission Statement</label>
+                <label className="text-sm font-medium text-slate-800">Mission Statement</label>
                 <textarea aria-label="Mission Statement"
                   required
                   value={contentForm.aboutMission || ''}
                   onChange={(e) => setContentForm({ ...contentForm, aboutMission: e.target.value })}
                   rows={4}
-                  className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 ></textarea>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 font-mono">Vision Statement</label>
+                <label className="text-sm font-medium text-slate-800">Vision Statement</label>
                 <textarea aria-label="Vision Statement"
                   required
                   value={contentForm.aboutVision || ''}
                   onChange={(e) => setContentForm({ ...contentForm, aboutVision: e.target.value })}
                   rows={4}
-                  className="w-full border border-gray-200 p-2.5 rounded-lg text-xs"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 ></textarea>
               </div>
             </div>
 
             {/* About Us Photo Customizer */}
             <div className="space-y-2 pt-2 border-t border-slate-100 mt-4">
-              <label className="text-[10px] uppercase font-bold text-gray-500 font-mono block">About Us Section Photo</label>
+              <label className="block text-sm font-medium text-slate-800">About Us Section Photo</label>
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-40 h-24 bg-slate-100 border border-slate-200/80 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                <div className="w-40 h-24 bg-slate-100 border border-slate-200/80 rounded-card overflow-hidden flex items-center justify-center shrink-0">
                   {contentForm.aboutImageBase64 ? (
                     <img src={contentForm.aboutImageBase64} alt="About Section Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <Image className="h-8 w-8 text-slate-350" />
+                    <Image className="h-8 w-8 text-slate-600" />
                   )}
                 </div>
                 <div className="flex-grow w-full space-y-2">
                   <div className="flex items-center space-x-2">
-                    <label className="inline-flex items-center px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                    <label className="inline-flex items-center px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                       <Upload className="h-4.5 w-4.5 mr-2" />
                       Choose About Photo
                       <input
@@ -195,33 +195,33 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                       <button
                         type="button"
                         onClick={handleRemoveAboutImage}
-                        className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-655 text-xs font-bold rounded-xl cursor-pointer shadow-xs"
+                        className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                       >
                         Remove Image
                       </button>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-455 block">Upload an office workspace or team graphic. Automatically scaled and web-optimized.</span>
+                  <span className="text-xs text-slate-600 block">Upload an office workspace or team graphic. Automatically scaled and web-optimized.</span>
                 </div>
               </div>
             </div>
 
             {/* About Commitments Editor */}
-            <div className="space-y-4 border-t border-gray-100 pt-5 mt-5">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest font-mono">Company Profile Commitments</h3>
-              <p className="text-[10px] text-gray-500 font-sans">Modify the titles, descriptions, and icon styles representing the 3 core commitments shown in the About section.</p>
+            <div className="space-y-4 border-t border-slate-100 pt-5 mt-5">
+              <h3 className="font-display text-lg font-semibold text-slate-900">Company Profile Commitments</h3>
+              <p className="text-xs text-slate-600">Modify the titles, descriptions, and icon styles representing the 3 core commitments shown in the About section.</p>
               
               <div className="grid grid-cols-1 gap-6">
                 {(contentForm.aboutCommitments || DEFAULT_ABOUT_COMMITMENTS).map((comm: any, index: number) => (
-                  <div key={comm.id} className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 space-y-3">
+                  <div key={comm.id} className="p-4 bg-slate-50/50 rounded-card border border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase font-mono font-bold text-blue-650">Commitment #{index + 1}</span>
-                      <span className="text-[10px] font-mono text-gray-450">ID: {comm.id}</span>
+                      <span className="text-sm font-medium text-slate-800">Commitment #{index + 1}</span>
+                      <span className="text-xs text-slate-600">ID: {comm.id}</span>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Title</label>
+                        <label className="text-xs font-medium text-slate-600">Title</label>
                         <input aria-label="Title"
                           type="text"
                           required
@@ -231,12 +231,12 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                             newComms[index] = { ...comm, title: e.target.value };
                             setContentForm({ ...contentForm, aboutCommitments: newComms });
                           }}
-                          className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                          className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                         />
                       </div>
                       
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Icon Name</label>
+                        <label className="text-xs font-medium text-slate-600">Icon Name</label>
                         <select aria-label="Icon Name"
                           value={comm.iconName}
                           onChange={(e) => {
@@ -244,7 +244,7 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                             newComms[index] = { ...comm, iconName: e.target.value };
                             setContentForm({ ...contentForm, aboutCommitments: newComms });
                           }}
-                          className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-805 cursor-pointer"
+                          className="w-full cursor-pointer rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                         >
                           <option value="ShieldAlert">ShieldAlert (Shield Warning)</option>
                           <option value="Code2">Code2 (Code brackets)</option>
@@ -258,7 +258,7 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                     </div>
                     
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Description</label>
+                      <label className="text-xs font-medium text-slate-600">Description</label>
                       <textarea aria-label="Description"
                         required
                         value={comm.description}
@@ -268,7 +268,7 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                           setContentForm({ ...contentForm, aboutCommitments: newComms });
                         }}
                         rows={2}
-                        className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                        className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                       ></textarea>
                     </div>
                   </div>
@@ -277,54 +277,54 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-gray-100">
-            <button type="submit" disabled={isSaving} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer">
+          <div className="flex justify-end pt-4 border-t border-slate-100">
+            <button type="submit" disabled={isSaving} className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-control text-sm font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
               {isSaving ? 'Saving Changes...' : 'Save About Page Layout Overrides'}
             </button>
           </div>
         </form>
 
         {/* Dynamic Growth Roadmap Customizer */}
-        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-xs space-y-6 mt-8">
-          <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-lg font-bold text-gray-900 font-sans">Growth Roadmap Milestones</h3>
-            <p className="text-xs text-gray-500 font-sans mt-1">Manage quarterly objectives, security certifications, and upcoming portal integrations.</p>
+        <div className="bg-white border border-slate-200 p-5 rounded-card shadow-card space-y-6 mt-8">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="font-display text-lg font-semibold text-slate-900">Growth Roadmap Milestones</h3>
+            <p className="text-xs text-slate-600 mt-1">Manage quarterly objectives, security certifications, and upcoming portal integrations.</p>
           </div>
 
           {/* Add/Edit Roadmap Milestone form */}
-          <form id="editor-roadmap" onSubmit={handleAddOrEditRoadmap} className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800">
+          <form id="editor-roadmap" onSubmit={handleAddOrEditRoadmap} className="bg-slate-50 p-4 rounded-card border border-slate-200/60 space-y-3">
+            <h4 className="text-sm font-semibold text-slate-800">
               {editingRoadmapStepId ? 'Edit Roadmap Milestone' : 'Add New Milestone Card'}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Timeline Quarter</label>
+                <label className="text-xs font-medium text-slate-600">Timeline Quarter</label>
                 <input aria-label="Timeline Quarter"
                   type="text"
                   required
                   value={roadmapForm.timeline}
                   onChange={(e) => setRoadmapForm({ ...roadmapForm, timeline: e.target.value })}
                   placeholder="e.g. Q4 2026"
-                  className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Milestone Title</label>
+                <label className="text-xs font-medium text-slate-600">Milestone Title</label>
                 <input aria-label="Milestone Title"
                   type="text"
                   required
                   value={roadmapForm.title}
                   onChange={(e) => setRoadmapForm({ ...roadmapForm, title: e.target.value })}
                   placeholder="e.g. SOC2 Certification"
-                  className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                  className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Milestone Status</label>
+                <label className="text-xs font-medium text-slate-600">Milestone Status</label>
                 <select aria-label="Milestone Status"
                   value={roadmapForm.status}
                   onChange={(e) => setRoadmapForm({ ...roadmapForm, status: e.target.value as any })}
-                  className="w-full border border-gray-200 p-2.5 rounded-lg text-xs bg-white text-gray-800 cursor-pointer"
+                  className="w-full cursor-pointer rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
                 >
                   <option value="planned">Planned (Upcoming)</option>
                   <option value="in-progress">In Progress (Active)</option>
@@ -333,14 +333,14 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase font-bold text-gray-400 font-mono">Milestone Description</label>
+              <label className="text-xs font-medium text-slate-600">Milestone Description</label>
               <textarea aria-label="Milestone Description"
                 required
                 value={roadmapForm.description}
                 onChange={(e) => setRoadmapForm({ ...roadmapForm, description: e.target.value })}
                 placeholder="Briefly state key activities or specifications..."
                 rows={2}
-                className="w-full border border-gray-200 p-2 rounded-lg text-xs bg-white text-gray-900"
+                className="w-full rounded-control border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-brand-600"
               ></textarea>
             </div>
             <div className="flex justify-end space-x-2">
@@ -351,12 +351,12 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                     setEditingRoadmapStepId(null);
                     setRoadmapForm({ timeline: '', title: '', description: '', status: 'planned' });
                   }}
-                  className="px-3.5 py-1.5 border border-gray-200 text-slate-655 text-xs font-bold rounded-lg cursor-pointer"
+                  className="px-3.5 py-1.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                 >
                   Cancel
                 </button>
               )}
-              <button type="submit" disabled={isSaving} className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer">
+              <button type="submit" disabled={isSaving} className="px-3.5 py-1.5 bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold rounded-control cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                 {editingRoadmapStepId ? 'Update Milestone' : 'Add Milestone'}
               </button>
             </div>
@@ -368,11 +368,11 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
               <div key={step.id} className="pt-3 border-t border-slate-100 first:border-0 flex items-center justify-between">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-mono font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-800">{step.timeline}</span>
-                    <h4 className="text-xs font-bold text-slate-955 font-display">{step.title}</h4>
-                    <span className="text-[9px] uppercase font-mono font-bold text-blue-600">({step.status})</span>
+                    <span className="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-800">{step.timeline}</span>
+                    <h4 className="text-sm font-semibold text-slate-900">{step.title}</h4>
+                    <span className="text-xs font-medium text-slate-600">({step.status})</span>
                   </div>
-                  <p className="text-xs text-slate-500 font-sans mt-1 leading-relaxed">{step.description}</p>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{step.description}</p>
                 </div>
                 <div className="flex items-center space-x-2 shrink-0 ml-4">
                   <button
@@ -387,7 +387,7 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                       });
                       document.getElementById('editor-roadmap')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }}
-                    className="p-1.5 border border-gray-105 text-gray-450 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                    className="p-1.5 border border-slate-100 text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-control cursor-pointer"
                     title="Edit Milestone"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
@@ -395,7 +395,7 @@ export default function AboutSection({ db, setDb, adminToken, adminUser, isSavin
                   <button
                     type="button"
                     onClick={() => handleDeleteRoadmap(step.id)}
-                    className="p-1.5 border border-gray-105 text-gray-450 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                    className="p-1.5 border border-slate-100 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-control cursor-pointer"
                     title="Delete Milestone"
                   >
                     <Trash className="h-3.5 w-3.5" />
