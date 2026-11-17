@@ -111,3 +111,22 @@ test('expiry: 100 days after the event Premium is live, Standard is expired and 
   await runCleanup(db, r2, new Date());
   assert.equal(q('SELECT photos FROM invitations')[0].photos, '[]');
 });
+
+test('manage: the stored track stays saveable after it is deactivated or deleted; a different inactive one is rejected', async () => {
+  seedLive('premium', { style: '{"music":1}' });
+  db.exec.exec("INSERT INTO music_tracks (id, title, credit, r2_key, active) VALUES (2, 'Off', '', 'media/music/b.mp3', 0)");
+  db.exec.exec('UPDATE music_tracks SET active = 0 WHERE id = 1');
+  assert.equal((await edit({ style: { music: 1 } })).status, 200);
+  db.exec.exec('DELETE FROM music_tracks WHERE id = 1');
+  assert.equal((await edit({ style: { music: 1 } })).status, 200);
+  assert.equal((await edit({ style: { music: 2 } })).status, 400);
+  db.exec.exec("UPDATE invitations SET tier = 'standard'");
+  assert.equal((await edit({ style: { music: 1 } })).status, 400);
+});
+
+test('manage GET returns the tier', async () => {
+  seedLive('premium');
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, TOKEN).then((r) => r.json())).tier, 'premium');
+  db.exec.exec("UPDATE invitations SET tier = 'standard'");
+  assert.equal((await call('GET', '/api/invitations/manage', undefined, TOKEN).then((r) => r.json())).tier, 'standard');
+});

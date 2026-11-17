@@ -97,7 +97,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         slug: inv.slug, status: inv.status, productType: inv.product_type, askKids: !!occasion?.askKids,
         title: occasion?.title(parse(inv.details, {})) ?? '', design: { slug: inv.design_slug, name: inv.design_name, layoutKey: inv.layout_key, colorSchemes: parse(inv.design_color_schemes, []) },
         // style.cover.photo is one of the photos keys
-        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), rsvps,
+        colorScheme: parse(inv.color_scheme, {}), style: parse(inv.style, {}), details: parse(inv.details, {}), photos: parse(inv.photos, []), tier: tierOf(inv), rsvps,
       });
     }
 
@@ -251,7 +251,9 @@ async function manageEdit(request: Request, env: Env, inv: any): Promise<Respons
   const stored: InvitationStyle = parse(inv.style, {});
   let style = stored;
   if (body.style !== undefined) {
-    const sv = validateStyle(body.style, { photoCount: photos.length, photoKeys: current.filter((k) => photos.includes(k)), tier, trackIds: await activeTrackIds(env.DB) });
+    const sv = validateStyle(body.style, { photoCount: photos.length, photoKeys: current.filter((k) => photos.includes(k)), tier,
+      // The unchanged stored track stays valid after it is deactivated or deleted (guests just get no music)
+      trackIds: [...await activeTrackIds(env.DB), ...(stored.music === undefined ? [] : [stored.music])] });
     if ('error' in sv) return json({ error: sv.error }, 400);
     style = sv.style;
   }
