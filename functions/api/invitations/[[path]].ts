@@ -231,7 +231,11 @@ async function checkout(context: EventContext<Env, any, any>, origin: string): P
     ]);
     return json({ error: 'We could not place your order. Please try again in a moment.' }, 502);
   }
-  context.waitUntil(notify(env.DB, request, orderId, 'placed', { trackingToken }));
+  // Sequential so the customer's email goes first; notify never throws
+  context.waitUntil((async () => {
+    await notify(env.DB, request, orderId, 'placed', { trackingToken });
+    await notify(env.DB, request, orderId, 'new_order');
+  })());
   return json({ reference, trackingToken, ...(start.kind === 'redirect' ? { checkoutUrl: start.url } : {}) });
 }
 

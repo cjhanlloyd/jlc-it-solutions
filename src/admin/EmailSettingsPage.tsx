@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button, Card, Spinner, TextArea, TextField } from '../ui';
 import type { Session } from './api';
 
-type Smtp = { host: string; port: string; username: string; senderName: string; senderEmail: string; signature: string; enabled: boolean };
+type Smtp = { host: string; port: string; username: string; senderName: string; senderEmail: string; orderAlertEmail: string; signature: string; enabled: boolean };
 type Res = { smtp: Omit<Smtp, 'port'> & { port: number; passwordSet: boolean }; template: { subject: string; body: string } };
 type Msg = { ok: boolean; text: string } | null;
 
@@ -78,6 +78,9 @@ export default function EmailSettingsPage({ session }: { session: Session }) {
           </div>
           <TextField label="Sender name" maxLength={100} value={smtp.senderName} onChange={(e) => up({ senderName: e.target.value })} />
           <TextField label="Sender email" type="email" required value={smtp.senderEmail} onChange={(e) => up({ senderEmail: e.target.value })} />
+          <div className="sm:col-span-2">
+            <TextField label="Send new-order alerts to" type="email" maxLength={254} hint="Leave empty to use the sender address." value={smtp.orderAlertEmail} onChange={(e) => up({ orderAlertEmail: e.target.value })} />
+          </div>
           <div className="sm:col-span-2">
             <TextArea label="Signature" rows={3} maxLength={1000} hint={`${smtp.signature.length}/1000`} value={smtp.signature} onChange={(e) => up({ signature: e.target.value })} />
           </div>

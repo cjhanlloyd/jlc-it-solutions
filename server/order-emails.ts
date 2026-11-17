@@ -2,10 +2,12 @@
 // Customer emails for QR payment orders. Fire-and-forget: never throws, no-op when SMTP is disabled.
 import { CUSTOMER_MESSAGE, STATUS_LABEL, type OrderStatus } from '../shared/order-status';
 import { sendSmtpEmail } from './email';
+import { occasionOf } from '../shared/occasions';
+import { tierOf } from '../shared/tiers';
 import { emailAndRotateToken } from './invitation-links';
 
-// 'review' goes to the team (the SMTP sender address); every other kind to the customer
-export type NotifyKind = 'placed' | 'receipt' | 'confirmed' | 'rejected' | 'delivered' | 'cancelled' | 'refunded' | 'proof' | 'review';
+// 'review' and 'new_order' go to the team (new_order: the alert address, else the sender address); every other kind to the customer
+export type NotifyKind = 'placed' | 'receipt' | 'confirmed' | 'rejected' | 'delivered' | 'cancelled' | 'refunded' | 'proof' | 'review' | 'new_order';
 
 const pesos = (centavos: number) => `PHP ${(centavos / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const manila = (iso: string) => new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'short' });
@@ -20,6 +22,7 @@ const INTRO: Record<NotifyKind, [subject: string, message: string]> = {
   refunded: ['Your order was refunded', CUSTOMER_MESSAGE.refunded],
   proof: ['Your design proof is ready', 'Your design proof is ready. Open your order page to review it, then approve it or request changes.'],
   review: ['Customer reviewed a proof', 'A customer reviewed their design proof.'],
+  new_order: ['New order', 'A new order was placed.'],
 };
 const CONFIRMED_CUSTOM = "Your payment is confirmed. Our designer will start on your invitation now, and you'll receive a proof to review.";
 
@@ -28,7 +31,7 @@ export async function notify(db: D1Database, request: Request, orderId: number, 
     const smtp: any = await db.prepare("SELECT * FROM smtp_settings WHERE id = 'default'").first();
     if (!smtp?.enabled) return;
     const o = await db.prepare(
-      'SELECT o.id, o.reference, o.status, o.package_kind, o.customer_email, o.amount_centavos, o.package_name, o.payment_deadline, o.product_id AS invitation_id, i.slug, d.name AS design_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id WHERE o.id = ?',
+      'SELECT o.id, o.reference, o.status, o.package_kind, o.customer_email, o.amount_centavos, o.package_name, o.payment_deadline, o.product_id AS invitation_id, i.slug, d.name AS design_name, d.product_type, i.tier, o.created_at, o.promo_code, o.discount_centavos, c.name AS customer_name FROM orders o LEFT JOIN invitations i ON i.id = o.product_id LEFT JOIN products_designs d ON d.id = i.design_id LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ?',
     ).bind(orderId).first<any>();
     if (!o) return;
     const origin = new URL(request.url).origin;
@@ -54,7 +57,32 @@ export async function notify(db: D1Database, request: Request, orderId: number, 
     const body = (head: string[]) => [message, '', ...head, ...lines.filter(Boolean)].join('\n');
     const mail = { to: o.customer_email, subject: `${subject} (${o.reference})` };
 
-    if (kind === 'review') {
+    if (kind === 'new_order') {
+      // Single call site (checkout), and sendSmtpEmail does not log to sent_emails, so there is no duplicate guard
+      const discount = o.promo_code ? o.discount_centavos : 0;
+      const team = [
+        `Order reference: ${o.reference}`,
+        `Customer name: ${o.customer_name ?? 'Not given'}`,
+        `Customer email: ${o.customer_email}`,
+        `Occasion: ${occasionOf(o.product_type)?.label ?? 'Not set'}`,
+        o.design_name && `Design: ${o.design_name}`,
+        `Package: ${o.package_name ?? 'Standard'}${tierOf(o) === 'premium' ? ' (Premium)' : ''}`,
+        `Order date: ${manila(o.created_at.includes('T') ? o.created_at : `${o.created_at.replace(' ', 'T')}Z`)}`,
+        `Subtotal: ${pesos(o.amount_centavos + discount)}`,
+        o.promo_code && `Promo code: ${o.promo_code}`,
+        o.promo_code && `Discount: ${pesos(discount)}`,
+        `Total: ${pesos(o.amount_centavos)}`,
+        `Payment status: ${o.status === 'pending_payment' ? 'Awaiting payment' : STATUS_LABEL[o.status as OrderStatus] ?? o.status}`,
+        `Order status: ${STATUS_LABEL[o.status as OrderStatus] ?? o.status}`,
+        `Open in admin: ${origin}/admin#/orders/${o.id}`,
+      ];
+      const to = String(smtp.order_alert_email ?? '').trim() || smtp.senderEmail;
+      try {
+        await sendSmtpEmail(db, smtp, { to, subject: `${subject} ${o.reference} — ${pesos(o.amount_centavos)}`, body: [message, '', ...team.filter(Boolean)].join('\n') }, request);
+      } catch (e) {
+        console.error(`New-order alert for order ${orderId} failed:`, e instanceof Error ? e.message : e);
+      }
+    } else if (kind === 'review') {
       // To the team; the customer's order page link would be useless without their token
       const team = [
         `Decision: ${extra.decision === 'approve' ? 'Approved' : 'Requested changes'}`,

@@ -44,7 +44,7 @@ async function read(env: Env): Promise<Response> {
   return json({
     smtp: {
       host: s?.host ?? '', port: s?.port ?? 587, username: s?.username ?? '', senderName: s?.senderName ?? '',
-      senderEmail: s?.senderEmail ?? '', signature: s?.signature ?? '', enabled: !!s?.enabled, passwordSet: !!s?.password,
+      senderEmail: s?.senderEmail ?? '', orderAlertEmail: s?.order_alert_email ?? '', signature: s?.signature ?? '', enabled: !!s?.enabled, passwordSet: !!s?.password,
     },
     template: { subject: t?.subject ?? '', body: t?.body ?? '' },
   });
@@ -58,18 +58,20 @@ async function saveSmtp(env: Env, me: Admin, b: any): Promise<Response> {
   const senderName = text(b.senderName ?? '', 100);
   const senderEmail = text(b.senderEmail, 200);
   const signature = text(b.signature ?? '', 1000);
+  const orderAlertEmail = text(b.orderAlertEmail ?? '', 254);
   const port = typeof b.port === 'number' || (typeof b.port === 'string' && /^\d+$/.test(b.port)) ? Number(b.port) : NaN;
   if (!host) return json({ error: 'Enter the SMTP host.' }, 400);
   if (!Number.isInteger(port) || port < 1 || port > 65535) return json({ error: 'Port must be between 1 and 65535.' }, 400);
   if (!senderEmail || !EMAIL_RE.test(senderEmail)) return json({ error: 'Enter a valid sender email.' }, 400);
+  if (orderAlertEmail === null || (orderAlertEmail && !EMAIL_RE.test(orderAlertEmail))) return json({ error: 'Enter a valid email for new-order alerts, or leave it empty.' }, 400);
   if (username === null || senderName === null || signature === null) return json({ error: 'A field is too long.' }, 400);
   if (b.password !== undefined && typeof b.password !== 'string') return json({ error: 'Invalid password.' }, 400);
   const old = await getSmtp(env);
   const password = b.clearPassword === true ? '' : b.password ? b.password : old?.password ?? '';
-  await env.DB.prepare(`INSERT INTO smtp_settings (id, host, port, username, password, senderName, senderEmail, signature, enabled)
-    VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-    ON CONFLICT(id) DO UPDATE SET host = ?1, port = ?2, username = ?3, password = ?4, senderName = ?5, senderEmail = ?6, signature = ?7, enabled = ?8`)
-    .bind(host, port, username, password, senderName, senderEmail, signature, b.enabled === true || b.enabled === 1 ? 1 : 0).run();
+  await env.DB.prepare(`INSERT INTO smtp_settings (id, host, port, username, password, senderName, senderEmail, signature, enabled, order_alert_email)
+    VALUES ('default', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+    ON CONFLICT(id) DO UPDATE SET host = ?1, port = ?2, username = ?3, password = ?4, senderName = ?5, senderEmail = ?6, signature = ?7, enabled = ?8, order_alert_email = ?9`)
+    .bind(host, port, username, password, senderName, senderEmail, signature, b.enabled === true || b.enabled === 1 ? 1 : 0, orderAlertEmail || null).run();
   await audit(env, `${me.email} updated SMTP settings`);
   return json({ ok: true, passwordSet: !!password });
 }

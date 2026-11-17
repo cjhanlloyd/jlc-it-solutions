@@ -80,3 +80,13 @@ test('enabled: boolean or 0/1 only ("false" is off); port must be an integer 1-6
   for (const port of [0, 65536, 1.5, '', null, true, 'abc', [587]]) assert.equal((await call('boss', { ...smtp, port })).status, 400, String(port));
   for (const port of [1, 65535, '587']) assert.equal((await call('boss', { ...smtp, port })).status, 200, String(port));
 });
+
+test('orderAlertEmail round-trips, trims, may be empty, and is validated', async () => {
+  const save = (v) => call('boss', { ...smtp, orderAlertEmail: v });
+  assert.equal((await save('  alerts@jlc.test ')).status, 200);
+  assert.equal((await (await call('boss')).json()).smtp.orderAlertEmail, 'alerts@jlc.test');
+  assert.equal((await save('')).status, 200);
+  assert.equal((await (await call('boss')).json()).smtp.orderAlertEmail, '');
+  assert.equal((await save('not-an-email')).status, 400);
+  assert.equal((await save('a'.repeat(250) + '@x.co')).status, 400);
+});
