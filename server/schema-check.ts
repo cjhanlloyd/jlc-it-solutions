@@ -5,6 +5,8 @@
 type Marker = { migration: string; table: string; column?: string } | { migration: string; dataOnly: true };
 
 export const MIGRATION_MARKERS: Marker[] = [
+  { migration: '0001_invitations', table: 'rsvps' },
+  { migration: '0002_occasions', table: 'rsvps', column: 'kids_count' },
   { migration: '0003_orders_gcash', table: 'payment_settings' },
   { migration: '0003_orders_gcash', table: 'orders', column: 'updated_at' },
   { migration: '0004_remap_legacy', dataOnly: true }, // data remap only: nothing to detect

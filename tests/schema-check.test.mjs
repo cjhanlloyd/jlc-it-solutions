@@ -7,8 +7,8 @@ import { bundle } from './helpers/bundle.mjs';
 
 const { MIGRATION_MARKERS, missingMigrations, migrationWarning } = await bundle('server/schema-check.ts');
 
-test('every migration after 0002 has a marker (add one with each new migration)', () => {
-  const files = readdirSync(new URL('../migrations/', import.meta.url)).filter((f) => f.endsWith('.sql') && parseInt(f, 10) > 2).map((f) => f.replace(/\.sql$/, ''));
+test('every migration has a marker (add one with each new migration)', () => {
+  const files = readdirSync(new URL('../migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).map((f) => f.replace(/\.sql$/, ''));
   const marked = new Set(MIGRATION_MARKERS.map((m) => m.migration));
   assert.deepEqual(files.filter((f) => !marked.has(f)), []);
 });
@@ -28,4 +28,10 @@ test('a skipped 0007 is reported by name with a clear message', async () => {
   const missing = await missingMigrations(db);
   assert.deepEqual(missing, ['0007_custom_orders']);
   assert.equal(migrationWarning(missing), 'The live database is missing migration 0007_custom_orders. Run it on the live database, then reload.');
+});
+
+test('a skipped 0002 (RSVP children count) is reported by name', async () => {
+  const db = makeD1();
+  await db.prepare('ALTER TABLE rsvps DROP COLUMN kids_count').run();
+  assert.deepEqual(await missingMigrations(db), ['0002_occasions']);
 });
