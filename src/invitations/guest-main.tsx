@@ -3,8 +3,12 @@ import { StrictMode, useCallback, useEffect, useRef, useState, type FormEvent, t
 import { createRoot } from 'react-dom/client';
 import { LIMITS } from '../../shared/invitation-fields';
 import type { InvitationStyle } from '../../shared/invitation-style';
+import { occasionOf } from '../../shared/occasions';
+import IntroCover from './IntroCover';
 import InvitationView from './InvitationView';
+import MusicToggle, { type Music } from './MusicToggle';
 import { Ornament, schemeVars, type Scheme } from './parts';
+import { effectiveScheme } from './style-render';
 
 // Cloudflare Turnstile, same as src/components/InquiryForm.tsx. On localhost, use Cloudflare's always-pass test key.
 const TURNSTILE_SITE_KEY = ['localhost', '127.0.0.1'].includes(window.location.hostname)
@@ -23,7 +27,8 @@ function loadTurnstile(): Promise<void> {
 }
 
 type Data =
-  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string }
+  | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
+      tier?: 'standard' | 'premium'; intro?: boolean; music?: Music | null }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
@@ -150,6 +155,7 @@ const Plain = ({ title, children }: { title: string; children: ReactNode }) => (
 
 function Guest() {
   const [data, setData] = useState<Data>({ state: 'loading' });
+  const audio = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     if (!slug) return setData({ state: 'missing' });
     fetch(`/api/invitations/i/${slug}`)
@@ -160,11 +166,19 @@ function Guest() {
   switch (data.state) {
     case 'loading':
       return <main className="inv plain" style={schemeVars(NEUTRAL)}><p className="plain-loading" role="status">Opening your invitation…</p></main>;
-    case 'live':
+    case 'live': {
+      // Cover and music sit outside InvitationView, so studio and admin previews never show them
+      const scheme = effectiveScheme(data.colorScheme, data.style ?? {});
+      const card = data.intro ? occasionOf(data.productType)?.card(data.details) : undefined;
       return (
-        <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} style={data.style}
-          rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
+        <>
+          {card && <IntroCover card={card} scheme={scheme} onOpen={() => audio.current?.play().catch(() => {})} />}
+          <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} style={data.style}
+            rsvpSlot={data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>} />
+          {data.music && <MusicToggle ref={audio} music={data.music} scheme={scheme} />}
+        </>
       );
+    }
     case 'expired':
       return (
         <Plain title={data.title}>
