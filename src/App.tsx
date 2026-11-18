@@ -29,6 +29,7 @@ import AboutPage from './site/AboutPage';
 import ContactPage from './site/ContactPage';
 import SiteBanner from './site/SiteBanner.tsx';
 import SiteLoader from './site/SiteLoader.tsx';
+import ConsentBanner from './site/ConsentBanner.tsx';
 import HomePage from './site/HomePage.tsx';
 import DesignPage from './site/DesignPage.tsx';
 import CustomiserPage from './invitations/CustomiserPage.tsx';
@@ -272,6 +273,7 @@ export default function App() {
         branding={branding}
         content={content}
       />
+      <ConsentBanner />
 
     </div>
   );

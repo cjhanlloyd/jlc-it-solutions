@@ -9,6 +9,7 @@ import { BrandingSettings, ContentSettings } from '../types.js';
 import { NavLink } from '../site/NavLink';
 import { occasionLabel } from '../invitations/occasions';
 import { fetchDesigns } from '../site/designs-api';
+import { OPEN_CONSENT } from '../site/ConsentBanner';
 
 interface FooterProps {
   branding: BrandingSettings;
@@ -67,7 +68,8 @@ export default function Footer({ branding, content }: FooterProps) {
 
           <nav aria-label="Help and company">
             <h2 className={heading}>Help</h2>
-            <ul className="space-y-3">{HELP.map((l) => (<li key={l.href}><NavLink href={l.href} className={link}>{l.label}</NavLink></li>))}</ul>
+            <ul className="space-y-3">{HELP.map((l) => (<li key={l.href}><NavLink href={l.href} className={link}>{l.label}</NavLink></li>))}
+              <li><button type="button" onClick={() => window.dispatchEvent(new Event(OPEN_CONSENT))} className={link}>Cookie settings</button></li></ul>
             <h2 className={`${heading} mt-8`}>Company</h2>
             <ul className="space-y-3">{COMPANY.map((l) => (<li key={l.href}><NavLink href={l.href} className={link}>{l.label}</NavLink></li>))}</ul>
           </nav>
