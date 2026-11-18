@@ -59,11 +59,6 @@ test('codes: new guests get one, existing guests get one lazily', async () => {
   x('UPDATE invitation_guests SET checkin_code = NULL WHERE id = 7');
   const pass = (await (await call('GET', '/api/invitations/i/s-1?g=gtok7')).json()).pass;
   assert.match(pass.url, /\/c\/[A-Za-z0-9_-]{16}$/);
-  // turning check-in on fills the rest
-  x("UPDATE invitation_guests SET checkin_code = NULL WHERE invitation_id = 1");
-  x("UPDATE invitations SET extras = '{}' WHERE id = 1");
-  assert.equal((await call('POST', '/api/invitations/manage/extras', { extras: { checkin: { enabled: true } } }, M())).status, 200);
-  assert.equal(q('SELECT COUNT(*) AS n FROM invitation_guests WHERE invitation_id = 1 AND checkin_code IS NULL')[0].n, 0);
 });
 
 test('the door key is shown once and only its hash is stored; regenerate replaces it; revoke ends it', async () => {
@@ -112,11 +107,17 @@ test('check-in is refused when it is switched off or the invitation is not Premi
   assert.equal((await call('GET', '/api/invitations/manage/checkin', undefined, M(3))).status, 403);
 });
 
-test('scans are limited to 120 a minute per IP', async () => {
+test('unauthenticated door requests write nothing', async () => {
+  const before = q('SELECT COUNT(*) AS n FROM audit_logs')[0].n;
+  for (let i = 0; i < 5; i++) await scan('CODE7777777777AA', 'wrong-key');
+  await doorCall('POST', '/api/checkin/verify', { invitationId: 1, key: 'wrong-key' });
+  await doorCall('GET', '/api/checkin/pass/CODE7777777777AA');
+  assert.equal(q('SELECT COUNT(*) AS n FROM audit_logs')[0].n, before);
+  assert.equal(q('SELECT checked_in_at FROM invitation_guests WHERE id = 7')[0].checked_in_at, null);
   const k = await newKey();
-  for (let i = 0; i < 120; i++) await scan('nope', k.key, 1, '5.5.5.5');
-  assert.equal((await scan('CODE7777777777AA', k.key, 1, '5.5.5.5')).status, 429);
-  assert.equal((await scan('CODE7777777777AA', k.key, 1, '6.6.6.6')).status, 200);
+  for (let i = 0; i < 130; i++) await scan('nope', k.key, 1, '5.5.5.5'); // authorised phones are never throttled
+  assert.equal((await scan('CODE7777777777AA', k.key, 1, '5.5.5.5')).status, 200);
+  assert.equal(q('SELECT COUNT(*) AS n FROM audit_logs')[0].n, before);
 });
 
 test('the pass page reveals only the name and the event', async () => {

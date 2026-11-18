@@ -17,17 +17,6 @@ export const checkinOn = (inv: any) => tierOf(inv) === 'premium' && parse(inv.ex
 // People a guest brings: their attending reply (adults + kids), else the seats held for them.
 const PARTY = 'COALESCE((SELECT r.party_size + COALESCE(r.kids_count, 0) FROM rsvps r WHERE r.guest_id = g.id AND r.invitation_id = g.invitation_id AND r.attending = 1), g.seats)';
 
-// Gives every guest of the invitation a code (existing guests get theirs lazily).
-export async function ensureCodes(db: D1Database, invitationId: number) {
-  const { results } = await db.prepare('SELECT id FROM invitation_guests WHERE invitation_id = ? AND checkin_code IS NULL').bind(invitationId).all<any>();
-  for (const g of results || []) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try { await db.prepare('UPDATE invitation_guests SET checkin_code = ? WHERE id = ? AND checkin_code IS NULL').bind(newCheckinCode(), g.id).run(); break; }
-      catch (e) { if (!/UNIQUE/i.test(String(e))) throw e; }
-    }
-  }
-}
-
 // The guest's entry pass, only for an attending guest of a Premium invitation with check-in on. g: { id, name, attending, party_size, kids_count }.
 export async function guestPass(db: D1Database, inv: any, g: any, origin: string) {
   if (!g || !g.attending || !checkinOn(inv)) return undefined;
@@ -86,16 +75,6 @@ async function doorInvitation(env: Env, body: any): Promise<any | null> {
 }
 const titleOf = (inv: any) => occasionOf(inv.product_type)?.title(parse(inv.details, {})) ?? '';
 
-const PER_MINUTE = 120;
-// shortcut: one audit_logs row per scan keeps the limit cheap to build; swap for a counter table if the log grows too much.
-async function limited(env: Env, request: Request): Promise<boolean> {
-  const message = `Check-in from ${request.headers.get('CF-Connecting-IP') || 'unknown'}`;
-  const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM audit_logs WHERE log_type = 'checkin' AND message = ? AND timestamp > ?").bind(message, new Date(Date.now() - 60_000).toISOString()).first<any>();
-  if ((recent?.count || 0) >= PER_MINUTE) return true;
-  await env.DB.prepare("INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, 'checkin', ?)").bind(new Date().toISOString(), message).run();
-  return false;
-}
-
 export async function doorRoute(route: string, request: Request, env: Env): Promise<Response> {
   const pass = route.match(/^GET \/api\/checkin\/pass\/([^/]+)$/)?.[1];
   if (pass) {
@@ -111,7 +90,6 @@ export async function doorRoute(route: string, request: Request, env: Env): Prom
     return inv ? json({ title: titleOf(inv) }) : json({ error: 'This phone is not set up for check-in.' }, 401);
   }
   if (route === 'POST /api/checkin') {
-    if (await limited(env, request)) return json({ error: 'Too many scans. Please wait a moment.' }, 429);
     const inv = await doorInvitation(env, body);
     if (!inv) return json({ error: 'This phone is not set up for check-in.' }, 401);
     if (typeof body.code !== 'string' || body.code.length > 40) return json({ status: 'not_found' }, 404);
