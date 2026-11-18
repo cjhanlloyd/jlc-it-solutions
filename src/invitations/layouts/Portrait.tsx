@@ -5,7 +5,7 @@ import type { Venue } from '../../../shared/invitation-fields';
 import { occasionForDetails } from '../../../shared/occasions';
 import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Portrait({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps) {
@@ -70,7 +70,8 @@ export default function Portrait({ details: d, scheme, photos: all, style, rsvpS
         <AttireSection events={events} dressCode={d.dressCode} id="pt-attire" kicker="pt-kicker" />
         <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="pt-gifts" kicker="pt-kicker" />
 
-        <Photos photos={photos} title={occasion.title(d)} className="pt-photos" />
+        <Photos photos={photos} title={occasion.title(d)} className="pt-photos" layout={events?.galleryLayout} />
+        <GuestGallery events={events} kicker="pt-kicker" />
 
         {d.hostedBy && (
           <section aria-labelledby="pt-host">

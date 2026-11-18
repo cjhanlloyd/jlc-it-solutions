@@ -1,5 +1,6 @@
 // Small pieces shared by the layouts and the guest page. Text is rendered only through JSX.
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactElement } from 'react';
+import type { GalleryLayout } from '../../shared/extras';
 import type { Venue } from '../../shared/invitation-fields';
 import { displaySafe, fieldColors, type InvitationStyle } from '../../shared/invitation-style';
 import { ordinal } from '../../shared/occasions/birthday';
@@ -105,14 +106,53 @@ export function Countdown({ details, className }: { details: { eventDate: string
 export const photoAlt = (title: string, i: number, total: number) => `${title}, photo ${i + 1} of ${total}`;
 
 // `start` skips photos a layout already showed elsewhere, keeping the alt numbering right.
-export const Photos = ({ photos, title, className, start = 0 }: { photos: string[]; title: string; className: string; start?: number }) =>
-  photos.length > start ? (
-    <div className={className}>
-      {photos.slice(start).map((src, i) => (
-        <img key={src} src={src} loading="lazy" decoding="async" alt={photoAlt(title, i + start, photos.length)} />
-      ))}
+// layout: undefined/'grid' is each layout's own grid (className); the others use the shared inv-gallery styles.
+export function Photos({ photos, title, className, start = 0, layout }: { photos: string[]; title: string; className: string; start?: number; layout?: GalleryLayout }) {
+  if (photos.length <= start) return null;
+  const imgs = photos.slice(start).map((src, i) => (
+    <img key={src} src={src} loading="lazy" decoding="async" alt={photoAlt(title, i + start, photos.length)} />
+  ));
+  if (layout === 'carousel') return <Carousel imgs={imgs} title={title} />;
+  if (layout === 'masonry') return <div className="inv-gallery inv-masonry">{imgs}</div>;
+  if (layout === 'polaroid') return <div className="inv-gallery inv-polaroid">{imgs.map((img) => <figure key={img.key} className="inv-print">{img}<figcaption className="inv-print-cap" aria-hidden="true" /></figure>)}</div>;
+  return <div className={className}>{imgs}</div>;
+}
+
+const DOTS_MAX = 12; // past this, a "3 / 40" counter instead of dots
+
+// Scroll-snap track: native swipe, prev/next and dot buttons, arrow keys on the focused track. No autoplay.
+function Carousel({ imgs, title }: { imgs: ReactElement[]; title: string }) {
+  const track = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
+  const n = imgs.length;
+  const go = (i: number) => {
+    const el = track.current;
+    if (!el) return;
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollTo({ left: Math.max(0, Math.min(n - 1, i)) * el.clientWidth, behavior: reduce ? 'auto' : 'smooth' });
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (d) { e.preventDefault(); go(at + d); }
+  };
+  return (
+    <div className="inv-gallery inv-carousel" role="region" aria-roledescription="carousel" aria-label={`${title} photos`}>
+      <div ref={track} className="inv-car-track" tabIndex={0} onKeyDown={onKey} aria-label="Photos, use the arrow keys to move"
+        onScroll={(e) => setAt(Math.round(e.currentTarget.scrollLeft / Math.max(1, e.currentTarget.clientWidth)))}>
+        {imgs.map((img, i) => <div key={img.key} className="inv-car-slide" role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${n}`}>{img}</div>)}
+      </div>
+      {n > 1 && (
+        <div className="inv-car-nav">
+          <button type="button" className="inv-car-btn" aria-label="Previous photo" disabled={at <= 0} onClick={() => go(at - 1)}>‹</button>
+          {n <= DOTS_MAX
+            ? <div className="inv-car-dots">{imgs.map((img, i) => <button key={img.key} type="button" className="inv-car-dot" aria-label={`Show photo ${i + 1}`} aria-current={i === at ? 'true' : undefined} onClick={() => go(i)} />)}</div>
+            : <p className="inv-car-count" aria-live="polite">{at + 1} / {n}</p>}
+          <button type="button" className="inv-car-btn" aria-label="Next photo" disabled={at >= n - 1} onClick={() => go(at + 1)}>›</button>
+        </div>
+      )}
     </div>
-  ) : null;
+  );
+}
 
 // 7 -> 7<sup>th</sup>
 export const GiftQr = ({ src }: { src?: string }) => src ? (

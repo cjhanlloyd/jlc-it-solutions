@@ -3,7 +3,7 @@ import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, MapLink, GiftQr, Photos, formatDate, longDate, photoAlt, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Modern({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
@@ -71,9 +71,10 @@ export default function Modern({ details: d, scheme, photos: all, style, rsvpSlo
         {photos.length > 1 && (
           <section className="md-row" aria-labelledby="md-moments">
             <h2 id="md-moments" className="md-label">Moments</h2>
-            <Photos photos={photos} start={1} title={`${d.partner1} and ${d.partner2}`} className="md-photos" />
+            <Photos photos={photos} start={1} title={`${d.partner1} and ${d.partner2}`} className="md-photos" layout={events?.galleryLayout} />
           </section>
         )}
+        <GuestGallery events={events} kicker="md-label" className="md-row" />
 
         {rsvpSlot && (
           <section className="md-row" aria-labelledby="md-rsvp">

@@ -1,14 +1,17 @@
-// Manage page "Event features": a tablist; each tab lives in its own component. Premium-only tabs arrive in later tasks.
+// Manage page "Event features": a tablist; each tab lives in its own component. Premium-only tabs are hidden on Standard.
 import React from 'react';
 import type { Extras } from '../../../shared/extras';
 import AttireTab, { type AttirePhoto } from './AttireTab';
+import GalleryTab from './GalleryTab';
 import GiftsTab, { type GiftItem } from './GiftsTab';
+import GuestPhotosTab from './GuestPhotosTab';
 import type { Api } from './shared';
 
-const TABS = [{ id: 'attire', label: 'Attire & motif' }, { id: 'gifts', label: 'Gifts' }] as const;
+const ALL_TABS = [{ id: 'attire', label: 'Attire & motif' }, { id: 'gifts', label: 'Gifts' }, { id: 'gallery', label: 'Gallery' }, { id: 'guest-photos', label: 'Guest photos', premium: true }] as const;
 
-export default function EventFeatures({ api, initial }: { api: Api; initial: { extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: GiftItem[] } }) {
-  const [tab, setTab] = React.useState<(typeof TABS)[number]['id']>('attire');
+export default function EventFeatures({ api, initial }: { api: Api; initial: { tier?: 'standard' | 'premium'; extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: GiftItem[] } }) {
+  const [tab, setTab] = React.useState<(typeof ALL_TABS)[number]['id']>('attire');
+  const TABS = ALL_TABS.filter((t) => !('premium' in t) || initial.tier === 'premium');
   const [extras, setExtras] = React.useState<Extras>(initial.extras ?? {});
   const [photos, setPhotos] = React.useState<AttirePhoto[]>(initial.attirePhotos ?? []);
   const [items, setItems] = React.useState<GiftItem[]>(initial.giftItems ?? []);
@@ -30,6 +33,8 @@ export default function EventFeatures({ api, initial }: { api: Api; initial: { e
       </div>
       <div id="ef-panel-attire" role="tabpanel" aria-labelledby="ef-tab-attire" hidden={tab !== 'attire'}><AttireTab api={api} extras={extras} onExtras={setExtras} photos={photos} onPhotos={setPhotos} /></div>
       <div id="ef-panel-gifts" role="tabpanel" aria-labelledby="ef-tab-gifts" hidden={tab !== 'gifts'}><GiftsTab api={api} extras={extras} onExtras={setExtras} items={items} onItems={setItems} /></div>
+      <div id="ef-panel-gallery" role="tabpanel" aria-labelledby="ef-tab-gallery" hidden={tab !== 'gallery'}><GalleryTab api={api} extras={extras} onExtras={setExtras} /></div>
+      {initial.tier === 'premium' && <div id="ef-panel-guest-photos" role="tabpanel" aria-labelledby="ef-tab-guest-photos" hidden={tab !== 'guest-photos'}><GuestPhotosTab api={api} extras={extras} onExtras={setExtras} /></div>}
     </section>
   );
 }

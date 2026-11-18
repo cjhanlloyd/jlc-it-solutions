@@ -1,7 +1,9 @@
-// Invitations & RSVPs (#/invitations): every invitation with its guest RSVPs.
+// Invitations & RSVPs (#/invitations): every invitation with its guest RSVPs, plus the Event features panel for content.manage.
 import { useEffect, useState } from 'react';
 import { Button, EmptyState, Spinner } from '../ui';
+import { can } from '../../server/permissions';
 import type { Session } from './api';
+import InvitationFeatures from './InvitationFeatures';
 
 type Invitation = { id: number; slug: string; status: string; title: string; design_name: string; event_date: string | null; rsvpCount: number };
 type Rsvp = { guestName: string; attending: boolean; partySize: number; kidsCount?: number; message: string; submitted: string };
@@ -68,6 +70,7 @@ export default function InvitationsPage({ session }: { session: Session }) {
                   ))}
                 </div>
               )}
+              {open === i.id && can(session.user.role, 'content.manage') && <InvitationFeatures session={session} id={i.id} />}
             </li>
           ))}
         </ul>

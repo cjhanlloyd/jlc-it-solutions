@@ -4,7 +4,7 @@ import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Minimal({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
@@ -62,9 +62,10 @@ export default function Minimal({ details: d, scheme, photos: all, style, rsvpSl
 
         {photos.length > 0 && (
           <div className="mn-sec">
-            <Photos photos={photos} title={wedding.title(d)} className="mn-photos" />
+            <Photos photos={photos} title={wedding.title(d)} className="mn-photos" layout={events?.galleryLayout} />
           </div>
         )}
+        <GuestGallery events={events} kicker="mn-kicker" className="mn-sec" />
 
         {rsvpSlot && (
           <section className="mn-sec" aria-labelledby="mn-rsvp">

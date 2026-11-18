@@ -3,7 +3,7 @@ import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
 import { Cover, Countdown, MapLink, Ordinal, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Golden({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<BirthdayDetails>) {
@@ -53,7 +53,8 @@ export default function Golden({ details: d, scheme, photos: all, style, rsvpSlo
         <AttireSection events={events} dressCode={d.dressCode} id="gl-attire" kicker="gl-kicker" />
         <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="gl-gifts" kicker="gl-kicker" />
 
-        <Photos photos={photos} title={birthday.title(d)} className="gl-photos" />
+        <Photos photos={photos} title={birthday.title(d)} className="gl-photos" layout={events?.galleryLayout} />
+        <GuestGallery events={events} kicker="gl-kicker" />
 
         {d.hostedBy && (
           <section aria-labelledby="gl-host">

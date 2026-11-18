@@ -3,7 +3,7 @@ import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, MapLink, Ornament, GiftQr, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Classic({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
@@ -66,7 +66,8 @@ export default function Classic({ details: d, scheme, photos: all, style, rsvpSl
         <AttireSection events={events} dressCode={d.dressCode} id="cl-attire" kicker="cl-kicker" before={divider} />
         <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="cl-gifts" kicker="cl-kicker" before={divider} />
 
-        {photos.length > 0 && <>{divider}<Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="cl-photos" /></>}
+        {photos.length > 0 && <>{divider}<Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="cl-photos" layout={events?.galleryLayout} /></>}
+        <GuestGallery events={events} kicker="cl-kicker" />
 
         {rsvpSlot && (
           <section aria-labelledby="cl-rsvp">

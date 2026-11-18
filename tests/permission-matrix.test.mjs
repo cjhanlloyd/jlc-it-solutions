@@ -101,6 +101,10 @@ const TABLE = [
   // invitations: orders.view, so Designers see invitations and RSVPs
   ['GET /api/admin/invitations/overview', null, ALL_ROLES],
   ['GET /api/admin/invitations/invitations/1/rsvps', null, ALL_ROLES],
+  // invitations Event features panel and guest photo moderation: content.manage
+  ['GET /api/admin/invitations/invitations/1/features', null, ADMINS],
+  ['GET /api/admin/invitations/invitations/1/media/1', null, ADMINS],
+  ['POST /api/admin/invitations/invitations/1/guest-photos', { action: 'nope' }, ADMINS],
   // orders: orders.view, then each branch's own permission
   ['GET /api/admin/orders', null, ALL_ROLES],
   ['GET /api/admin/orders/1', null, ALL_ROLES],

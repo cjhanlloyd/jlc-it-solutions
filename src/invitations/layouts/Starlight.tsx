@@ -6,7 +6,7 @@ import { displaySafe, isDark } from '../../../shared/invitation-style';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
 import { Cover, Countdown, fieldVars, MapLink, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Starlight({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<DebutDetails>) {
@@ -74,7 +74,8 @@ export default function Starlight({ details: d, scheme, photos: all, style, rsvp
           <AttireSection events={events} dressCode={d.dressCode} id="st-attire" kicker="st-kicker" />
           <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="st-gifts" kicker="st-kicker" />
 
-          <Photos photos={photos} title={debut.title(d)} className="st-photos" />
+          <Photos photos={photos} title={debut.title(d)} className="st-photos" layout={events?.galleryLayout} />
+          <GuestGallery events={events} kicker="st-kicker" />
 
           {d.hostedBy && (
             <section aria-labelledby="st-host">

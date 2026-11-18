@@ -3,7 +3,7 @@ import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
 import { Cover, Countdown, MapLink, Ordinal, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Confetti({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<BirthdayDetails>) {
@@ -58,7 +58,8 @@ export default function Confetti({ details: d, scheme, photos: all, style, rsvpS
         <AttireSection events={events} dressCode={d.dressCode} id="cf-attire" className="cf-card" kicker="cf-small" />
         <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="cf-gifts" className="cf-card" kicker="cf-small" />
 
-        <Photos photos={photos} title={birthday.title(d)} className="cf-photos" />
+        <Photos photos={photos} title={birthday.title(d)} className="cf-photos" layout={events?.galleryLayout} />
+        <GuestGallery events={events} kicker="cf-small" className="cf-card" />
 
         {d.hostedBy && (
           <section className="cf-card" aria-labelledby="cf-host">

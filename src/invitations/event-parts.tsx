@@ -2,7 +2,22 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { GiftMethod } from '../../shared/extras';
 import { hasAttire, hasGiftExtras, peso, wishState, type EventData, type WishItem } from './event-view';
-import { GiftQr } from './parts';
+import { GiftQr, Photos } from './parts';
+
+// After a layout's own photos: approved guest photos in the same gallery layout, then the guest page's upload form.
+// Renders nothing without either, so invitations without guest photos are unchanged.
+export function GuestGallery({ events, kicker, className }: { events?: EventData; kicker?: string; className?: string }) {
+  const photos = events?.guestPhotos ?? [];
+  if (!photos.length && !events?.guestShare) return null;
+  return (
+    <section className={cls('inv-ev inv-guest-gallery', className)} aria-label="Photos from guests">
+      <div className="inv-ev-body">
+        {photos.length > 0 && <><h3 className={kicker}>Shared by guests</h3><Photos photos={photos} title="Shared by guests" className="inv-gallery inv-guest-grid" layout={events!.galleryLayout ?? 'grid'} /></>}
+        {events!.guestShare}
+      </div>
+    </section>
+  );
+}
 
 // How a layout frames a section: its class, heading class, kicker class (for h3s) and anything drawn before the heading.
 type Frame = { id: string; className?: string; headingClass?: string; kicker?: string; before?: ReactNode };

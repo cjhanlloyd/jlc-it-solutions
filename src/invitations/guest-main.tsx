@@ -13,11 +13,12 @@ import { seatOptions } from './customer-ui';
 import { useTurnstile } from './turnstile';
 import type { Extras } from '../../shared/extras';
 import type { AttirePhoto, EventData, WishItem } from './event-view';
+import GuestShare from './GuestShare';
 
 type Data =
   | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; giftQr?: string | null; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
       tier?: 'standard' | 'premium'; intro?: boolean; music?: Music | null; guest?: Guest;
-      extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: WishItem[] }
+      extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: WishItem[]; guestPhotos?: string[] }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
@@ -243,6 +244,8 @@ function Guest() {
       const events: EventData = {
         attire: data.extras?.attire, attirePhotos: data.attirePhotos, giftItems: data.giftItems, giftMethods: data.extras?.gifts?.methods,
         onReserve: (it) => { setWishMessage(null); setReserving(it); }, onRelease: release, busyId, wishMessage,
+        galleryLayout: data.extras?.gallery?.layout, guestPhotos: data.guestPhotos,
+        guestShare: data.extras?.guestPhotos?.enabled ? <GuestShare slug={slug} guestName={data.guest?.name} guestToken={data.guest ? guestToken : undefined} /> : undefined,
       };
       return (
         <>

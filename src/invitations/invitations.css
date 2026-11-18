@@ -622,3 +622,46 @@ main.inv[tabindex="-1"]:focus { outline: none; }
 .inv-dialog-item { font-weight: 600; }
 .inv-dialog-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .inv-dialog-actions .btn { flex: 1 1 140px; width: auto; }
+
+/* ---------- Gallery layouts (parts.tsx Photos) and guest photos. 'grid' keeps each layout's own .xx-photos grid. ---------- */
+.inv-gallery { min-width: 0; }
+.inv .inv-gallery img { display: block; width: 100%; height: auto; }
+.inv-guest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.inv .inv-guest-grid img { aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+.inv-masonry { columns: 2; column-gap: 10px; }
+.inv .inv-masonry img { margin-bottom: 10px; break-inside: avoid; border-radius: 12px; }
+.inv-polaroid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 14px; padding: 6px 4px; }
+.inv-print { margin: 0; padding: 8px 8px 0; background: #fff; box-shadow: 0 6px 16px -8px rgb(0 0 0 / .35); transform: rotate(-2deg); }
+.inv-print:nth-child(even) { transform: rotate(2deg); }
+.inv-print:nth-child(3n) { transform: rotate(-1deg); }
+.inv .inv-print img { aspect-ratio: 1; object-fit: cover; }
+.inv-print-cap { display: block; height: 32px; }
+.inv-carousel { position: relative; }
+.inv-car-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; border-radius: 14px; }
+.inv-car-track::-webkit-scrollbar { display: none; }
+.inv-car-track:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+.inv-car-slide { flex: 0 0 100%; scroll-snap-align: center; }
+.inv .inv-car-slide img { aspect-ratio: 4 / 5; object-fit: cover; }
+.inv-car-nav { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.inv-car-btn { min-width: 44px; min-height: 44px; font-size: 1.6rem; line-height: 1; color: var(--fg); background: var(--bg); border: 1px solid var(--line, currentColor); border-radius: 50%; cursor: pointer; }
+.inv-car-btn:disabled { opacity: .45; cursor: default; }
+.inv-car-btn:focus-visible, .inv-car-dot:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.inv-car-dots { display: flex; flex-wrap: wrap; justify-content: center; }
+.inv-car-dot { width: 24px; height: 44px; padding: 0; background: none; border: 0; cursor: pointer; }
+.inv-car-dot::before { content: ''; display: block; width: 10px; height: 10px; margin: auto; border-radius: 50%; border: 1px solid var(--fg); }
+.inv-car-dot[aria-current='true']::before { background: var(--fg); }
+.inv-car-count { min-width: 5em; text-align: center; font-family: var(--sans); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) { .inv-car-track { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) { .inv-print, .inv-print:nth-child(even), .inv-print:nth-child(3n) { transform: none; } }
+@container (min-width: 560px) {
+  .inv-masonry { columns: 3; }
+  .inv-polaroid { grid-template-columns: repeat(3, 1fr); }
+  .inv-guest-grid { grid-template-columns: repeat(4, 1fr); }
+  .inv .inv-car-slide img { aspect-ratio: 3 / 2; }
+}
+/* "Share your photos" on the guest page */
+.inv-share { margin-top: 18px; text-align: left; }
+.inv-share-previews { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.inv .inv-share-previews img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.inv-share progress { width: 100%; accent-color: var(--fg); }
+.rsvp input[type='file'] { max-width: 100%; font: inherit; }

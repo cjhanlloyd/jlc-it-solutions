@@ -4,7 +4,7 @@ import type { LayoutProps } from '.';
 import { wedding, type InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, displayVars, MapLink, GiftQr, Photos, formatDate, heroAttrs, longDate, schemeVars, time12, venues } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Editorial({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<InvitationDetails>) {
@@ -82,9 +82,10 @@ export default function Editorial({ details: d, scheme, photos: all, style, rsvp
         {photos.length > 0 && (
           <section className="ed-sec" aria-labelledby="ed-gallery">
             <h2 id="ed-gallery">Moments</h2>
-            <Photos photos={photos} title={wedding.title(d)} className="ed-photos" />
+            <Photos photos={photos} title={wedding.title(d)} className="ed-photos" layout={events?.galleryLayout} />
           </section>
         )}
+        <GuestGallery events={events} kicker="ed-kicker" className="ed-sec" />
 
         {rsvpSlot && (
           <section className="ed-sec" aria-labelledby="ed-rsvp">

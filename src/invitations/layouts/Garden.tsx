@@ -3,7 +3,7 @@ import type { LayoutProps } from '.';
 import type { InvitationDetails } from '../../../shared/occasions/wedding';
 import { Cover, Countdown, MapLink, GiftQr, Photos, longDate, schemeVars, time12, venues, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 const LEAVES: [number, number, number][] = [[46, 37, -50], [70, 33, 35], [100, 24, -40], [126, 23, 40], [156, 13, -35], [176, 12, 30]];
@@ -67,7 +67,8 @@ export default function Garden({ details: d, scheme, photos: all, style, rsvpSlo
         <AttireSection events={events} dressCode={d.dressCode} id="gd-attire" className="gd-card" kicker="gd-small" />
         <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="gd-gifts" className="gd-card" kicker="gd-small" />
 
-        <Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="gd-photos" />
+        <Photos photos={photos} title={`${d.partner1} and ${d.partner2}`} className="gd-photos" layout={events?.galleryLayout} />
+        <GuestGallery events={events} kicker="gd-small" className="gd-card" />
 
         {rsvpSlot && (
           <section className="gd-card" aria-labelledby="gd-rsvp">

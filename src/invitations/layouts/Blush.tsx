@@ -3,7 +3,7 @@ import type { LayoutProps } from '.';
 import { TRADITIONS, debut, type DebutDetails } from '../../../shared/occasions/debut';
 import { Cover, Countdown, MapLink, GiftQr, Photos, longDate, schemeVars, time12, heroAttrs } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<DebutDetails>) {
@@ -64,7 +64,8 @@ export default function Blush({ details: d, scheme, photos: all, style, rsvpSlot
         <AttireSection events={events} dressCode={d.dressCode} id="bl-attire" kicker="bl-kicker" />
         <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="bl-gifts" kicker="bl-kicker" />
 
-        <Photos photos={photos} title={debut.title(d)} className="bl-photos" />
+        <Photos photos={photos} title={debut.title(d)} className="bl-photos" layout={events?.galleryLayout} />
+        <GuestGallery events={events} kicker="bl-kicker" />
 
         {d.hostedBy && (
           <section aria-labelledby="bl-host">

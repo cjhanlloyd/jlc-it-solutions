@@ -1,5 +1,6 @@
 // What the attire and gifts sections show. Pure, so node tests can check it without rendering.
-import type { Extras, GiftMethod } from '../../shared/extras.ts';
+import type { ReactNode } from 'react';
+import type { Extras, GalleryLayout, GiftMethod } from '../../shared/extras.ts';
 
 export type Attire = NonNullable<Extras['attire']>;
 export type AttirePhoto = { url: string; caption?: string | null };
@@ -9,6 +10,8 @@ export type EventData = {
   attire?: Attire; attirePhotos?: AttirePhoto[]; giftItems?: WishItem[]; giftMethods?: GiftMethod[];
   onReserve?: (item: WishItem) => void; onRelease?: (item: WishItem) => void;
   busyId?: number | null; wishMessage?: { id: number; text: string; error?: boolean } | null;
+  // Gallery: the layout of every photo block, approved guest photos, and the guest page's "Share your photos" form
+  galleryLayout?: GalleryLayout; guestPhotos?: string[]; guestShare?: ReactNode;
 };
 
 // With neither of these, a layout renders its old "Good to know" block exactly as before.

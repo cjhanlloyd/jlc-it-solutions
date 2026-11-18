@@ -8,6 +8,7 @@ import { notify } from '../../../server/order-emails';
 import { newReference } from '../../../server/orders';
 import { activeProvider, loadPaymentSettings } from '../../../server/payments';
 import { guestFeatures, guestGift, manageFeature, manageFeatures, photoError, putPhoto, PHOTO_RE } from '../../../server/event-features';
+import { guestPhotoUpload, listGuestPhotos, mediaPreview, moderateGuestPhotos } from '../../../server/guest-photos';
 import { turnstileError } from '../../../server/turnstile';
 import { validateExtras } from '../../../shared/extras';
 import { LIMITS, makeSlug, validateRsvp } from '../../../shared/invitation-fields';
@@ -94,6 +95,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (feature) {
       const inv = await findManagedInvitation(env.DB, request);
       return inv ? await manageFeature(feature, request, env, inv) : NOT_FOUND();
+    }
+    const photoSlug = route.match(/^POST \/api\/invitations\/i\/([^/]+)\/photos$/)?.[1];
+    if (photoSlug) {
+      const slug = decodeSegment(photoSlug);
+      return slug === null ? NOT_FOUND() : await guestPhotoUpload(slug, request, env);
+    }
+    const mediaId = route.match(/^GET \/api\/invitations\/manage\/media\/(\d{1,15})$/)?.[1];
+    if (mediaId || route === 'GET /api/invitations/manage/guest-photos' || route === 'POST /api/invitations/manage/guest-photos') {
+      const inv = await findManagedInvitation(env.DB, request);
+      if (!inv) return NOT_FOUND();
+      if (mediaId) return await mediaPreview(env, inv.id, Number(mediaId), request);
+      return request.method === 'GET' ? json(await listGuestPhotos(env.DB, inv.id)) : await moderateGuestPhotos(env, inv.id, await request.json().catch(() => ({})));
     }
 
     const guestSlug = route.match(/^GET \/api\/invitations\/i\/([^/]+)$/)?.[1];

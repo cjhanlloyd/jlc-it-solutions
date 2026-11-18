@@ -18,6 +18,8 @@ import DesignTab from './studio/DesignTab';
 import PhotosTab from './studio/PhotosTab';
 import GiftQrField from './studio/GiftQrField';
 import AttireFields, { cleanAttire, type Attire } from './features/AttireFields';
+import GalleryPicker from './features/GalleryPicker';
+import type { GalleryLayout } from '../../shared/extras';
 import { useTracks } from './studio/PremiumExtras';
 import { forTier, photoLimit, tierOf } from '../../shared/tiers';
 import PreviewFrame from './studio/PreviewFrame';
@@ -58,6 +60,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   const [reviewed, setReviewed] = React.useState(false); // the review step stays mounted once shown, so Turnstile keeps its token
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [attire, setAttire] = React.useState<Attire>(saved?.attire ?? {}); // attire motif, palette and notes; sent as extras
+  const [gallery, setGallery] = React.useState<GalleryLayout>(saved?.gallery ?? 'grid'); // sent as extras.gallery.layout
   const [giftQr, setGiftQr] = React.useState<string | null>(null); // never autosaved, like photos
   const [awaitPhotos, setAwaitPhotos] = React.useState(!!saved?.hadPhotos);
   const [email, setEmail] = React.useState(saved?.email ?? '');
@@ -103,10 +106,10 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
   React.useEffect(() => {
     if (!draft) return;
     const t = setTimeout(() => {
-      saveDraft({ draft, scheme, style, email, name, phone, photos, hadPhotos: awaitPhotos, attire });
+      saveDraft({ draft, scheme, style, email, name, phone, photos, hadPhotos: awaitPhotos, attire, gallery });
     }, 500);
     return () => clearTimeout(t);
-  }, [cur, draft, scheme, style, email, name, phone, photos.length > 0, awaitPhotos, attire]);
+  }, [cur, draft, scheme, style, email, name, phone, photos.length > 0, awaitPhotos, attire, gallery]);
 
   // A discount belongs to one design and package: check it again when either changes, or drop it with a note
   const promoRef = React.useRef(promo);
@@ -210,7 +213,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), ...(cleanAttire(attire) ? { extras: { attire: cleanAttire(attire) } } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), ...(promo ? { promoCode: promo.code } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
+        body: JSON.stringify({ designSlug: cur, packageKey: pkg!.key, colorScheme: chosen?.name, style: out, details: draft, photos, ...(giftQr ? { giftQr } : {}), ...(cleanAttire(attire) || gallery !== 'grid' ? { extras: { ...(cleanAttire(attire) ? { attire: cleanAttire(attire) } : {}), ...(gallery !== 'grid' ? { gallery: { layout: gallery } } : {}) } } : {}), email, name, phone, ...(pkg!.kind === 'custom' ? { designerNotes: notes.trim() } : {}), ...(promo ? { promoCode: promo.code } : {}), termsAccepted: true, turnstileToken: turnstile.token }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.reference) {
@@ -272,9 +275,10 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
                 </div>
               )}
             </div>
-            <div id="studio-design" tabIndex={-1} role="region" aria-label={TAB_NAMES.design} className="focus:outline-none" hidden={tab !== 'design'}>
+            <div id="studio-design" tabIndex={-1} role="region" aria-label={TAB_NAMES.design} className="focus:outline-none space-y-6" hidden={tab !== 'design'}>
               <DesignTab designs={siblings} slug={cur} packageKey={pkg.key} onSwitch={switchDesign}
                 schemes={design.colorSchemes} scheme={chosen?.name ?? ''} onScheme={setScheme} style={style} onStyle={setStyle} active={tab === 'design'} tier={tier} tracks={tracks} />
+              <GalleryPicker value={gallery} onChange={setGallery} name="studio-gallery" />
             </div>
             <div id="studio-photos" tabIndex={-1} role="region" aria-label={TAB_NAMES.photos} className="focus:outline-none" hidden={tab !== 'photos'}>
               {chosen && <PhotosTab limit={limit} photos={photos} onPhotos={setPhotos} style={style} onStyle={setStyle} primary={effectiveScheme(chosen, style).primary} />}
@@ -360,7 +364,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
         <section aria-label={review ? 'Preview of your invitation' : 'Live preview'} className={`${view === 'preview' ? 'block' : 'hidden'} lg:block min-w-0`}>
           <div className="lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm bg-white">
             <PreviewFrame cover={style.cover} onFocus={review || tab !== 'photos' ? undefined : (f) => setStyle((s) => (s.cover ? { ...s, cover: { ...s.cover, ...f } } : s))}>
-              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} giftQr={giftQr ?? undefined} events={{ attire }} />}
+              {chosen && <InvitationView layoutKey={design.layoutKey} scheme={chosen} details={form.preview(draft, form.toDraft(design.sampleDetails))} photos={photos} style={out} giftQr={giftQr ?? undefined} events={{ attire, galleryLayout: gallery }} />}
             </PreviewFrame>
           </div>
         </section>

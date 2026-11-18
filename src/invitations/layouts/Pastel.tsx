@@ -4,7 +4,7 @@ import type { LayoutProps } from '.';
 import { birthday, type BirthdayDetails } from '../../../shared/occasions/birthday';
 import { Cover, Countdown, displayVars, MapLink, Ordinal, GiftQr, Photos, heroAttrs, longDate, schemeVars, time12 } from '../parts';
 import { coverFor } from '../style-render';
-import { AttireSection, GiftsSection } from '../event-parts';
+import { AttireSection, GiftsSection, GuestGallery } from '../event-parts';
 import { legacyNotes } from '../event-view';
 
 export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlot, giftQr, events }: LayoutProps<BirthdayDetails>) {
@@ -54,7 +54,8 @@ export default function Pastel({ details: d, scheme, photos: all, style, rsvpSlo
       <AttireSection events={events} dressCode={d.dressCode} id="ps-attire" className="ps-card" kicker="ps-small" />
       <GiftsSection events={events} note={d.giftsNote} qr={giftQr} id="ps-gifts" className="ps-card" kicker="ps-small" />
 
-      <Photos photos={photos} title={birthday.title(d)} className="ps-photos" />
+      <Photos photos={photos} title={birthday.title(d)} className="ps-photos" layout={events?.galleryLayout} />
+      <GuestGallery events={events} kicker="ps-small" className="ps-card" />
 
       {d.hostedBy && (
         <section className="ps-card" aria-labelledby="ps-host">

@@ -11,6 +11,9 @@ interface Env { DB: D1Database; PHOTOS: R2Bucket; TURNSTILE_SECRET_KEY?: string 
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
 
+export const guestPhotosOn = (inv: any) => tierOf(inv) === 'premium' && parse(inv.extras, {})?.guestPhotos?.enabled === true;
+const GUEST_PHOTOS_SHOWN = 200;
+
 export const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 export const photoError = (p: unknown): string | null =>
   typeof p !== 'string' || !PHOTO_RE.test(p) ? 'Photos must be JPEG, PNG or WebP images.'
@@ -46,12 +49,15 @@ export async function guestFeatures(db: D1Database, inv: any, guestId: number | 
   if (e.gallery) extras.gallery = e.gallery;
   if (e.gifts?.methods) extras.gifts = { methods: e.gifts.methods };
   for (const k of ['guestPhotos', 'booth', 'checkin'] as const) if (e[k]) extras[k] = e[k];
-  const [photos, items] = await Promise.all([
+  const [photos, items, guest] = await Promise.all([
     db.prepare("SELECT r2_key, caption FROM invitation_media WHERE invitation_id = ? AND kind = 'attire' AND status = 'approved' ORDER BY id").bind(inv.id).all<any>(),
     db.prepare('SELECT * FROM gift_items WHERE invitation_id = ? ORDER BY sort_order, id').bind(inv.id).all<any>(),
+    // Approved guest photos only, newest first
+    guestPhotosOn(inv) ? db.prepare(`SELECT r2_key FROM invitation_media WHERE invitation_id = ? AND kind = 'guest' AND status = 'approved' ORDER BY id DESC LIMIT ${GUEST_PHOTOS_SHOWN}`).bind(inv.id).all<any>() : null,
   ]);
   return {
     extras,
+    ...(guest ? { guestPhotos: (guest.results || []).map((p) => `/photos/${p.r2_key}`) } : {}),
     attirePhotos: (photos.results || []).map((p) => ({ url: `/photos/${p.r2_key}`, caption: p.caption })),
     giftItems: (items.results || []).map((g) => ({
       id: g.id, name: g.name, note: g.note, link: g.link, priceCentavos: g.price_centavos, reserved: g.reserved_at != null,
