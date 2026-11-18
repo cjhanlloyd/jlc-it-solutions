@@ -1,5 +1,5 @@
 // Guest page entry (/i/<slug>). Kept apart from the main app: never import from src/components/ here.
-import { StrictMode, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { lazy, StrictMode, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LIMITS } from '../../shared/invitation-fields';
 import type { InvitationStyle } from '../../shared/invitation-style';
@@ -15,6 +15,9 @@ import type { Extras } from '../../shared/extras';
 import type { AttirePhoto, EventData, WishItem } from './event-view';
 import GuestShare from './GuestShare';
 import QrCode, { downloadQrPng } from './QrCode';
+
+// Loaded only when a guest opens it, so invitations without the booth don't download it
+const PhotoBooth = lazy(() => import('./booth/PhotoBooth'));
 
 type Data =
   | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; giftQr?: string | null; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
@@ -218,6 +221,7 @@ function Guest() {
   const [opened, setOpened] = useState(false);
   const onDone = useCallback(() => setOpened(true), []);
   const [reserving, setReserving] = useState<WishItem | null>(null);
+  const [booth, setBooth] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [wishMessage, setWishMessage] = useState<{ id: number; text: string; error?: boolean } | null>(null);
   // Updates one wish list item in place and moves focus to its card, since the button the guest used is gone.
@@ -259,12 +263,27 @@ function Guest() {
       const scheme = effectiveScheme(data.colorScheme, data.style ?? {});
       const card = data.intro ? occasionOf(data.productType)?.card(data.details) : undefined;
       const item = reserving;
+      const boothOn = !!data.extras?.booth?.enabled;
+      const photosOn = !!data.extras?.guestPhotos?.enabled;
       const events: EventData = {
         attire: data.extras?.attire, attirePhotos: data.attirePhotos, giftItems: data.giftItems, giftMethods: data.extras?.gifts?.methods,
         onReserve: (it) => { setWishMessage(null); setReserving(it); }, onRelease: release, busyId, wishMessage,
         galleryLayout: data.extras?.gallery?.layout, guestPhotos: data.guestPhotos,
-        guestShare: data.extras?.guestPhotos?.enabled ? <GuestShare slug={slug} guestName={data.guest?.name} guestToken={data.guest ? guestToken : undefined} /> : undefined,
+        // Under the gallery: the photo booth button and the "Share your photos" form, each when it's switched on
+        guestShare: boothOn || photosOn ? <>
+          {boothOn && (
+            <p className="inv-booth-cta">
+              <button type="button" className="btn btn-solid inv-booth-open" onClick={() => setBooth(true)}>
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z" /><circle cx="12" cy="13" r="3.6" /></svg>
+                Photo booth
+              </button>
+            </p>
+          )}
+          {photosOn && <GuestShare slug={slug} guestName={data.guest?.name} guestToken={data.guest ? guestToken : undefined} />}
+        </> : undefined,
       };
+      const fonts = schemeVars(scheme, data.style) as Record<string, string>;
+      const boothCard = occasionOf(data.productType)?.card(data.details);
       return (
         <>
           {card && <IntroCover card={card} scheme={scheme} greeting={data.guest?.name} onOpen={() => audio.current?.play().catch(() => {})} onDone={onDone} />}
@@ -284,6 +303,15 @@ function Guest() {
                 if (!data.guest) setWishMessage({ id: item.id, text: 'Thank you! The hosts will know this gift is from you.' });
               }}
               onTaken={(text) => { setReserving(null); patchItem(item.id, { reserved: true }); setWishMessage({ id: item.id, text, error: true }); }} />
+          )}
+          {booth && boothOn && (
+            <Suspense fallback={null}>
+              <PhotoBooth style={{ '--serif': fonts['--serif'], '--sans': fonts['--sans'] } as CSSProperties}
+                colors={{ primary: scheme.primary, accent: scheme.accent, background: scheme.background, text: scheme.text }}
+                card={{ headline: boothCard?.headline ?? '', kicker: boothCard?.kicker ?? '', dateLine: boothCard?.dateLine ?? '' }}
+                defaultFrame={data.extras?.booth?.frame} slug={slug} canAdd={photosOn}
+                guestName={data.guest?.name} guestToken={data.guest ? guestToken : undefined} onClose={() => setBooth(false)} />
+            </Suspense>
           )}
           {data.music && <MusicToggle ref={audio} music={data.music} scheme={scheme} />}
           </div>

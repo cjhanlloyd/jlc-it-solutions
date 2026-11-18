@@ -665,3 +665,7 @@ main.inv[tabindex="-1"]:focus { outline: none; }
 .inv .inv-share-previews img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
 .inv-share progress { width: 100%; accent-color: var(--fg); }
 .rsvp input[type='file'] { max-width: 100%; font: inherit; }
+
+/* Guest page "Photo booth" button beside the gallery (the booth itself is styled in booth/booth.css, loaded with it). */
+.inv-booth-cta { margin-top: 18px; text-align: center; }
+.inv .inv-booth-open { gap: 10px; margin: 0; }

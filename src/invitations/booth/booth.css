@@ -1,0 +1,80 @@
+/* Photo booth dialog (PhotoBooth.tsx): a dark full-screen studio whatever the invitation's scheme, so the photo is the star. */
+.inv.booth {
+  --bg: #141210; --fg: #f6f1ea; --line: rgb(246 241 234 / .28); --r: 999px;
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; min-height: 0;
+  margin: 0; padding: 0; border: 0; overflow: hidden auto; overscroll-behavior: contain;
+  background: radial-gradient(120% 80% at 50% 0%, #2a241f 0%, #141210 60%); font-family: var(--sans);
+}
+.booth::backdrop { background: #000; }
+.booth-wrap { display: flex; flex-direction: column; min-height: 100%; padding: max(10px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+.booth-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.booth-top h2 { font-family: var(--serif); font-size: 1.5rem; font-weight: 500; font-style: italic; letter-spacing: .01em; }
+.booth-x {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; color: var(--fg);
+  background: rgb(255 255 255 / .1); border: 0; border-radius: 50%; cursor: pointer;
+}
+.booth-x:hover { background: rgb(255 255 255 / .18); }
+
+.booth-main { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 10px; }
+/* Sized from the viewport so the 4:5 photo, the controls and the frame picker fit one phone screen */
+.booth-stage {
+  position: relative; width: min(100%, 520px, calc((100dvh - 330px) * .8)); min-width: 200px; aspect-ratio: 4 / 5;
+  container-type: inline-size; border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px -30px rgb(0 0 0 / .8), 0 0 0 1px rgb(255 255 255 / .08);
+}
+.booth-canvas { display: block; width: 100%; height: 100%; }
+.booth-video { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; z-index: -1; }
+.booth-start {
+  position: absolute; inset: auto 0 0; display: grid; gap: 4px; justify-items: center; padding: 48px 18px 20px; text-align: center;
+  background: linear-gradient(to top, rgb(10 9 8 / .92) 55%, transparent); line-height: 1.45;
+}
+.booth-start .btn { min-width: 180px; }
+.booth-count {
+  position: absolute; inset: 0; display: grid; place-items: center; color: #fff; pointer-events: none;
+  font-family: var(--serif); font-size: clamp(6rem, 40cqw, 11rem); font-weight: 500; text-shadow: 0 6px 30px rgb(0 0 0 / .55);
+  animation: booth-pop 1s ease-out both;
+}
+.booth-count-still { font-size: 2.6rem; animation: none; }
+.booth-flash { position: absolute; inset: 0; background: #fff; pointer-events: none; animation: booth-flash .45s ease-out both; }
+@keyframes booth-pop { 0% { transform: scale(1.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: scale(.85); opacity: 0; } }
+@keyframes booth-flash { from { opacity: .95; } to { opacity: 0; } }
+
+.booth-side { display: grid; gap: 14px; width: min(100%, 520px); }
+.booth-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; min-height: 76px; align-items: center; }
+.booth-controls .btn { margin: 0; flex: 1 1 130px; max-width: 240px; }
+.booth-shutter {
+  display: grid; place-items: center; width: 76px; height: 76px; padding: 0; border: 4px solid #fff; border-radius: 50%;
+  background: transparent; cursor: pointer; transition: transform .15s;
+}
+.booth-shutter span { width: 58px; height: 58px; border-radius: 50%; background: #fff; transition: transform .15s, background-color .15s; }
+.booth-shutter:active span { transform: scale(.9); }
+.booth-shutter[aria-disabled='true'] { cursor: default; }
+.booth-shutter[aria-disabled='true'] span { background: #e0544f; transform: scale(.55); border-radius: 12px; }
+
+.booth-frames { margin: 0; padding: 0; border: 0; min-width: 0; }
+.booth-frames legend { padding: 0; margin-bottom: 8px; font-size: .8rem; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; }
+.booth-frame-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.booth-frame { display: grid; gap: 6px; justify-items: center; min-height: 44px; font-size: .85rem; text-align: center; cursor: pointer; }
+.booth-thumb { width: 100%; max-width: 84px; aspect-ratio: 4 / 5; height: auto; border-radius: 8px; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s, transform .15s; }
+.booth-frame:hover .booth-thumb { transform: translateY(-2px); }
+.booth-frame:has(input:checked) .booth-thumb { outline-color: var(--fg); }
+.booth-frame:has(input:checked) span { font-weight: 600; }
+.booth-frame:has(input:focus-visible) .booth-thumb { outline: 3px solid #ffd27a; }
+
+.booth .rsvp { margin: 0; max-width: none; }
+.booth .rsvp :is(input[type='text']) { background: #262220; border-color: rgb(246 241 234 / .4); }
+.booth-add h3 { font-family: var(--serif); font-size: 1.35rem; font-weight: 500; }
+.booth-done { text-align: center; }
+.booth .rsvp-error { border-left-color: #ff8a80; }
+
+/* Landscape phones: photo on the left, controls and frames on the right */
+@media (orientation: landscape) and (max-height: 560px) {
+  .booth-main { flex-direction: row; align-items: flex-start; justify-content: center; }
+  .booth-stage { width: min(55%, calc((100dvh - 80px) * .8)); }
+  .booth-side { width: min(45%, 420px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .booth-count, .booth-flash { animation: none; }
+  .booth-flash { display: none; }
+  .booth-thumb, .booth-shutter, .booth-shutter span { transition: none; }
+  .booth-frame:hover .booth-thumb { transform: none; }
+}
