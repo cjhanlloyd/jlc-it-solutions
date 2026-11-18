@@ -162,3 +162,19 @@ test('a purged invitation loses its media rows and objects, gift items and check
   assert.deepEqual([n('invitation_media', 1), n('gift_items', 1), key(1), has(r2, 'inv/1/m1.jpg'), has(r2, 'inv/1/m2.jpg')], [0, 0, null, false, false]);
   assert.deepEqual([n('invitation_media', 2), n('gift_items', 2), key(2), has(r2, 'inv/2/m1.jpg'), has(r2, 'inv/2/m2.jpg')], [2, 1, 'k', true, true]);
 });
+
+test('a purged invitation loses its extras, and rate-limit IP rows older than 30 days go', async () => {
+  const { db, r2 } = seed();
+  for (const [id, date] of [[1, '2026-01-01'], [2, '2099-01-01']]) {
+    db.exec.prepare("INSERT INTO invitations (id, design_id, slug, color_scheme, details, photos, status, event_date, manage_token_hash, extras) VALUES (?, 1, ?, 'blush', ?, '[]', 'live', ?, ?, ?)")
+      .run(id, `s-${id}`, JSON.stringify({ partner1: 'A', partner2: 'B', eventDate: date }), date, `h${id}`, '{"gifts":{"methods":[{"label":"GCash","accountNumber":"0917"}]}}');
+  }
+  for (const [type, ms] of [['guest_photo', 31 * DAY], ['gift_reserve', 29 * DAY], ['gift_reserve', 40 * DAY], ['content', 40 * DAY]]) {
+    db.exec.prepare('INSERT INTO audit_logs (timestamp, log_type, message) VALUES (?, ?, ?)').run(iso(ms), type, 'x from 1.2.3.4');
+  }
+  await runCleanup(db, r2, NOW);
+  const ex = (id) => db.exec.prepare('SELECT extras FROM invitations WHERE id = ?').get(id).extras;
+  assert.equal(ex(1), '{}');
+  assert.match(ex(2), /GCash/);
+  assert.deepEqual(db.exec.prepare('SELECT log_type FROM audit_logs ORDER BY id').all().map((r) => r.log_type), ['gift_reserve', 'content']);
+});

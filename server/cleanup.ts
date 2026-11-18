@@ -24,6 +24,8 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
   await db.batch([
     db.prepare('DELETE FROM customer_sessions WHERE expires_at < ?').bind(now.toISOString()),
     db.prepare('DELETE FROM customer_login_codes WHERE expires_at < ?').bind(now.toISOString()),
+    // Rate-limit rows hold visitor IP addresses (privacy notice: 30 days)
+    db.prepare("DELETE FROM audit_logs WHERE log_type IN ('guest_photo', 'gift_reserve') AND timestamp < ?").bind(new Date(now.getTime() - 30 * 86_400_000).toISOString()),
   ]);
 
   // Unpaid orders past their deadline → cancelled (expireIfOverdue deletes the pending invitation, photos first).
@@ -82,7 +84,7 @@ export async function runCleanup(db: D1Database, photos: R2Bucket, now: Date): P
     const { results: media } = await db.prepare('SELECT r2_key FROM invitation_media WHERE invitation_id = ?').bind(i.id).all<any>();
     if (!await deletePhotos(photos, [...keysOf(i.photos), ...(i.gift_qr ? [i.gift_qr] : []), ...(i.music_key ? [i.music_key] : []), ...(media || []).map((m) => m.r2_key as string)], `invitation ${i.id}`)) continue;
     await db.batch([
-      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', gift_qr = NULL, music_key = NULL, music_title = NULL, checkin_key_hash = NULL, details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
+      db.prepare("UPDATE invitations SET status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE 'expired' END, photos = '[]', gift_qr = NULL, music_key = NULL, music_title = NULL, checkin_key_hash = NULL, extras = '{}', details = ? WHERE id = ? AND status IN ('live', 'expired', 'refunded')").bind(summary, i.id),
       db.prepare('DELETE FROM invitation_media WHERE invitation_id = ?').bind(i.id),
       db.prepare('DELETE FROM gift_items WHERE invitation_id = ?').bind(i.id),
       db.prepare('DELETE FROM rsvps WHERE invitation_id = ?').bind(i.id),

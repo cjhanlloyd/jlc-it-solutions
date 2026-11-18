@@ -11,8 +11,13 @@ interface Env { DB: D1Database; PHOTOS: R2Bucket; TURNSTILE_SECRET_KEY?: string 
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 const parse = (s: string, fallback: unknown) => { try { return JSON.parse(s); } catch { return fallback; } };
 
+// Rule: Standard invitations never expose or keep Premium extras. The organiser GET and the guest payload omit them,
+// and a save drops Premium keys that merely repeat the stored value (a client resending the whole object); new ones are rejected.
+const PREMIUM_KEYS = ['guestPhotos', 'booth', 'checkin'] as const;
+
 export const guestPhotosOn = (inv: any) => tierOf(inv) === 'premium' && parse(inv.extras, {})?.guestPhotos?.enabled === true;
 const GUEST_PHOTOS_SHOWN = 200;
+export const rand6 = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
 
 export const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 export const photoError = (p: unknown): string | null =>
@@ -35,7 +40,7 @@ export async function manageFeatures(db: D1Database, inv: any) {
     db.prepare('SELECT * FROM gift_items WHERE invitation_id = ? ORDER BY sort_order, id').bind(inv.id).all<any>(),
   ]);
   return {
-    extras: parse(inv.extras, {}),
+    extras: tierOf(inv) === 'premium' ? parse(inv.extras, {}) : Object.fromEntries(Object.entries(parse(inv.extras, {})).filter(([k]) => !(PREMIUM_KEYS as readonly string[]).includes(k))),
     attirePhotos: (photos.results || []).map((p) => ({ id: p.id, key: p.r2_key, caption: p.caption })),
     giftItems: (items.results || []).map((g) => ({ id: g.id, name: g.name, note: g.note, link: g.link, priceCentavos: g.price_centavos, reservedName: g.reserved_name, reservedAt: g.reserved_at, sortOrder: g.sort_order })),
   };
@@ -48,7 +53,8 @@ export async function guestFeatures(db: D1Database, inv: any, guestId: number | 
   if (e.attire) extras.attire = e.attire;
   if (e.gallery) extras.gallery = e.gallery;
   if (e.gifts?.methods) extras.gifts = { methods: e.gifts.methods };
-  for (const k of ['guestPhotos', 'booth', 'checkin'] as const) if (e[k]) extras[k] = e[k];
+  // Premium keys reach guests only for Premium invitations, whatever the stored value says
+  if (tierOf(inv) === 'premium') for (const k of PREMIUM_KEYS) if (e[k]) extras[k] = e[k];
   const [photos, items, guest] = await Promise.all([
     db.prepare("SELECT r2_key, caption FROM invitation_media WHERE invitation_id = ? AND kind = 'attire' AND status = 'approved' ORDER BY id").bind(inv.id).all<any>(),
     db.prepare('SELECT * FROM gift_items WHERE invitation_id = ? ORDER BY sort_order, id').bind(inv.id).all<any>(),
@@ -75,7 +81,13 @@ const captionOf = (x: unknown): string | { error: string } => {
 export async function manageFeature(feature: string, request: Request, env: Env, inv: any): Promise<Response> {
   const body: any = await request.json().catch(() => ({}));
   if (feature === 'extras') {
-    const v = validateExtras(body.extras, tierOf(inv));
+    let input = body.extras;
+    if (tierOf(inv) !== 'premium' && input && typeof input === 'object') {
+      const stored = parse(inv.extras, {});
+      input = { ...input };
+      for (const k of PREMIUM_KEYS) if (k in input && JSON.stringify(input[k]) === JSON.stringify(stored[k])) delete input[k];
+    }
+    const v = validateExtras(input, tierOf(inv));
     if ('error' in v) return json({ error: v.error }, 400);
     await env.DB.prepare('UPDATE invitations SET extras = ? WHERE id = ?').bind(JSON.stringify(v.extras), inv.id).run();
     return json({ extras: v.extras });
@@ -87,7 +99,7 @@ export async function manageFeature(feature: string, request: Request, env: Env,
     if (err) return json({ error: err }, 400);
     const caption = captionOf(body.caption);
     if (typeof caption !== 'string') return json({ error: caption.error }, 400);
-    const key = await putPhoto(env, inv.id, `attire-${Date.now()}`, body.photo);
+    const key = await putPhoto(env, inv.id, `attire-${Date.now()}-${rand6()}`, body.photo);
     try {
       // One statement, so the cap holds under concurrent uploads
       const ins = await env.DB.prepare(

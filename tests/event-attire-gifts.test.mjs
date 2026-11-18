@@ -59,7 +59,7 @@ test('extras save, return in manage GET, and a Standard invitation cannot set Pr
 test('attire photo: upload, caption update, limit of 6, delete, and a foreign id', async () => {
   const up = async (h = M1, caption = 'Barong') => manage('/attire', { photo: PNG, caption }, h);
   const first = await (await up()).json();
-  assert.match(first.photo.key, /^inv\/1\/attire-\d+\.png$/);
+  assert.match(first.photo.key, /^inv\/1\/attire-\d+-[a-z0-9]{6}\.png$/);
   assert.equal(q('SELECT status, kind FROM invitation_media WHERE id = ?', first.photo.id)[0].status, 'approved');
   assert.ok(await r2.get(first.photo.key));
   assert.equal((await manage('/attire', { photo: 'data:text/html;base64,AAAA' })).status, 400);
@@ -184,4 +184,33 @@ test('checkout accepts attire extras, stores them, and rejects bad or Premium-on
   assert.equal((await post(body({ attire: { palette: ['nope'] } }))).status, 400);
   assert.equal((await post(body({ booth: { enabled: true } }))).status, 400);
   assert.equal((await post(body({ unknown: {} }))).status, 400);
+});
+
+test('a Standard invitation with stale Premium extras shows guests none of them, and the organiser can still save', async () => {
+  const stale = { guestPhotos: { enabled: true }, booth: { enabled: true }, checkin: { enabled: true }, attire: { motif: 'Garden' } };
+  db.exec.prepare('UPDATE invitations SET extras = ? WHERE id = 2').run(JSON.stringify(stale));
+  const guest = await view('maria-2');
+  assert.deepEqual(guest.extras, { attire: { motif: 'Garden' } });
+  // The organiser GET hides them, so a client resending the whole object still saves
+  const m = await (await call('GET', '/api/invitations/manage', undefined, M2)).json();
+  assert.equal(m.extras.booth, undefined);
+  let res = await manage('/extras', { extras: { ...m.extras, gallery: { layout: 'masonry' } } }, M2);
+  assert.equal(res.status, 200);
+  // Resending the stored stale keys unchanged is tolerated and dropped; a new Premium key is still rejected
+  db.exec.prepare('UPDATE invitations SET extras = ? WHERE id = 2').run(JSON.stringify(stale));
+  res = await manage('/extras', { extras: { ...stale, gallery: { layout: 'grid' } } }, M2);
+  assert.equal(res.status, 200);
+  assert.deepEqual(Object.keys(JSON.parse(q('SELECT extras FROM invitations WHERE id = 2')[0].extras)).sort(), ['attire', 'gallery']);
+  res = await manage('/extras', { extras: { booth: { enabled: true } } }, M2);
+  assert.equal(res.status, 400);
+});
+
+test('two attire uploads in the same millisecond keep both objects', async () => {
+  const realNow = Date.now; Date.now = () => 1_700_000_000_000;
+  try {
+    const a = await (await manage('/attire', { photo: PNG })).json();
+    const b = await (await manage('/attire', { photo: PNG })).json();
+    assert.notEqual(a.photo.key, b.photo.key);
+    assert.ok(r2.map.has(a.photo.key) && r2.map.has(b.photo.key));
+  } finally { Date.now = realNow; }
 });

@@ -99,8 +99,9 @@ export default function PhotoBooth({ style, colors: colorsProp, card: cardProp, 
     paint();
     if (phase === 'shot') {
       setBlob(null);
-      canvas.current!.toBlob((b) => { if (live.current) setBlob(b); }, 'image/png');
-      return;
+      let stale = false; // a newer frame or phase supersedes this callback
+      canvas.current!.toBlob((b) => { if (!stale && live.current) setBlob(b); }, 'image/png');
+      return () => { stale = true; };
     }
     if (phase !== 'live' && phase !== 'countdown') return;
     let id = 0;
@@ -227,8 +228,8 @@ export default function PhotoBooth({ style, colors: colorsProp, card: cardProp, 
               {phase === 'shot' && (
                 <>
                   <button type="button" className="btn" onClick={start}>Retake</button>
-                  <button type="button" className="btn btn-solid" onClick={download}>Download</button>
-                  {canShare && <button type="button" className="btn" onClick={share}>Share</button>}
+                  <button type="button" className="btn btn-solid" aria-disabled={!blob} style={blob ? undefined : { opacity: 0.55 }} onClick={download}>Download</button>
+                  {canShare && <button type="button" className="btn" aria-disabled={!blob} style={blob ? undefined : { opacity: 0.55 }} onClick={share}>Share</button>}
                   {canAdd && !adding && <button type="button" className="btn" onClick={() => setAdding(true)}>Add to the gallery</button>}
                 </>
               )}
@@ -301,7 +302,7 @@ function AddToGallery({ canvas, slug, guestName, guestToken }: { canvas: HTMLCan
         {guestName
           ? <input id="booth-name" type="text" readOnly value={name} aria-describedby="booth-name-note" />
           : <input id="booth-name" type="text" required maxLength={60} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} aria-describedby="booth-name-note" />}
-        <p id="booth-name-note" className="rsvp-note">The hosts approve each photo before it appears on the invitation.</p>
+        <p id="booth-name-note" className="rsvp-note">Your name and photo are shared with the couple and shown on the invitation once they approve it. See our <a href="/privacy">Privacy Notice</a>.</p>
       </div>
       <div>
         <div ref={turnstile.ref} className="rsvp-turnstile" />

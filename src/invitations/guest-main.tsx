@@ -32,7 +32,7 @@ const slug = window.location.pathname.match(/^\/i\/([^/]+)\/?$/)?.[1] ?? '';
 const guestToken = new URLSearchParams(window.location.search).get('g') ?? '';
 type Guest = { name: string; seats: number; rsvp: { attending: boolean; partySize: number; kidsCount: number; message: string } | null };
 
-function RsvpForm({ askKids, productType, guest }: { askKids: boolean; productType?: string; guest?: Guest }) {
+function RsvpForm({ askKids, productType, guest, onSent }: { askKids: boolean; productType?: string; guest?: Guest; onSent?: () => void }) {
   const [name, setName] = useState(guest?.name ?? '');
   const [attending, setAttending] = useState<boolean | null>(guest?.rsvp?.attending ?? null);
   // Seats may have been lowered since the reply, so the prefill is clamped to them
@@ -56,7 +56,7 @@ function RsvpForm({ askKids, productType, guest }: { askKids: boolean; productTy
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ guestName: name, attending, partySize: attending ? partySize : 1, ...(askKids ? { kidsCount: attending ? kidsCount : 0 } : {}), message, turnstileToken, ...(guest ? { guestToken } : {}) }),
       });
-      if (res.ok) return setDone(true);
+      if (res.ok) { onSent?.(); return setDone(true); }
       setError((await res.json().catch(() => null))?.error || 'Something went wrong. Please try again.');
     } catch {
       setError('We could not reach the server. Please check your connection and try again.');
@@ -248,6 +248,12 @@ function Guest() {
     const main = document.querySelector<HTMLElement>('.inv-root main');
     if (main) { main.tabIndex = -1; main.focus({ preventScroll: true }); }
   }, [opened]);
+  // After a reply with a guest link the entry pass may now exist: refetch quietly, keeping the page as it is on failure
+  const refreshGuest = () => {
+    fetch(`/api/invitations/i/${slug}?g=${encodeURIComponent(guestToken)}`)
+      .then(async (res) => { const b = res.ok ? await res.json() : null; if (b?.state === 'live') setData((d) => d.state === 'live' ? { ...d, pass: b.pass, guest: b.guest } : d); })
+      .catch(() => {});
+  };
   useEffect(() => {
     if (!slug) return setData({ state: 'missing' });
     fetch(`/api/invitations/i/${slug}${guestToken ? `?g=${encodeURIComponent(guestToken)}` : ''}`)
@@ -263,8 +269,9 @@ function Guest() {
       const scheme = effectiveScheme(data.colorScheme, data.style ?? {});
       const card = data.intro ? occasionOf(data.productType)?.card(data.details) : undefined;
       const item = reserving;
-      const boothOn = !!data.extras?.booth?.enabled;
-      const photosOn = !!data.extras?.guestPhotos?.enabled;
+      const premium = data.tier === 'premium'; // the server already strips these for Standard; this is the second guard
+      const boothOn = premium && !!data.extras?.booth?.enabled;
+      const photosOn = premium && !!data.extras?.guestPhotos?.enabled;
       const events: EventData = {
         attire: data.extras?.attire, attirePhotos: data.attirePhotos, giftItems: data.giftItems, giftMethods: data.extras?.gifts?.methods,
         onReserve: (it) => { setWishMessage(null); setReserving(it); }, onRelease: release, busyId, wishMessage,
@@ -292,7 +299,7 @@ function Guest() {
           <InvitationView layoutKey={data.layoutKey} scheme={data.colorScheme} details={data.details} photos={data.photos} giftQr={data.giftQr ?? undefined} style={data.style} events={events}
             rsvpSlot={<>
               {data.guest && <p className="rsvp-dear">Dear {data.guest.name},</p>}
-              {data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} guest={data.guest} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>}
+              {data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} guest={data.guest} onSent={data.guest ? refreshGuest : undefined} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>}
               {data.pass && <EntryPass pass={data.pass} />}
             </>} />
           {item && (

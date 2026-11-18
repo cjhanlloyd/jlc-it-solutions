@@ -72,7 +72,7 @@ export default function GuestShare({ slug, guestName, guestToken }: { slug: stri
       <div>
         <label htmlFor="share-files">Photos (up to {GUEST_UPLOAD_PER_BATCH})</label>
         <input id="share-files" type="file" accept="image/*" multiple disabled={reading || sending} onChange={pick} aria-describedby="share-note" />
-        <p id="share-note" className="rsvp-note">The couple approves each photo before it appears here.</p>
+        <p id="share-note" className="rsvp-note">Your name and photos are shared with the couple and shown on the invitation once they approve them. See our <a href="/privacy">Privacy Notice</a>.</p>
       </div>
       {reading && <p role="status">Preparing your photos…</p>}
       {photos.length > 0 && (

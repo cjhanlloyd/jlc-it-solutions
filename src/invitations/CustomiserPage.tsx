@@ -208,7 +208,7 @@ export default function CustomiserPage({ slug, btn }: { slug: string; btn: strin
     if (!turnstile.token) return setError('Please wait for the anti-spam check to finish, then try again.');
     setPaying(true);
     setError('');
-    saveDraft({ draft, scheme: chosen?.name ?? '', style, email, name, phone, photos, hadPhotos: awaitPhotos });
+    saveDraft({ draft, scheme: chosen?.name ?? '', style, email, name, phone, photos, hadPhotos: awaitPhotos, attire, gallery });
     try {
       const res = await fetch('/api/invitations/checkout', {
         method: 'POST',

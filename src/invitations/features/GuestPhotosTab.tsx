@@ -10,16 +10,28 @@ type Photo = { id: number; guestName: string; status: Status; createdAt: string 
 const FILTERS: { id: Status; label: string }[] = [{ id: 'pending', label: 'Pending' }, { id: 'approved', label: 'Approved' }, { id: 'rejected', label: 'Rejected' }];
 
 // The header-authenticated preview as a data: URL (the site CSP allows data: images, not blob:)
+// Fetched only once it scrolls into view; data: URLs need no revoking.
+const PAGE = 24;
 function Thumb({ api, id, alt }: { api: Api; id: number; alt: string }) {
   const [src, setSrc] = React.useState('');
+  const [seen, setSeen] = React.useState(false);
+  const box = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return setSeen(true);
+    const io = new IntersectionObserver((e) => { if (e.some((x) => x.isIntersecting)) { setSeen(true); io.disconnect(); } }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  React.useEffect(() => {
+    if (!seen) return;
     let live = true;
     api(`/media/${id}`).then((r) => (r.ok ? r.blob() : Promise.reject()))
       .then((b) => new Promise<string>((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.onerror = no; fr.readAsDataURL(b); }))
       .then((u) => { if (live) setSrc(u); }, () => {});
     return () => { live = false; };
-  }, [api, id]);
-  return src ? <img src={src} alt={alt} className="h-40 w-full rounded-xl object-cover" /> : <div className="h-40 w-full rounded-xl bg-slate-100" role="img" aria-label={`${alt} (loading)`} />;
+  }, [api, id, seen]);
+  return src ? <img src={src} alt={alt} className="h-40 w-full rounded-xl object-cover" /> : <div ref={box} className="h-40 w-full rounded-xl bg-slate-100" role="img" aria-label={`${alt} (loading)`} />;
 }
 
 export default function GuestPhotosTab({ api, extras, onExtras }: { api: Api; extras: Extras; onExtras: (e: Extras) => void }) {
@@ -27,6 +39,7 @@ export default function GuestPhotosTab({ api, extras, onExtras }: { api: Api; ex
   const [filter, setFilter] = React.useState<Status>('pending');
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  const [limit, setLimit] = React.useState(PAGE);
   const enabled = extras.guestPhotos?.enabled === true;
 
   const load = React.useCallback(() => {
@@ -59,7 +72,7 @@ export default function GuestPhotosTab({ api, extras, onExtras }: { api: Api; ex
       <p className="text-sm text-slate-700">Guests can send up to 5 photos at a time, 500 in total. Nothing appears on your invitation until you approve it.</p>
       <div role="group" aria-label="Show photos" className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
-          <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}
+          <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => { setFilter(f.id); setLimit(PAGE); }}
             className={`min-h-11 rounded-full px-4 text-sm font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${filter === f.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'}`}>
             {f.label} ({count(f.id)})
           </button>
@@ -67,9 +80,9 @@ export default function GuestPhotosTab({ api, extras, onExtras }: { api: Api; ex
         {filter === 'pending' && count('pending') > 0 && <button type="button" disabled={busy} onClick={approveAll} className={btnCls}>Approve all pending</button>}
       </div>
       {!photos ? <p className="text-sm text-slate-700">Loading…</p> : shown.length === 0 ? <p className="text-sm text-slate-700">No {filter} photos.</p> : (
-        // shortcut: every thumbnail in the filter loads at once; page the list if invitations near the 500 cap feel slow
+        <>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((p) => (
+          {shown.slice(0, limit).map((p) => (
             <li key={p.id} className="space-y-2 rounded-2xl border border-slate-200 p-3">
               <Thumb api={api} id={p.id} alt={`Photo from ${p.guestName}`} />
               <p className="text-sm font-semibold text-slate-900 break-words">{p.guestName}</p>
@@ -81,6 +94,8 @@ export default function GuestPhotosTab({ api, extras, onExtras }: { api: Api; ex
             </li>
           ))}
         </ul>
+        {shown.length > limit && <button type="button" onClick={() => setLimit((n) => n + PAGE)} className={ghostBtn}>Load more ({shown.length - limit} left)</button>}
+        </>
       )}
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
     </div>

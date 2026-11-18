@@ -2,7 +2,7 @@
 // Guest photo uploads (Premium) and their moderation, shared by the organiser routes and the shop admin routes.
 // Uploads are always stored as 'pending' (the column default is 'approved'); /photos/ serves only approved ones.
 import { findGuestInvitation } from './guest-invitation';
-import { guestPhotosOn, photoError, putPhoto } from './event-features';
+import { guestPhotosOn, photoError, putPhoto, rand6 } from './event-features';
 import { r2Response } from './r2-response';
 import { SECURITY_HEADERS } from './security-headers';
 import { turnstileError } from './turnstile';
@@ -14,7 +14,6 @@ const json = (data: unknown, status = 200) => Response.json(data, { status });
 const GUEST_NAME_MAX = 60;
 const UPLOADS_PER_HOUR = 20;
 
-const rand6 = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
 
 // POST /i/<slug>/photos { name, photos: dataURL[] (1-5), guestToken?, turnstileToken } -> { saved, full? }
 export async function guestPhotoUpload(slug: string, request: Request, env: Env): Promise<Response> {

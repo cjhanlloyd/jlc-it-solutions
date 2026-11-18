@@ -1,6 +1,6 @@
 // Admin → Invitations: the per-invitation "Event features" panel (content.manage). Features in use, check-in totals,
 // wish list reservations (read-only) and guest photo moderation, a backstop to the organiser.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Spinner } from '../ui';
 import { fmtManila, type Session } from './api';
 
@@ -14,14 +14,26 @@ type Features = {
   photos: Photo[];
 };
 
+// Fetched only once it scrolls into view; data: URLs need no revoking.
+const PAGE = 24;
 function Thumb({ session, path, alt }: { session: Session; path: string; alt: string }) {
   const [src, setSrc] = useState('');
+  const [seen, setSeen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return setSeen(true);
+    const io = new IntersectionObserver((e) => { if (e.some((x) => x.isIntersecting)) { setSeen(true); io.disconnect(); } }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!seen) return;
     let live = true;
     session.image(path).then((u) => { if (live) setSrc(u); }, () => {});
     return () => { live = false; };
-  }, [session, path]);
-  return src ? <img src={src} alt={alt} className="h-28 w-full rounded-control object-cover" /> : <div role="img" aria-label={`${alt} (loading)`} className="h-28 w-full rounded-control bg-slate-200" />;
+  }, [session, path, seen]);
+  return src ? <img src={src} alt={alt} className="h-28 w-full rounded-control object-cover" /> : <div ref={box} role="img" aria-label={`${alt} (loading)`} className="h-28 w-full rounded-control bg-slate-200" />;
 }
 
 const onOff = (b: boolean) => (b ? 'on' : 'off');
@@ -31,6 +43,7 @@ export default function InvitationFeatures({ session, id }: { session: Session; 
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<Status>('pending');
   const [busy, setBusy] = useState(false);
+  const [limit, setLimit] = useState(PAGE);
   const base = `/api/admin/invitations/invitations/${id}`;
 
   useEffect(() => {
@@ -78,13 +91,14 @@ export default function InvitationFeatures({ session, id }: { session: Session; 
         <h3 className="font-semibold">Guest photos</h3>
         <div role="group" aria-label="Show guest photos" className="flex flex-wrap gap-2">
           {(['pending', 'approved', 'rejected'] as const).map((s) => (
-            <Button key={s} size="sm" variant={filter === s ? 'primary' : 'secondary'} aria-pressed={filter === s} onClick={() => setFilter(s)}>{s[0].toUpperCase() + s.slice(1)} ({count(s)})</Button>
+            <Button key={s} size="sm" variant={filter === s ? 'primary' : 'secondary'} aria-pressed={filter === s} onClick={() => { setFilter(s); setLimit(PAGE); }}>{s[0].toUpperCase() + s.slice(1)} ({count(s)})</Button>
           ))}
           {filter === 'pending' && count('pending') > 0 && <Button size="sm" disabled={busy} onClick={() => act({ action: 'approve-all' })}>Approve all pending</Button>}
         </div>
         {shown.length === 0 ? <p className="text-slate-700">No {filter} photos.</p> : (
+          <>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {shown.map((p) => (
+            {shown.slice(0, limit).map((p) => (
               <li key={p.id} className="space-y-1.5 rounded-control border border-slate-200 bg-white p-2">
                 <Thumb session={session} path={`${base}/media/${p.id}`} alt={`Photo from ${p.guestName}`} />
                 <p className="break-words font-semibold">{p.guestName}</p>
@@ -96,6 +110,8 @@ export default function InvitationFeatures({ session, id }: { session: Session; 
               </li>
             ))}
           </ul>
+          {shown.length > limit && <Button size="sm" variant="secondary" onClick={() => setLimit((n) => n + PAGE)}>Load more ({shown.length - limit} left)</Button>}
+          </>
         )}
       </div>
       {error && <p role="alert" className="font-medium text-red-700">{error}</p>}
