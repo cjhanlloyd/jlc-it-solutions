@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 // Organiser and guest endpoints for attire, the wish list and cash gifts (event features).
+import { ensureCodes } from './checkin';
 import { turnstileError } from './turnstile';
 import { ATTIRE_PHOTOS_MAX, GIFT_ITEMS_MAX, validateExtras, type Extras } from '../shared/extras';
 import { LIMITS } from '../shared/invitation-fields';
@@ -78,6 +79,7 @@ export async function manageFeature(feature: string, request: Request, env: Env,
     const v = validateExtras(body.extras, tierOf(inv));
     if ('error' in v) return json({ error: v.error }, 400);
     await env.DB.prepare('UPDATE invitations SET extras = ? WHERE id = ?').bind(JSON.stringify(v.extras), inv.id).run();
+    if (v.extras.checkin?.enabled) await ensureCodes(env.DB, inv.id); // existing guests get their codes lazily
     return json({ extras: v.extras });
   }
   if (feature === 'gifts') return gifts(body, env, inv);

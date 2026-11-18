@@ -5,6 +5,7 @@ export type Route =
   | { page: 'home' } | { page: 'designs' } | { page: 'design'; slug: string } | { page: 'customise'; slug: string }
   | { page: 'services' } | { page: 'about' } | { page: 'contact' }
   | { page: 'order'; ref: string } | { page: 'track' } | { page: 'manage' } | { page: 'account' } | { page: 'reviews' } | { page: 'policy'; kind: PolicyKind }
+  | { page: 'checkin' } | { page: 'pass'; code: string }
   | { page: 'notFound' };
 
 const SITE = ' | JLC Solutions';
@@ -21,6 +22,8 @@ export const PAGE_META: Record<Route['page'], { title: string; description: stri
   manage: { title: 'Manage Your Invitation' + SITE, description: 'Get a link to manage your invitation, edit details and view RSVPs.' },
   account: { title: 'My Account' + SITE, description: 'Sign in with your email to see your invitations, share their links and manage your guests.' },
   reviews: { title: 'Customer Reviews' + SITE, description: 'What our clients say about their digital invitations from JLC Solutions.' },
+  checkin: { title: 'Guest Check-in' + SITE, description: 'Door-phone check-in for event staff.' },
+  pass: { title: 'Entry Pass' + SITE, description: 'A guest entry pass for an event.' },
   policy: { title: 'Policies' + SITE, description: 'Terms of service, refund policy and privacy policy of JLC Solutions.' },
   notFound: { title: 'Page Not Found' + SITE, description: 'This page could not be found. Browse our invitation designs or go to the homepage.' },
 };
@@ -32,7 +35,7 @@ const LEGACY_TABS: Record<string, string> = {
 };
 const STATIC: Record<string, Route> = {
   designs: { page: 'designs' }, services: { page: 'services' }, about: { page: 'about' }, contact: { page: 'contact' },
-  track: { page: 'track' }, manage: { page: 'manage' }, account: { page: 'account' }, reviews: { page: 'reviews' },
+  track: { page: 'track' }, checkin: { page: 'checkin' }, manage: { page: 'manage' }, account: { page: 'account' }, reviews: { page: 'reviews' },
   terms: { page: 'policy', kind: 'terms' }, 'refund-policy': { page: 'policy', kind: 'refund-policy' }, privacy: { page: 'policy', kind: 'privacy' },
 };
 const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
@@ -53,6 +56,7 @@ export function routeFor(pathname: string, hash: string): { route: Route } | { r
   if (seg.length === 1) return own(STATIC, seg[0]) ? { route: STATIC[seg[0]] } : NOT_FOUND;
   const value = decode(seg[1]);
   if (value === null) return NOT_FOUND;
+  if (seg[0] === 'c' && seg.length === 2) return { route: { page: 'pass', code: value } };
   if (seg[0] === 'order' && seg.length === 2) return { route: { page: 'order', ref: value.toUpperCase() } };
   if (seg[0] === 'designs' && seg.length === 2) return { route: { page: 'design', slug: value } };
   if (seg[0] === 'designs' && seg.length === 3 && seg[2] === 'customise') return { route: { page: 'customise', slug: value } };

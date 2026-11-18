@@ -8,6 +8,7 @@ import { notify } from '../../../server/order-emails';
 import { newReference } from '../../../server/orders';
 import { activeProvider, loadPaymentSettings } from '../../../server/payments';
 import { guestFeatures, guestGift, manageFeature, manageFeatures, photoError, putPhoto, PHOTO_RE } from '../../../server/event-features';
+import { guestPass, manageCheckin, newCheckinCode } from '../../../server/checkin';
 import { guestPhotoUpload, listGuestPhotos, mediaPreview, moderateGuestPhotos } from '../../../server/guest-photos';
 import { turnstileError } from '../../../server/turnstile';
 import { validateExtras } from '../../../shared/extras';
@@ -96,6 +97,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const inv = await findManagedInvitation(env.DB, request);
       return inv ? await manageFeature(feature, request, env, inv) : NOT_FOUND();
     }
+    const checkinSub = route.match(/^(GET|POST) \/api\/invitations\/manage\/checkin(?:\/(key|key\/revoke|mark))?$/);
+    if (checkinSub && (checkinSub[2] ? checkinSub[1] === 'POST' : checkinSub[1] === 'GET')) {
+      const inv = await findManagedInvitation(env.DB, request);
+      return inv ? await manageCheckin(checkinSub[2] ?? '', request, env, inv) : NOT_FOUND();
+    }
     const photoSlug = route.match(/^POST \/api\/invitations\/i\/([^/]+)\/photos$/)?.[1];
     if (photoSlug) {
       const slug = decodeSegment(photoSlug);
@@ -110,7 +116,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     const guestSlug = route.match(/^GET \/api\/invitations\/i\/([^/]+)$/)?.[1];
-    if (guestSlug) return await guest(env, decodeSegment(guestSlug), url.searchParams.get('g'));
+    if (guestSlug) return await guest(env, decodeSegment(guestSlug), url.searchParams.get('g'), url.origin);
 
     if (route === 'GET /api/invitations/manage' || route === 'POST /api/invitations/manage' || route === 'GET /api/invitations/manage/rsvps.csv'
       || route === 'GET /api/invitations/manage/guests' || route === 'POST /api/invitations/manage/guests'
@@ -469,8 +475,8 @@ async function manageGuests(request: Request, env: Env, inv: any): Promise<Respo
       try {
         // One statement, so the 300 cap holds under concurrent adds
         const ins = await env.DB.prepare(
-          'INSERT INTO invitation_guests (invitation_id, token, name, seats) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM invitation_guests WHERE invitation_id = ?) < 300',
-        ).bind(inv.id, token, name, body.seats, inv.id).run();
+          'INSERT INTO invitation_guests (invitation_id, token, name, seats, checkin_code) SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM invitation_guests WHERE invitation_id = ?) < 300',
+        ).bind(inv.id, token, name, body.seats, newCheckinCode(), inv.id).run();
         if (!ins.meta.changes) return json({ error: 'You can add up to 300 guests.' }, 400);
         return json({ ok: true, id: ins.meta.last_row_id, token });
       } catch (e) {
@@ -502,7 +508,7 @@ async function manageGuests(request: Request, env: Env, inv: any): Promise<Respo
 
 // Expired invitations show only the title: no details, photos or RSVP state.
 // A ?g= token of one of this invitation's guests adds guest: { name, seats, rsvp }; any other token is ignored.
-async function guest(env: Env, slug: string | null, token: string | null): Promise<Response> {
+async function guest(env: Env, slug: string | null, token: string | null, origin: string): Promise<Response> {
   const inv = slug === null ? null : await findGuestInvitation(env.DB, slug);
   if (!inv) return NOT_FOUND();
   const occasion = occasionOf(inv.product_type);
@@ -531,6 +537,7 @@ async function guest(env: Env, slug: string | null, token: string | null): Promi
     // Same rule as the RSVP route below: open through the deadline day (UTC)
     rsvpOpen: !details.rsvpDeadline || todayUtc() <= details.rsvpDeadline,
     ...await guestFeatures(env.DB, inv, g?.id ?? null),
+    ...(await guestPass(env.DB, inv, g, origin).then((pass) => pass ? { pass } : {})),
   });
 }
 

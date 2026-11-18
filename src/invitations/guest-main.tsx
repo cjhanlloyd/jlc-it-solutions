@@ -14,11 +14,12 @@ import { useTurnstile } from './turnstile';
 import type { Extras } from '../../shared/extras';
 import type { AttirePhoto, EventData, WishItem } from './event-view';
 import GuestShare from './GuestShare';
+import QrCode, { downloadQrPng } from './QrCode';
 
 type Data =
   | { state: 'live'; layoutKey: string; colorScheme: Scheme; details: any; photos: string[]; giftQr?: string | null; style?: InvitationStyle; rsvpOpen: boolean; askKids?: boolean; productType?: string;
       tier?: 'standard' | 'premium'; intro?: boolean; music?: Music | null; guest?: Guest;
-      extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: WishItem[]; guestPhotos?: string[] }
+      extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: WishItem[]; guestPhotos?: string[]; pass?: Pass }
   | { state: 'expired'; title: string }
   | { state: 'missing' | 'offline' | 'loading' };
 
@@ -120,6 +121,23 @@ function RsvpForm({ askKids, productType, guest }: { askKids: boolean; productTy
       {error && <p className="rsvp-error" role="alert">{error}</p>}
       <button type="submit" className="btn btn-solid" disabled={sending}>{sending ? 'Sending…' : 'Send reply'}</button>
     </form>
+  );
+}
+
+type Pass = { url: string; name: string; partySize: number };
+// The guest's QR entry pass: always black on white, whatever the colour scheme, so door phones scan it reliably.
+function EntryPass({ pass }: { pass: Pass }) {
+  return (
+    <section aria-labelledby="pass-h" style={{ marginTop: '2rem', textAlign: 'center' }}>
+      <h2 id="pass-h">Your entry pass</h2>
+      <div style={{ display: 'inline-block', maxWidth: '100%', background: '#fff', color: '#111', borderRadius: 12, padding: 16 }}>
+        <QrCode text={pass.url} label={`Entry pass QR code for ${pass.name}`} />
+        <p style={{ margin: '8px 0 0', fontWeight: 700 }}>{pass.name}</p>
+        <p style={{ margin: 0 }}>Party of {pass.partySize}</p>
+      </div>
+      <p>Show this at the entrance.</p>
+      <button type="button" className="btn" onClick={() => downloadQrPng(pass.url, 'entry-pass.png')}>Save to your phone</button>
+    </section>
   );
 }
 
@@ -256,6 +274,7 @@ function Guest() {
             rsvpSlot={<>
               {data.guest && <p className="rsvp-dear">Dear {data.guest.name},</p>}
               {data.rsvpOpen ? <RsvpForm askKids={!!data.askKids} productType={data.productType} guest={data.guest} /> : <p className="rsvp-closed">RSVPs are now closed. Thank you!</p>}
+              {data.pass && <EntryPass pass={data.pass} />}
             </>} />
           {item && (
             <ReserveDialog item={item} guest={data.guest} style={schemeVars(scheme, data.style)} onClose={() => setReserving(null)}

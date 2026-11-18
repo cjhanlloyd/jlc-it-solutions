@@ -37,6 +37,7 @@ import TrackPage from './invitations/TrackPage.tsx';
 import ManagePage from './invitations/ManagePage.tsx';
 import AccountPage from './invitations/AccountPage.tsx';
 import ReviewsPage from './site/ReviewsPage.tsx';
+import { CheckinPage, PassPage } from './invitations/CheckinPages.tsx';
 import PolicyPage from './invitations/PolicyPage.tsx';
 import { go, Link } from './invitations/kit.tsx';
 import { routeFor, PAGE_META, withSearch, type Route } from './site/routes.ts';
@@ -223,6 +224,9 @@ export default function App() {
         return <ReviewsPage />;
       case 'policy':
         return <PolicyPage kind={r.kind} company={branding.companyName || 'JLC IT Solutions'} email={content.contactEmail} />;
+      case 'checkin':
+      case 'pass':
+        return null; // rendered above, outside the chrome
       case 'notFound':
         return (
           <section className="mx-auto max-w-xl px-4 py-24 text-center space-y-4">
@@ -236,6 +240,10 @@ export default function App() {
         );
     }
   };
+
+  // Door-phone pages are plain full screens: no site chrome, and no waiting for the site data
+  if (route.page === 'checkin') return <CheckinPage />;
+  if (route.page === 'pass') return <PassPage code={route.code} />;
 
   if (isDataLoading) return <SiteLoader name={branding.companyName || 'JLC Solutions'} icon={branding.logoIcon} />;
 

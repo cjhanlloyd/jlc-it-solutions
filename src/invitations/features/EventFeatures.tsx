@@ -2,12 +2,13 @@
 import React from 'react';
 import type { Extras } from '../../../shared/extras';
 import AttireTab, { type AttirePhoto } from './AttireTab';
+import CheckinTab from './CheckinTab';
 import GalleryTab from './GalleryTab';
 import GiftsTab, { type GiftItem } from './GiftsTab';
 import GuestPhotosTab from './GuestPhotosTab';
 import type { Api } from './shared';
 
-const ALL_TABS = [{ id: 'attire', label: 'Attire & motif' }, { id: 'gifts', label: 'Gifts' }, { id: 'gallery', label: 'Gallery' }, { id: 'guest-photos', label: 'Guest photos', premium: true }] as const;
+const ALL_TABS = [{ id: 'attire', label: 'Attire & motif' }, { id: 'gifts', label: 'Gifts' }, { id: 'gallery', label: 'Gallery' }, { id: 'guest-photos', label: 'Guest photos', premium: true }, { id: 'checkin', label: 'Check-in', premium: true }] as const;
 
 export default function EventFeatures({ api, initial }: { api: Api; initial: { tier?: 'standard' | 'premium'; extras?: Extras; attirePhotos?: AttirePhoto[]; giftItems?: GiftItem[] } }) {
   const [tab, setTab] = React.useState<(typeof ALL_TABS)[number]['id']>('attire');
@@ -35,6 +36,7 @@ export default function EventFeatures({ api, initial }: { api: Api; initial: { t
       <div id="ef-panel-gifts" role="tabpanel" aria-labelledby="ef-tab-gifts" hidden={tab !== 'gifts'}><GiftsTab api={api} extras={extras} onExtras={setExtras} items={items} onItems={setItems} /></div>
       <div id="ef-panel-gallery" role="tabpanel" aria-labelledby="ef-tab-gallery" hidden={tab !== 'gallery'}><GalleryTab api={api} extras={extras} onExtras={setExtras} /></div>
       {initial.tier === 'premium' && <div id="ef-panel-guest-photos" role="tabpanel" aria-labelledby="ef-tab-guest-photos" hidden={tab !== 'guest-photos'}><GuestPhotosTab api={api} extras={extras} onExtras={setExtras} /></div>}
+      {initial.tier === 'premium' && <div id="ef-panel-checkin" role="tabpanel" aria-labelledby="ef-tab-checkin" hidden={tab !== 'checkin'}><CheckinTab api={api} extras={extras} onExtras={setExtras} active={tab === 'checkin'} /></div>}
     </section>
   );
 }
